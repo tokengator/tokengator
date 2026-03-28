@@ -3,7 +3,6 @@ import { and, asc, eq, inArray } from 'drizzle-orm'
 import { resolve } from 'node:path'
 
 import { isLocalDatabaseUrl } from './lib/local-database-url'
-import { todo } from './schema'
 import * as authSchema from './schema/auth'
 
 const API_ENV_PATH = resolve(import.meta.dir, '..', '..', '..', 'apps', 'api', '.env')
@@ -82,32 +81,6 @@ if (!primaryDevSeedOrganization) {
 export const devSeed = {
   organization: primaryDevSeedOrganization,
   organizations: devSeedOrganizations,
-  todos: [
-    {
-      completed: false,
-      id: -1004,
-      organizationSlug: 'acme',
-      text: 'Seed todo: Review Acme onboarding',
-    },
-    {
-      completed: false,
-      id: -1003,
-      organizationSlug: 'acme',
-      text: 'Seed todo: Ship Acme launch checklist',
-    },
-    {
-      completed: false,
-      id: -1002,
-      organizationSlug: 'beacon',
-      text: 'Seed todo: Audit Beacon permissions',
-    },
-    {
-      completed: false,
-      id: -1001,
-      organizationSlug: 'beacon',
-      text: 'Seed todo: Plan Beacon rollout',
-    },
-  ].sort((left, right) => left.text.localeCompare(right.text)),
   users: [
     {
       email: DEV_ADMIN_EMAIL,
@@ -143,7 +116,6 @@ type CompletedSeedResult = {
   organizationId: string
   organizationIdsBySlug: Record<string, string>
   skipped: false
-  todoCount: number
   userCount: number
 }
 
@@ -327,27 +299,6 @@ function isSeedOwnedOrganization(organization: { metadata: string | null }) {
   } catch {
     return false
   }
-}
-
-async function resetSeedTodos(db: RuntimeModules['db'], organizationIdsBySlug: Record<string, string>) {
-  const seedTodoIds = devSeed.todos.map((entry) => entry.id)
-
-  await db.transaction(async (tx) => {
-    if (seedTodoIds.length > 0) {
-      await tx.delete(todo).where(inArray(todo.id, seedTodoIds))
-    }
-
-    await tx.insert(todo).values(toSeedTodoValues(organizationIdsBySlug))
-  })
-}
-
-function toSeedTodoValues(organizationIdsBySlug: Record<string, string>) {
-  return devSeed.todos.map((entry) => ({
-    completed: entry.completed,
-    id: entry.id,
-    organizationId: getRequiredOrganizationId(organizationIdsBySlug, entry.organizationSlug),
-    text: entry.text,
-  }))
 }
 
 function getRequiredOrganizationId(organizationIdsBySlug: Record<string, string>, slug: string) {
@@ -613,14 +564,11 @@ export async function seedDatabase(): Promise<SeedResult> {
     const usersByEmail = await createSeedUsers(runtime)
     const organizationIdsBySlug = await createSeedOrganizations(runtime, usersByEmail)
 
-    await resetSeedTodos(runtime.db, organizationIdsBySlug)
-
     return {
       organizationCount: devSeed.organizations.length,
       organizationId: getRequiredOrganizationId(organizationIdsBySlug, DEV_PRIMARY_ORGANIZATION_SLUG),
       organizationIdsBySlug,
       skipped: false,
-      todoCount: devSeed.todos.length,
       userCount: devSeed.users.length,
     }
   } finally {
@@ -650,7 +598,6 @@ if (import.meta.main) {
       }),
       `Seeded organizations: ${summary.organizationCount}`,
       `Seeded users: ${summary.userCount}`,
-      `Seeded todos: ${summary.todoCount}`,
     ].join('\n'),
   )
 }

@@ -1,9 +1,9 @@
 import { ORPCError } from '@orpc/server'
-import { and, asc, count, eq, inArray, or, sql } from 'drizzle-orm'
+import { asc, count, eq, inArray, or, sql } from 'drizzle-orm'
 import z from 'zod'
 import { auth } from '@tokengator/auth'
 import { db } from '@tokengator/db'
-import { invitation, member, organization, session, user } from '@tokengator/db/schema/auth'
+import { invitation, member, organization, user } from '@tokengator/db/schema/auth'
 
 import { adminProcedure } from '../index'
 
@@ -232,13 +232,6 @@ export const adminOrganizationRouter = {
       }
 
       await db.transaction(async (tx) => {
-        await tx
-          .update(session)
-          .set({
-            activeOrganizationId: null,
-          })
-          .where(eq(session.activeOrganizationId, input.organizationId))
-
         await tx.delete(invitation).where(eq(invitation.organizationId, input.organizationId))
         await tx.delete(member).where(eq(member.organizationId, input.organizationId))
         await tx.delete(organization).where(eq(organization.id, input.organizationId))
@@ -430,18 +423,6 @@ export const adminOrganizationRouter = {
       }
 
       await db.transaction(async (tx) => {
-        await tx
-          .update(session)
-          .set({
-            activeOrganizationId: null,
-          })
-          .where(
-            and(
-              eq(session.activeOrganizationId, existingMember.organizationId),
-              eq(session.userId, existingMember.userId),
-            ),
-          )
-
         await tx.delete(member).where(eq(member.id, input.memberId))
       })
 

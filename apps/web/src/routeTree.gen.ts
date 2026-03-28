@@ -9,11 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TodosRouteImport } from './routes/todos'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as OnboardRouteImport } from './routes/onboard'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
@@ -21,15 +19,9 @@ import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
 import { Route as AdminCommunitiesIndexRouteImport } from './routes/admin/communities/index'
 import { Route as AdminCommunitiesOrganizationIdRouteRouteImport } from './routes/admin/communities/$organizationId/route'
 import { Route as AdminCommunitiesOrganizationIdIndexRouteImport } from './routes/admin/communities/$organizationId/index'
-import { Route as AdminCommunitiesOrganizationIdTodosRouteImport } from './routes/admin/communities/$organizationId/todos'
 import { Route as AdminCommunitiesOrganizationIdSettingsRouteImport } from './routes/admin/communities/$organizationId/settings'
 import { Route as AdminCommunitiesOrganizationIdMembersRouteImport } from './routes/admin/communities/$organizationId/members'
 
-const TodosRoute = TodosRouteImport.update({
-  id: '/todos',
-  path: '/todos',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -43,11 +35,6 @@ const OnboardRoute = OnboardRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -87,12 +74,6 @@ const AdminCommunitiesOrganizationIdIndexRoute =
     path: '/',
     getParentRoute: () => AdminCommunitiesOrganizationIdRouteRoute,
   } as any)
-const AdminCommunitiesOrganizationIdTodosRoute =
-  AdminCommunitiesOrganizationIdTodosRouteImport.update({
-    id: '/todos',
-    path: '/todos',
-    getParentRoute: () => AdminCommunitiesOrganizationIdRouteRoute,
-  } as any)
 const AdminCommunitiesOrganizationIdSettingsRoute =
   AdminCommunitiesOrganizationIdSettingsRouteImport.update({
     id: '/settings',
@@ -109,51 +90,42 @@ const AdminCommunitiesOrganizationIdMembersRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
-  '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/onboard': typeof OnboardRoute
   '/profile': typeof ProfileRoute
-  '/todos': typeof TodosRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/communities/$organizationId': typeof AdminCommunitiesOrganizationIdRouteRouteWithChildren
   '/admin/communities/': typeof AdminCommunitiesIndexRoute
   '/admin/communities/$organizationId/members': typeof AdminCommunitiesOrganizationIdMembersRoute
   '/admin/communities/$organizationId/settings': typeof AdminCommunitiesOrganizationIdSettingsRoute
-  '/admin/communities/$organizationId/todos': typeof AdminCommunitiesOrganizationIdTodosRoute
   '/admin/communities/$organizationId/': typeof AdminCommunitiesOrganizationIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/onboard': typeof OnboardRoute
   '/profile': typeof ProfileRoute
-  '/todos': typeof TodosRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin': typeof AdminIndexRoute
   '/admin/communities': typeof AdminCommunitiesIndexRoute
   '/admin/communities/$organizationId/members': typeof AdminCommunitiesOrganizationIdMembersRoute
   '/admin/communities/$organizationId/settings': typeof AdminCommunitiesOrganizationIdSettingsRoute
-  '/admin/communities/$organizationId/todos': typeof AdminCommunitiesOrganizationIdTodosRoute
   '/admin/communities/$organizationId': typeof AdminCommunitiesOrganizationIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
-  '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/onboard': typeof OnboardRoute
   '/profile': typeof ProfileRoute
-  '/todos': typeof TodosRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/communities/$organizationId': typeof AdminCommunitiesOrganizationIdRouteRouteWithChildren
   '/admin/communities/': typeof AdminCommunitiesIndexRoute
   '/admin/communities/$organizationId/members': typeof AdminCommunitiesOrganizationIdMembersRoute
   '/admin/communities/$organizationId/settings': typeof AdminCommunitiesOrganizationIdSettingsRoute
-  '/admin/communities/$organizationId/todos': typeof AdminCommunitiesOrganizationIdTodosRoute
   '/admin/communities/$organizationId/': typeof AdminCommunitiesOrganizationIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -161,72 +133,54 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
-    | '/dashboard'
     | '/login'
     | '/onboard'
     | '/profile'
-    | '/todos'
     | '/admin/dashboard'
     | '/admin/'
     | '/admin/communities/$organizationId'
     | '/admin/communities/'
     | '/admin/communities/$organizationId/members'
     | '/admin/communities/$organizationId/settings'
-    | '/admin/communities/$organizationId/todos'
     | '/admin/communities/$organizationId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/dashboard'
     | '/login'
     | '/onboard'
     | '/profile'
-    | '/todos'
     | '/admin/dashboard'
     | '/admin'
     | '/admin/communities'
     | '/admin/communities/$organizationId/members'
     | '/admin/communities/$organizationId/settings'
-    | '/admin/communities/$organizationId/todos'
     | '/admin/communities/$organizationId'
   id:
     | '__root__'
     | '/'
     | '/admin'
-    | '/dashboard'
     | '/login'
     | '/onboard'
     | '/profile'
-    | '/todos'
     | '/admin/dashboard'
     | '/admin/'
     | '/admin/communities/$organizationId'
     | '/admin/communities/'
     | '/admin/communities/$organizationId/members'
     | '/admin/communities/$organizationId/settings'
-    | '/admin/communities/$organizationId/todos'
     | '/admin/communities/$organizationId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
-  DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
   OnboardRoute: typeof OnboardRoute
   ProfileRoute: typeof ProfileRoute
-  TodosRoute: typeof TodosRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/todos': {
-      id: '/todos'
-      path: '/todos'
-      fullPath: '/todos'
-      preLoaderRoute: typeof TodosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/profile': {
       id: '/profile'
       path: '/profile'
@@ -246,13 +200,6 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -304,13 +251,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCommunitiesOrganizationIdIndexRouteImport
       parentRoute: typeof AdminCommunitiesOrganizationIdRouteRoute
     }
-    '/admin/communities/$organizationId/todos': {
-      id: '/admin/communities/$organizationId/todos'
-      path: '/todos'
-      fullPath: '/admin/communities/$organizationId/todos'
-      preLoaderRoute: typeof AdminCommunitiesOrganizationIdTodosRouteImport
-      parentRoute: typeof AdminCommunitiesOrganizationIdRouteRoute
-    }
     '/admin/communities/$organizationId/settings': {
       id: '/admin/communities/$organizationId/settings'
       path: '/settings'
@@ -331,7 +271,6 @@ declare module '@tanstack/react-router' {
 interface AdminCommunitiesOrganizationIdRouteRouteChildren {
   AdminCommunitiesOrganizationIdMembersRoute: typeof AdminCommunitiesOrganizationIdMembersRoute
   AdminCommunitiesOrganizationIdSettingsRoute: typeof AdminCommunitiesOrganizationIdSettingsRoute
-  AdminCommunitiesOrganizationIdTodosRoute: typeof AdminCommunitiesOrganizationIdTodosRoute
   AdminCommunitiesOrganizationIdIndexRoute: typeof AdminCommunitiesOrganizationIdIndexRoute
 }
 
@@ -341,8 +280,6 @@ const AdminCommunitiesOrganizationIdRouteRouteChildren: AdminCommunitiesOrganiza
       AdminCommunitiesOrganizationIdMembersRoute,
     AdminCommunitiesOrganizationIdSettingsRoute:
       AdminCommunitiesOrganizationIdSettingsRoute,
-    AdminCommunitiesOrganizationIdTodosRoute:
-      AdminCommunitiesOrganizationIdTodosRoute,
     AdminCommunitiesOrganizationIdIndexRoute:
       AdminCommunitiesOrganizationIdIndexRoute,
   }
@@ -372,11 +309,9 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
-  DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
   OnboardRoute: OnboardRoute,
   ProfileRoute: ProfileRoute,
-  TodosRoute: TodosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -13,9 +13,6 @@ import { SolanaAuthActions } from '@/components/solana-auth-actions'
 
 interface OnboardFeatureIndexProps {
   initialSession: {
-    session?: {
-      activeOrganizationId?: string | null
-    } | null
     user: {
       id: string
       username?: string | null

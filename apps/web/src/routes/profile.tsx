@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 
+import { getOrganizationListMine } from '@/features/organization/data-access/get-organization-list-mine'
 import { ProfileFeatureIndex } from '@/features/profile/feature/profile-feature-index'
 import { getUser } from '@/functions/get-user'
 
@@ -13,13 +14,17 @@ export const Route = createFileRoute('/profile')({
       })
     }
 
-    return { session }
+    const organizationListMine = (await getOrganizationListMine()) ?? {
+      organizations: [],
+    }
+
+    return { organizationListMine, session }
   },
   component: RouteComponent,
 })
 
 function RouteComponent() {
-  const { session } = Route.useRouteContext()
+  const { organizationListMine, session } = Route.useRouteContext()
 
-  return <ProfileFeatureIndex session={session} />
+  return <ProfileFeatureIndex initialOrganizationListMine={organizationListMine} session={session} />
 }

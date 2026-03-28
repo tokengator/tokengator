@@ -5,7 +5,6 @@ import { serverOrpcClient } from '@/utils/orpc-server'
 
 export interface OrganizationListMineOrganization {
   id: string
-  isActive: boolean
   logo: string | null
   name: string
   role: string
@@ -13,7 +12,6 @@ export interface OrganizationListMineOrganization {
 }
 
 export interface OrganizationListMineData {
-  activeOrganizationId: string | null
   organizations: OrganizationListMineOrganization[]
 }
 

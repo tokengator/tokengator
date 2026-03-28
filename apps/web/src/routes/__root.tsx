@@ -5,7 +5,6 @@ import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { Toaster } from '@tokengator/ui/components/sonner'
 
 import type { orpc } from '@/utils/orpc'
-import { getOrganizationListMine } from '@/features/organization/data-access/get-organization-list-mine'
 import { getOnboardingStatus } from '@/functions/get-onboarding-status'
 import { getUser } from '@/functions/get-user'
 
@@ -30,9 +29,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
       session = await getUser()
     }
 
-    const organizations = onboardingStatus?.isComplete ? await getOrganizationListMine() : null
-
-    return { appConfig, onboardingStatus, organizations, session }
+    return { appConfig, onboardingStatus, session }
   },
   component: RootDocument,
 
@@ -59,7 +56,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 })
 
 function RootDocument() {
-  const { appConfig, onboardingStatus, organizations, session } = Route.useRouteContext()
+  const { appConfig, onboardingStatus, session } = Route.useRouteContext()
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -70,7 +67,7 @@ function RootDocument() {
         <ThemeProvider>
           <SolanaProvider appConfig={appConfig}>
             <div className="grid h-svh min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
-              <Header initialOrganizations={organizations} onboardingStatus={onboardingStatus} session={session} />
+              <Header onboardingStatus={onboardingStatus} session={session} />
               <div className="min-h-0 min-w-0 overflow-x-hidden overflow-y-auto">
                 <Outlet />
               </div>

@@ -227,7 +227,7 @@ beforeAll(async () => {
   process.env.SOLANA_CLUSTER = 'devnet'
   process.env.SOLANA_ENDPOINT_PUBLIC = 'https://api.devnet.solana.com'
 
-  ;[{ db: database }] = await Promise.all([import('@tokengator/db')])
+  ;({ db: database } = await import('@tokengator/db'))
 
   syncDatabase(databaseUrl)
 
@@ -588,6 +588,127 @@ describe('createOrpcClient e2e', () => {
     )
   })
 
+  test('admin users can manage asset groups and assets through the SDK', async () => {
+    const [{ asset }, createdAssetGroup] = await Promise.all([
+      import('@tokengator/db/schema/asset'),
+      adminSession.client.adminAssetGroup.create({
+        address: 'collection-acme',
+        enabled: true,
+        label: 'Acme Collection',
+        type: 'collection',
+      }),
+    ])
+    const indexedAt = new Date()
+    const indexedAssetId = `v2:${JSON.stringify([createdAssetGroup.id, 'asset-acme-1', 'wallet-owner-1', 'helius-collection-assets'])}`
+    const storedAssetId = crypto.randomUUID()
+
+    await database.insert(asset).values({
+      address: 'asset-acme-1',
+      addressLower: 'asset-acme-1',
+      amount: 1,
+      assetGroupId: createdAssetGroup.id,
+      firstSeenAt: indexedAt,
+      id: storedAssetId,
+      indexedAssetId,
+      indexedAt,
+      lastSeenAt: indexedAt,
+      metadata: JSON.stringify({
+        name: 'Asset 1',
+      }),
+      metadataJson: JSON.stringify({
+        foo: 'bar',
+      }),
+      owner: 'wallet-owner-1',
+      ownerLower: 'wallet-owner-1',
+      page: 1,
+      raw: JSON.stringify({
+        source: 'indexer',
+      }),
+      resolverId: createdAssetGroup.id,
+      resolverKind: 'helius-collection-assets',
+    })
+
+    await expect(
+      adminSession.client.adminAssetGroup.get({ assetGroupId: createdAssetGroup.id }),
+    ).resolves.toMatchObject({
+      address: 'collection-acme',
+      enabled: true,
+      id: createdAssetGroup.id,
+      label: 'Acme Collection',
+      type: 'collection',
+    })
+
+    const assetGroups = await adminSession.client.adminAssetGroup.list()
+
+    expect(assetGroups.assetGroups).toContainEqual(
+      expect.objectContaining({
+        address: 'collection-acme',
+        enabled: true,
+        id: createdAssetGroup.id,
+        label: 'Acme Collection',
+        type: 'collection',
+      }),
+    )
+
+    await expect(adminSession.client.adminAsset.list({ assetGroupId: createdAssetGroup.id })).resolves.toMatchObject({
+      assets: [
+        expect.objectContaining({
+          address: 'asset-acme-1',
+          assetGroupId: createdAssetGroup.id,
+          id: storedAssetId,
+          metadata: {
+            name: 'Asset 1',
+          },
+          metadataJson: {
+            foo: 'bar',
+          },
+          owner: 'wallet-owner-1',
+          raw: {
+            source: 'indexer',
+          },
+          resolverKind: 'helius-collection-assets',
+        }),
+      ],
+      limit: 50,
+      offset: 0,
+      total: 1,
+    })
+
+    await expect(
+      adminSession.client.adminAssetGroup.update({
+        assetGroupId: createdAssetGroup.id,
+        data: {
+          address: 'mint-acme',
+          enabled: false,
+          label: 'Acme Mint',
+          type: 'mint',
+        },
+      }),
+    ).resolves.toMatchObject({
+      address: 'mint-acme',
+      enabled: false,
+      id: createdAssetGroup.id,
+      label: 'Acme Mint',
+      type: 'mint',
+    })
+
+    await expect(adminSession.client.adminAsset.delete({ id: storedAssetId })).resolves.toEqual({
+      assetGroupId: createdAssetGroup.id,
+      id: storedAssetId,
+    })
+
+    await expect(adminSession.client.adminAsset.list({ assetGroupId: createdAssetGroup.id })).resolves.toMatchObject({
+      assets: [],
+      limit: 50,
+      offset: 0,
+      total: 0,
+    })
+
+    await expect(adminSession.client.adminAssetGroup.delete({ assetGroupId: createdAssetGroup.id })).resolves.toEqual({
+      assetGroupId: createdAssetGroup.id,
+    })
+  })
+
   test('admin search treats LIKE wildcards as literal characters', async () => {
     const percentMatchOwnerEmail = 'percent-match-owner@example.com'
     const percentMatchOwnerName = 'Percent 100% Owner'
@@ -713,11 +834,136 @@ describe('createOrpcClient e2e', () => {
     )
   })
 
+  test('admin asset search treats LIKE wildcards as literal characters', async () => {
+    const [{ asset }, percentGroup, percentNonMatchGroup, underscoreGroup, underscoreNonMatchGroup] = await Promise.all(
+      [
+        import('@tokengator/db/schema/asset'),
+        adminSession.client.adminAssetGroup.create({
+          address: 'address-100%',
+          label: 'Revenue 100%',
+          type: 'collection',
+        }),
+        adminSession.client.adminAssetGroup.create({
+          address: 'address-1000',
+          label: 'Revenue 1000',
+          type: 'collection',
+        }),
+        adminSession.client.adminAssetGroup.create({
+          address: 'team_1-address',
+          label: 'Team_1 Group',
+          type: 'mint',
+        }),
+        adminSession.client.adminAssetGroup.create({
+          address: 'teama1-address',
+          label: 'TeamA1 Group',
+          type: 'mint',
+        }),
+      ],
+    )
+    const indexedAt = new Date()
+
+    await database.insert(asset).values([
+      {
+        address: 'asset-100%',
+        addressLower: 'asset-100%',
+        amount: 1,
+        assetGroupId: percentGroup.id,
+        firstSeenAt: indexedAt,
+        id: crypto.randomUUID(),
+        indexedAssetId: `v2:${JSON.stringify([percentGroup.id, 'asset-100%', 'wallet_1', 'helius-collection-assets'])}`,
+        indexedAt,
+        lastSeenAt: indexedAt,
+        owner: 'wallet_1',
+        ownerLower: 'wallet_1',
+        page: 1,
+        resolverId: percentGroup.id,
+        resolverKind: 'helius-collection-assets',
+      },
+      {
+        address: 'asset-1000',
+        addressLower: 'asset-1000',
+        amount: 1,
+        assetGroupId: percentGroup.id,
+        firstSeenAt: indexedAt,
+        id: crypto.randomUUID(),
+        indexedAssetId: `v2:${JSON.stringify([percentGroup.id, 'asset-1000', 'walleta1', 'helius-collection-assets'])}`,
+        indexedAt,
+        lastSeenAt: indexedAt,
+        owner: 'walleta1',
+        ownerLower: 'walleta1',
+        page: 1,
+        resolverId: percentGroup.id,
+        resolverKind: 'helius-collection-assets',
+      },
+    ])
+
+    const groupsWithPercent = await adminSession.client.adminAssetGroup.list({
+      search: '100%',
+    })
+    const groupsWithUnderscore = await adminSession.client.adminAssetGroup.list({
+      search: 'Team_1',
+    })
+    const assetsWithPercent = await adminSession.client.adminAsset.list({
+      address: '100%',
+      assetGroupId: percentGroup.id,
+    })
+    const assetsWithUnderscore = await adminSession.client.adminAsset.list({
+      assetGroupId: percentGroup.id,
+      owner: 'wallet_1',
+    })
+
+    expect(groupsWithPercent.assetGroups).toContainEqual(
+      expect.objectContaining({
+        id: percentGroup.id,
+        label: 'Revenue 100%',
+      }),
+    )
+    expect(groupsWithPercent.assetGroups).not.toContainEqual(
+      expect.objectContaining({
+        id: percentNonMatchGroup.id,
+      }),
+    )
+    expect(groupsWithUnderscore.assetGroups).toContainEqual(
+      expect.objectContaining({
+        id: underscoreGroup.id,
+        label: 'Team_1 Group',
+      }),
+    )
+    expect(groupsWithUnderscore.assetGroups).not.toContainEqual(
+      expect.objectContaining({
+        id: underscoreNonMatchGroup.id,
+      }),
+    )
+    expect(assetsWithPercent.assets).toHaveLength(1)
+    expect(assetsWithPercent.assets[0]).toMatchObject({
+      address: 'asset-100%',
+      owner: 'wallet_1',
+    })
+    expect(assetsWithUnderscore.assets).toHaveLength(1)
+    expect(assetsWithUnderscore.assets[0]).toMatchObject({
+      address: 'asset-100%',
+      owner: 'wallet_1',
+    })
+  })
+
   test('non-admin access to admin routes is forbidden', async () => {
     await expectORPCError(bobSession.client.adminOrganization.list(), {
       code: 'FORBIDDEN',
       status: 403,
     })
+    await expectORPCError(bobSession.client.adminAssetGroup.list(), {
+      code: 'FORBIDDEN',
+      status: 403,
+    })
+    await expectORPCError(
+      bobSession.client.adminAsset.list({
+        assetGroupId: 'missing-asset-group',
+      }),
+      {
+        code: 'FORBIDDEN',
+        status: 403,
+      },
+    )
   })
 
   test('expected NOT_FOUND and BAD_REQUEST responses remain intact', async () => {
@@ -740,6 +986,33 @@ describe('createOrpcClient e2e', () => {
         code: 'BAD_REQUEST',
         message: 'Owner user not found.',
         status: 400,
+      },
+    )
+    await expectORPCError(
+      adminSession.client.adminAssetGroup.get({
+        assetGroupId: 'missing-asset-group',
+      }),
+      {
+        code: 'NOT_FOUND',
+        status: 404,
+      },
+    )
+    await expectORPCError(
+      adminSession.client.adminAsset.list({
+        assetGroupId: 'missing-asset-group',
+      }),
+      {
+        code: 'NOT_FOUND',
+        status: 404,
+      },
+    )
+    await expectORPCError(
+      adminSession.client.adminAsset.delete({
+        id: 'missing-asset',
+      }),
+      {
+        code: 'NOT_FOUND',
+        status: 404,
       },
     )
   })

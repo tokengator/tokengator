@@ -3,6 +3,7 @@ import { and, asc, eq, inArray } from 'drizzle-orm'
 import { resolve } from 'node:path'
 
 import { isLocalDatabaseUrl } from './lib/local-database-url'
+import * as assetSchema from './schema/asset'
 import * as authSchema from './schema/auth'
 
 const API_ENV_PATH = resolve(import.meta.dir, '..', '..', '..', 'apps', 'api', '.env')
@@ -28,6 +29,20 @@ const DEV_SEED_PASSWORD = process.env.DEV_SEED_PASSWORD ?? 'password123'
 const DEV_PASSWORD = DEV_SEED_PASSWORD
 const BOOTSTRAP_ADMIN_PASSWORD = DEV_SEED_PASSWORD
 const SEED_SKIPPED_MESSAGE = 'Skipping local development seed because existing user or organization data was found.'
+const devSeedAssetGroups = [
+  {
+    address: '5XSXoWkcmynUSiwoi7XByRDiV9eomTgZQywgWrpYzKZ8',
+    enabled: true,
+    label: 'PERK',
+    type: 'collection',
+  },
+  {
+    address: 'FLJYGHpCCcfYUdzhcfHSeSd2peb5SMajNWaCsRnhpump',
+    enabled: true,
+    label: 'STORE',
+    type: 'mint',
+  },
+] as const
 
 function createSeedOrganizationMetadata(slug: string) {
   return JSON.stringify({
@@ -79,6 +94,7 @@ if (!primaryDevSeedOrganization) {
 }
 
 export const devSeed = {
+  assetGroups: devSeedAssetGroups,
   organization: primaryDevSeedOrganization,
   organizations: devSeedOrganizations,
   users: [
@@ -126,6 +142,7 @@ type SkippedSeedResult = {
 type SeedResult = CompletedSeedResult | SkippedSeedResult
 
 type SeedOrganization = (typeof devSeed.organizations)[number]
+type SeedAssetGroup = (typeof devSeed.assetGroups)[number]
 type SeedUser = (typeof devSeed.users)[number]
 
 function ensureSeedRuntimeEnv() {
@@ -541,6 +558,23 @@ async function createSeedOrganizations(
   return organizationIdsBySlug
 }
 
+async function createSeedAssetGroups(db: RuntimeModules['db']) {
+  if (!devSeed.assetGroups.length) {
+    return
+  }
+
+  await db.insert(assetSchema.assetGroup).values(
+    devSeed.assetGroups.map(
+      (assetGroup): SeedAssetGroup => ({
+        address: assetGroup.address,
+        enabled: assetGroup.enabled,
+        label: assetGroup.label,
+        type: assetGroup.type,
+      }),
+    ),
+  )
+}
+
 export async function seedDatabase(): Promise<SeedResult> {
   ensureSeedRuntimeEnv()
   assertLocalSeedRuntime()
@@ -563,6 +597,7 @@ export async function seedDatabase(): Promise<SeedResult> {
 
     const usersByEmail = await createSeedUsers(runtime)
     const organizationIdsBySlug = await createSeedOrganizations(runtime, usersByEmail)
+    await createSeedAssetGroups(runtime.db)
 
     return {
       organizationCount: devSeed.organizations.length,

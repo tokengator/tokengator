@@ -156,9 +156,10 @@ describe('seedDatabase', () => {
   test('creates the baseline dataset without pre-seeding sessions', async () => {
     const { devSeed, seedDatabase } = await import('../src/seed.ts')
     const summary = await seedDatabase()
-    const [{ auth }, { db }, authSchema] = await Promise.all([
+    const [{ auth }, { db }, assetSchema, authSchema] = await Promise.all([
       import('../../auth/src/index.ts'),
       import('../src/index.ts'),
+      import('../src/schema/asset.ts'),
       import('../src/schema/auth.ts'),
     ])
     const seedMemberships = await db
@@ -171,6 +172,15 @@ describe('seedDatabase', () => {
       .innerJoin(authSchema.organization, eq(authSchema.member.organizationId, authSchema.organization.id))
       .innerJoin(authSchema.user, eq(authSchema.member.userId, authSchema.user.id))
       .orderBy(asc(authSchema.organization.slug), asc(authSchema.user.email))
+    const assetGroups = await db
+      .select({
+        address: assetSchema.assetGroup.address,
+        enabled: assetSchema.assetGroup.enabled,
+        label: assetSchema.assetGroup.label,
+        type: assetSchema.assetGroup.type,
+      })
+      .from(assetSchema.assetGroup)
+      .orderBy(asc(assetSchema.assetGroup.label), asc(assetSchema.assetGroup.address))
     const organizations = await db
       .select({
         id: authSchema.organization.id,
@@ -234,6 +244,7 @@ describe('seedDatabase', () => {
         slug: organization.slug,
       })),
     )
+    expect(assetGroups).toEqual(devSeed.assetGroups)
     expect(sessions).toHaveLength(0)
     expect(users).toEqual([
       {
@@ -357,6 +368,7 @@ describe('seedDatabase', () => {
     expect(result.exitCode).toBe(0)
     expect(output).toContain('Seeded local development data.')
     expect(output).not.toContain(SEED_SKIPPED_MESSAGE)
+    expect(await getTableCount(databaseUrl, 'asset_group')).toBe(2)
     expect(await getTableCount(databaseUrl, 'organization')).toBe(2)
     expect(await getTableCount(databaseUrl, 'user')).toBe(3)
     expect(await getTableCount(databaseUrl, 'verification')).toBe(1)

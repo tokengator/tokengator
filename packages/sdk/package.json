@@ -1,0 +1,25 @@
+{
+  "name": "@tokengator/sdk",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "check-types": "tsc -b",
+    "test": "bun test ./test",
+    "test:e2e": "bun test --timeout 30000 ./test-e2e"
+  },
+  "dependencies": {
+    "@orpc/client": "catalog:",
+    "@tokengator/api": "workspace:*",
+    "@tokengator/db": "workspace:*"
+  },
+  "devDependencies": {
+    "@tokengator/config": "workspace:*",
+    "@types/bun": "catalog:",
+    "better-auth": "catalog:",
+    "typescript": "^5"
+  }
+}

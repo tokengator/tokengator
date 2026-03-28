@@ -1,0 +1,38 @@
+{
+  "name": "@tokengator/api",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./app": {
+      "default": "./src/app.ts"
+    },
+    "./router": {
+      "default": "./src/router.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {
+    "check-types": "tsc -b"
+  },
+  "dependencies": {
+    "@orpc/client": "catalog:",
+    "@orpc/openapi": "catalog:",
+    "@orpc/server": "catalog:",
+    "@orpc/zod": "catalog:",
+    "@tokengator/auth": "workspace:*",
+    "@tokengator/db": "workspace:*",
+    "@tokengator/env": "workspace:*",
+    "dotenv": "catalog:",
+    "drizzle-orm": "catalog:",
+    "hono": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@tokengator/config": "workspace:*",
+    "typescript": "^5"
+  }
+}

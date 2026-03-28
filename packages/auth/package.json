@@ -1,0 +1,29 @@
+{
+  "name": "@tokengator/auth",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {
+    "test": "bun test ./test"
+  },
+  "dependencies": {
+    "@solana/kit": "catalog:",
+    "@tokengator/db": "workspace:*",
+    "@tokengator/env": "workspace:*",
+    "better-auth": "catalog:",
+    "better-auth-solana": "catalog:",
+    "dotenv": "catalog:",
+    "drizzle-orm": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@tokengator/config": "workspace:*",
+    "typescript": "^5"
+  }
+}

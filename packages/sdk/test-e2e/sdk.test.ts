@@ -16,13 +16,11 @@ const BOB_EMAIL = 'bob@example.com'
 const BOB_NAME = 'Bob'
 const BOB_ORGANIZATION_NAME = 'Bob Org'
 const BOB_ORGANIZATION_SLUG = 'bob-org'
-const BOB_TODO_TEXT = 'Bob todo'
 const BOB_USERNAME = 'bob'
 const CAROL_EMAIL = 'carol@example.com'
 const CAROL_NAME = 'Carol'
 const CAROL_ORGANIZATION_NAME = 'Carol Org'
 const CAROL_ORGANIZATION_SLUG = 'carol-org'
-const CAROL_TODO_TEXT = 'Carol todo'
 const CAROL_USERNAME = 'carol'
 const ORGANIZATION_NAME = 'Acme'
 const ORGANIZATION_SLUG = 'acme'
@@ -31,7 +29,6 @@ const DB_PACKAGE_DIR = resolve(ROOT_DIR, 'packages', 'db')
 const USER_PASSWORD = 'password123'
 
 type DatabaseClient = (typeof import('@tokengator/db'))['db']
-type TodoTable = (typeof import('@tokengator/db/schema/todo'))['todo']
 
 let adminSession: SessionClients
 let anonymousClient: OrpcClient
@@ -41,7 +38,6 @@ let carolSession: SessionClients
 let database: DatabaseClient
 let server: Bun.Server<unknown> | undefined
 let tempDir = ''
-let todoTable: TodoTable
 
 function buildCookieHeader(cookieJar: Map<string, string>) {
   return [...cookieJar.values()].sort((left, right) => left.localeCompare(right)).join('; ')
@@ -231,10 +227,7 @@ beforeAll(async () => {
   process.env.SOLANA_CLUSTER = 'devnet'
   process.env.SOLANA_ENDPOINT_PUBLIC = 'https://api.devnet.solana.com'
 
-  ;[{ db: database }, { todo: todoTable }] = await Promise.all([
-    import('@tokengator/db'),
-    import('@tokengator/db/schema/todo'),
-  ])
+  ;[{ db: database }] = await Promise.all([import('@tokengator/db')])
 
   syncDatabase(databaseUrl)
 
@@ -531,19 +524,7 @@ describe('createOrpcClient e2e', () => {
     )
   })
 
-  test('todo CRUD is scoped to the active organization', async () => {
-    await expect(bobSession.client.todo.getAll()).resolves.toEqual([])
-    await expectORPCError(
-      bobSession.client.todo.create({
-        text: BOB_TODO_TEXT,
-      }),
-      {
-        code: 'BAD_REQUEST',
-        message: 'No active organization selected.',
-        status: 400,
-      },
-    )
-
+  test('organization listMine returns read-only memberships', async () => {
     const bobOwner = await getOwnerCandidateByEmail(BOB_EMAIL)
     const carolOwner = await getOwnerCandidateByEmail(CAROL_EMAIL)
 
@@ -561,244 +542,28 @@ describe('createOrpcClient e2e', () => {
       slug: CAROL_ORGANIZATION_SLUG,
     })
 
-    await expectORPCError(
-      bobSession.client.organization.setActive({
-        organizationId: carolOrganization.id,
-      }),
-      {
-        code: 'NOT_FOUND',
-        status: 404,
-      },
-    )
-
-    await bobSession.client.organization.setActive({
-      organizationId: bobOrganization.id,
+    await expect(bobSession.client.organization.listMine()).resolves.toEqual({
+      organizations: [
+        {
+          id: bobOrganization.id,
+          logo: null,
+          name: BOB_ORGANIZATION_NAME,
+          role: 'owner',
+          slug: BOB_ORGANIZATION_SLUG,
+        },
+      ],
     })
-    await carolSession.client.organization.setActive({
-      organizationId: carolOrganization.id,
+    await expect(carolSession.client.organization.listMine()).resolves.toEqual({
+      organizations: [
+        {
+          id: carolOrganization.id,
+          logo: null,
+          name: CAROL_ORGANIZATION_NAME,
+          role: 'owner',
+          slug: CAROL_ORGANIZATION_SLUG,
+        },
+      ],
     })
-
-    await bobSession.client.todo.create({
-      text: BOB_TODO_TEXT,
-    })
-    await carolSession.client.todo.create({
-      text: CAROL_TODO_TEXT,
-    })
-
-    const bobTodos = await bobSession.client.todo.getAll()
-    const carolTodos = await carolSession.client.todo.getAll()
-    const bobTodo = bobTodos.find((entry) => entry.text === BOB_TODO_TEXT)
-    const carolTodo = carolTodos.find((entry) => entry.text === CAROL_TODO_TEXT)
-
-    expect(bobTodo).toBeDefined()
-    expect(carolTodo).toBeDefined()
-    expect(bobTodos).toEqual([
-      {
-        completed: false,
-        id: bobTodo!.id,
-        text: BOB_TODO_TEXT,
-      },
-    ])
-    expect(carolTodos).toEqual([
-      {
-        completed: false,
-        id: carolTodo!.id,
-        text: CAROL_TODO_TEXT,
-      },
-    ])
-
-    await expectORPCError(
-      bobSession.client.todo.toggle({
-        completed: true,
-        id: carolTodo!.id,
-      }),
-      {
-        code: 'NOT_FOUND',
-        message: 'Todo not found.',
-        status: 404,
-      },
-    )
-    await expectORPCError(
-      bobSession.client.todo.delete({
-        id: carolTodo!.id,
-      }),
-      {
-        code: 'NOT_FOUND',
-        message: 'Todo not found.',
-        status: 404,
-      },
-    )
-
-    await expect(carolSession.client.todo.getAll()).resolves.toEqual([
-      {
-        completed: false,
-        id: carolTodo!.id,
-        text: CAROL_TODO_TEXT,
-      },
-    ])
-    await expect(bobSession.client.todo.getAll()).resolves.toEqual([
-      {
-        completed: false,
-        id: bobTodo!.id,
-        text: BOB_TODO_TEXT,
-      },
-    ])
-  })
-
-  test('legacy todos remain visible after org scoping', async () => {
-    await database.insert(todoTable).values({
-      text: 'Legacy public todo',
-    })
-
-    const owner = await getOwnerCandidateByEmail(BOB_EMAIL)
-
-    expect(owner).toBeDefined()
-
-    const organization = await adminSession.client.adminOrganization.create({
-      name: 'Legacy Org',
-      ownerUserId: owner!.id,
-      slug: 'legacy-org',
-    })
-
-    await bobSession.client.organization.setActive({
-      organizationId: organization.id,
-    })
-
-    const legacyTodos = await bobSession.client.todo.getAll()
-    const legacyTodo = legacyTodos.find((entry) => entry.text === 'Legacy public todo')
-
-    expect(legacyTodo).toBeDefined()
-    expect(legacyTodos).toContainEqual({
-      completed: false,
-      id: legacyTodo!.id,
-      text: 'Legacy public todo',
-    })
-
-    await bobSession.client.todo.toggle({
-      completed: true,
-      id: legacyTodo!.id,
-    })
-
-    await expect(bobSession.client.todo.getAll()).resolves.toContainEqual({
-      completed: true,
-      id: legacyTodo!.id,
-      text: 'Legacy public todo',
-    })
-
-    await bobSession.client.todo.delete({
-      id: legacyTodo!.id,
-    })
-
-    await expect(bobSession.client.todo.getAll()).resolves.not.toContainEqual(
-      expect.objectContaining({
-        id: legacyTodo!.id,
-      }),
-    )
-  })
-
-  test('admin todo CRUD is scoped by explicit organization id', async () => {
-    const owner = await getOwnerCandidateByEmail(BOB_EMAIL)
-
-    expect(owner).toBeDefined()
-
-    const organization = await adminSession.client.adminOrganization.create({
-      name: 'Admin Todo Org',
-      ownerUserId: owner!.id,
-      slug: 'admin-todo-org',
-    })
-
-    await expect(adminSession.client.adminTodo.list({ organizationId: organization.id })).resolves.toEqual([])
-    await expectORPCError(
-      adminSession.client.adminTodo.create({
-        organizationId: organization.id,
-        text: '   ',
-      }),
-      {
-        code: 'BAD_REQUEST',
-        status: 400,
-      },
-    )
-
-    const createdTodo = await adminSession.client.adminTodo.create({
-      organizationId: organization.id,
-      text: '  Admin dashboard todo  ',
-    })
-
-    expect(createdTodo).toEqual({
-      completed: false,
-      id: createdTodo.id,
-      text: 'Admin dashboard todo',
-    })
-
-    await expect(adminSession.client.adminTodo.list({ organizationId: organization.id })).resolves.toEqual([
-      {
-        completed: false,
-        id: createdTodo.id,
-        text: 'Admin dashboard todo',
-      },
-    ])
-
-    await expect(
-      adminSession.client.adminTodo.toggle({
-        completed: true,
-        id: createdTodo.id,
-        organizationId: organization.id,
-      }),
-    ).resolves.toEqual({
-      completed: true,
-      id: createdTodo.id,
-      text: 'Admin dashboard todo',
-    })
-
-    await expect(adminSession.client.adminTodo.list({ organizationId: organization.id })).resolves.toEqual([
-      {
-        completed: true,
-        id: createdTodo.id,
-        text: 'Admin dashboard todo',
-      },
-    ])
-
-    await expect(
-      adminSession.client.adminTodo.delete({
-        id: createdTodo.id,
-        organizationId: organization.id,
-      }),
-    ).resolves.toEqual({
-      id: createdTodo.id,
-      organizationId: organization.id,
-    })
-
-    await expect(adminSession.client.adminTodo.list({ organizationId: organization.id })).resolves.toEqual([])
-  })
-
-  test('admin todo routes exclude null-organization todos', async () => {
-    const owner = await getOwnerCandidateByEmail(BOB_EMAIL)
-
-    expect(owner).toBeDefined()
-
-    const organization = await adminSession.client.adminOrganization.create({
-      name: 'Admin Todo Visibility Org',
-      ownerUserId: owner!.id,
-      slug: 'admin-todo-visibility-org',
-    })
-
-    await database.insert(todoTable).values({
-      text: 'Legacy admin-hidden todo',
-    })
-
-    await expect(adminSession.client.adminTodo.list({ organizationId: organization.id })).resolves.toEqual([])
-  })
-
-  test('authenticated non-members still receive NOT_FOUND for missing organizations', async () => {
-    await expectORPCError(
-      bobSession.client.organization.setActive({
-        organizationId: 'missing-organization',
-      }),
-      {
-        code: 'NOT_FOUND',
-        status: 404,
-      },
-    )
   })
 
   test('admin users can list organizations through the SDK', async () => {
@@ -953,15 +718,6 @@ describe('createOrpcClient e2e', () => {
       code: 'FORBIDDEN',
       status: 403,
     })
-    await expectORPCError(
-      bobSession.client.adminTodo.list({
-        organizationId: 'organization-id',
-      }),
-      {
-        code: 'FORBIDDEN',
-        status: 403,
-      },
-    )
   })
 
   test('expected NOT_FOUND and BAD_REQUEST responses remain intact', async () => {
@@ -984,69 +740,6 @@ describe('createOrpcClient e2e', () => {
         code: 'BAD_REQUEST',
         message: 'Owner user not found.',
         status: 400,
-      },
-    )
-    await expectORPCError(
-      adminSession.client.adminTodo.create({
-        organizationId: 'missing-organization',
-        text: 'Missing organization todo',
-      }),
-      {
-        code: 'NOT_FOUND',
-        message: 'Organization not found.',
-        status: 404,
-      },
-    )
-    await expectORPCError(
-      adminSession.client.adminTodo.list({
-        organizationId: 'missing-organization',
-      }),
-      {
-        code: 'NOT_FOUND',
-        message: 'Organization not found.',
-        status: 404,
-      },
-    )
-    const owner = await getOwnerCandidateByEmail(BOB_EMAIL)
-
-    expect(owner).toBeDefined()
-
-    const firstOrganization = await adminSession.client.adminOrganization.create({
-      name: 'Admin Todo Not Found Org',
-      ownerUserId: owner!.id,
-      slug: 'admin-todo-not-found-org',
-    })
-    const secondOrganization = await adminSession.client.adminOrganization.create({
-      name: 'Admin Todo Other Org',
-      ownerUserId: owner!.id,
-      slug: 'admin-todo-other-org',
-    })
-    const createdTodo = await adminSession.client.adminTodo.create({
-      organizationId: firstOrganization.id,
-      text: 'Scoped admin todo',
-    })
-
-    await expectORPCError(
-      adminSession.client.adminTodo.toggle({
-        completed: true,
-        id: createdTodo.id,
-        organizationId: secondOrganization.id,
-      }),
-      {
-        code: 'NOT_FOUND',
-        message: 'Todo not found.',
-        status: 404,
-      },
-    )
-    await expectORPCError(
-      adminSession.client.adminTodo.delete({
-        id: createdTodo.id,
-        organizationId: secondOrganization.id,
-      }),
-      {
-        code: 'NOT_FOUND',
-        message: 'Todo not found.',
-        status: 404,
       },
     )
   })

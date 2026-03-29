@@ -8,7 +8,7 @@ export const Route = createFileRoute('/admin')({
 
     if (!session || session.user.role !== 'admin') {
       throw redirect({
-        to: session ? '/dashboard' : '/login',
+        to: session ? '/profile' : '/login',
       })
     }
 

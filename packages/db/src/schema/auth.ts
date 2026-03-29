@@ -42,7 +42,6 @@ export const organization = sqliteTable(
 export const session = sqliteTable(
   'session',
   {
-    activeOrganizationId: text('active_organization_id'),
     createdAt: integer('created_at', { mode: 'timestamp_ms' })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),
@@ -59,10 +58,7 @@ export const session = sqliteTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
   },
-  (table) => [
-    index('session_activeOrganizationId_idx').on(table.activeOrganizationId),
-    index('session_userId_idx').on(table.userId),
-  ],
+  (table) => [index('session_userId_idx').on(table.userId)],
 )
 
 export const account = sqliteTable(

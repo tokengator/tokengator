@@ -34,18 +34,6 @@ function getOrganizationIdsBySlug(
   )
 }
 
-function toSeedTodoRows(
-  devSeed: Awaited<typeof import('../src/seed.ts')>['devSeed'],
-  organizationIdsBySlug: Record<string, string>,
-) {
-  return devSeed.todos.map((entry) => ({
-    completed: entry.completed,
-    id: entry.id,
-    organizationId: organizationIdsBySlug[entry.organizationSlug],
-    text: entry.text,
-  }))
-}
-
 function decodeOutput(buffer: Uint8Array | undefined) {
   return buffer ? Buffer.from(buffer).toString('utf8').trim() : ''
 }
@@ -168,11 +156,10 @@ describe('seedDatabase', () => {
   test('creates the baseline dataset without pre-seeding sessions', async () => {
     const { devSeed, seedDatabase } = await import('../src/seed.ts')
     const summary = await seedDatabase()
-    const [{ auth }, { db }, authSchema, todoSchema] = await Promise.all([
+    const [{ auth }, { db }, authSchema] = await Promise.all([
       import('../../auth/src/index.ts'),
       import('../src/index.ts'),
       import('../src/schema/auth.ts'),
-      import('../src/schema/todo.ts'),
     ])
     const seedMemberships = await db
       .select({
@@ -198,7 +185,6 @@ describe('seedDatabase', () => {
         id: authSchema.session.id,
       })
       .from(authSchema.session)
-    const todos = await db.select().from(todoSchema.todo).orderBy(asc(todoSchema.todo.text))
     const users = await db
       .select({
         email: authSchema.user.email,
@@ -249,7 +235,6 @@ describe('seedDatabase', () => {
       })),
     )
     expect(sessions).toHaveLength(0)
-    expect(todos).toEqual(toSeedTodoRows(devSeed, organizationIdsBySlug))
     expect(users).toEqual([
       {
         email: ALICE_EMAIL,
@@ -336,7 +321,6 @@ describe('seedDatabase', () => {
     expect(result.exitCode).toBe(0)
     expect(output).toContain(SEED_SKIPPED_MESSAGE)
     expect(await getTableCount(databaseUrl, 'organization')).toBe(0)
-    expect(await getTableCount(databaseUrl, 'todo')).toBe(0)
     expect(await getTableCount(databaseUrl, 'user')).toBe(1)
   })
 
@@ -355,7 +339,6 @@ describe('seedDatabase', () => {
     expect(result.exitCode).toBe(0)
     expect(output).toContain(SEED_SKIPPED_MESSAGE)
     expect(await getTableCount(databaseUrl, 'organization')).toBe(1)
-    expect(await getTableCount(databaseUrl, 'todo')).toBe(0)
     expect(await getTableCount(databaseUrl, 'user')).toBe(0)
   })
 
@@ -375,7 +358,6 @@ describe('seedDatabase', () => {
     expect(output).toContain('Seeded local development data.')
     expect(output).not.toContain(SEED_SKIPPED_MESSAGE)
     expect(await getTableCount(databaseUrl, 'organization')).toBe(2)
-    expect(await getTableCount(databaseUrl, 'todo')).toBe(4)
     expect(await getTableCount(databaseUrl, 'user')).toBe(3)
     expect(await getTableCount(databaseUrl, 'verification')).toBe(1)
   })

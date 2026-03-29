@@ -22,11 +22,6 @@ const organizationTabs = [
     to: '/admin/communities/$organizationId/settings',
     value: 'settings',
   },
-  {
-    label: 'Todos',
-    to: '/admin/communities/$organizationId/todos',
-    value: 'todos',
-  },
 ] as const
 
 export function getAdminOrganizationQueryOptions(organizationId: string) {
@@ -50,10 +45,6 @@ function getCurrentTab(pathname: string) {
     return 'settings'
   }
 
-  if (pathname.endsWith('/todos')) {
-    return 'todos'
-  }
-
   return 'overview'
 }
 
@@ -63,7 +54,6 @@ function RouteComponent() {
   const { organizationId } = Route.useParams()
   const currentTab = getCurrentTab(location.pathname)
   const organization = useQuery(getAdminOrganizationQueryOptions(organizationId))
-  const shouldRenderOutlet = currentTab === 'todos' || !!organization.data
 
   if (!organization.isPending && !organization.data) {
     return (
@@ -126,7 +116,7 @@ function RouteComponent() {
         </TabsList>
       </Tabs>
 
-      {shouldRenderOutlet ? (
+      {organization.data ? (
         <Outlet />
       ) : (
         <div className="text-muted-foreground flex items-center gap-2 text-sm">

@@ -3,14 +3,11 @@ import { env } from '@tokengator/env/api'
 
 import { protectedProcedure, publicProcedure } from '../index'
 import { adminOrganizationRouter } from './admin-organization'
-import { adminTodoRouter } from './admin-todo'
 import { organizationRouter } from './organization'
 import { profileRouter } from './profile'
-import { todoRouter } from './todo'
 
 export const appRouter = {
   adminOrganization: adminOrganizationRouter,
-  adminTodo: adminTodoRouter,
   appConfig: publicProcedure.handler(() => {
     return {
       solanaCluster: env.SOLANA_CLUSTER,
@@ -29,7 +26,6 @@ export const appRouter = {
     }
   }),
   profile: profileRouter,
-  todo: todoRouter,
 }
 export type AppRouter = typeof appRouter
 export type AppRouterClient = RouterClient<typeof appRouter>

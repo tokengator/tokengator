@@ -5,8 +5,10 @@ import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { Toaster } from '@tokengator/ui/components/sonner'
 
 import type { orpc } from '@/utils/orpc'
-import { getOnboardingStatus } from '@/functions/get-onboarding-status'
-import { getUser } from '@/functions/get-user'
+import {
+  getAppAuthStateQueryOptions,
+  populateAppAuthStateRelatedQueries,
+} from '@/features/auth/data-access/get-app-auth-state'
 
 import Header from '../components/header'
 import { SolanaProvider } from '../components/solana/solana-provider'
@@ -21,15 +23,17 @@ export interface RouterAppContext {
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
   beforeLoad: async ({ context }) => {
-    const appConfig = await context.queryClient.ensureQueryData(context.orpc.appConfig.queryOptions())
-    let session = await getUser()
-    const onboardingStatus = session ? await getOnboardingStatus() : null
+    const [appAuthState, appConfig] = await Promise.all([
+      context.queryClient.ensureQueryData(getAppAuthStateQueryOptions()),
+      context.queryClient.ensureQueryData(context.orpc.appConfig.queryOptions()),
+    ])
 
-    if (session && !session.user.username && onboardingStatus?.hasUsername) {
-      session = await getUser()
-    }
+    populateAppAuthStateRelatedQueries({
+      appAuthState,
+      queryClient: context.queryClient,
+    })
 
-    return { appConfig, onboardingStatus, session }
+    return { appAuthState, appConfig }
   },
   component: RootDocument,
 
@@ -56,7 +60,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 })
 
 function RootDocument() {
-  const { appConfig, onboardingStatus, session } = Route.useRouteContext()
+  const { appConfig } = Route.useRouteContext()
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -67,7 +71,7 @@ function RootDocument() {
         <ThemeProvider>
           <SolanaProvider appConfig={appConfig}>
             <div className="grid h-svh min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
-              <Header onboardingStatus={onboardingStatus} session={session} />
+              <Header />
               <div className="min-h-0 min-w-0 overflow-x-hidden overflow-y-auto">
                 <Outlet />
               </div>

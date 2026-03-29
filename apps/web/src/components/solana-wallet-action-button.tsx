@@ -1,9 +1,9 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { type UiWallet, useSignIn, useWalletUiWallet, WalletUiIcon } from '@wallet-ui/react'
 import { toast } from 'sonner'
 import { Button } from '@tokengator/ui/components/button'
 
-import { authClient } from '@/lib/auth-client'
+import { refreshAppAuthState } from '@/features/auth/data-access/get-app-auth-state'
 
 import { handleSiwsAuth } from './solana/handle-siws-auth'
 
@@ -52,7 +52,7 @@ export function SolanaWalletActionButton({
   onSuccess?: () => void | Promise<void>
   wallet: UiWallet
 }) {
-  const session = authClient.useSession()
+  const queryClient = useQueryClient()
   const signIn = useSignIn(wallet)
   const { connect, isConnecting } = useWalletUiWallet({ wallet })
   const account = wallet.accounts[0]
@@ -65,7 +65,9 @@ export function SolanaWalletActionButton({
       return handleSiwsAuth({
         action,
         address: account.address,
-        refresh: session.refetch,
+        refresh: async () => {
+          await refreshAppAuthState(queryClient)
+        },
         signIn,
         statement: getActionStatement(action),
       })

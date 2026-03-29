@@ -1,23 +1,17 @@
 import { Link } from '@tanstack/react-router'
 
 import type { OnboardingStatus } from '@/features/organization/feature/organization-feature-active-access'
+import { useAppAuthStateQuery } from '@/features/auth/data-access/use-app-auth-state'
 import { hasCompletedOnboarding } from '@/features/organization/feature/organization-feature-active-access'
 
 import ApiStatusIndicator from './api-status-indicator'
 import ThemeToggle from './theme-toggle'
 import UserMenu from './user-menu'
 
-interface HeaderProps {
-  onboardingStatus: OnboardingStatus | null
-  session: {
-    user: {
-      role?: string | null
-      username?: string | null
-    }
-  } | null
-}
-
-export default function Header({ onboardingStatus, session }: HeaderProps) {
+export default function Header() {
+  const { data } = useAppAuthStateQuery()
+  const onboardingStatus: OnboardingStatus | null = data?.onboardingStatus ?? null
+  const session = data?.session ?? null
   const isOnboarded = hasCompletedOnboarding(onboardingStatus)
   const homeLink = session ? (isOnboarded ? '/profile' : '/onboard') : '/'
 

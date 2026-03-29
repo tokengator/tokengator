@@ -1,12 +1,12 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 
-import { getOrganizationListMine } from '@/features/organization/data-access/get-organization-list-mine'
+import { getAppAuthStateQueryOptions } from '@/features/auth/data-access/get-app-auth-state'
+import { getOrganizationListMineQueryOptions } from '@/features/organization/data-access/get-organization-list-mine'
 import { ProfileFeatureIndex } from '@/features/profile/feature/profile-feature-index'
-import { getUser } from '@/functions/get-user'
 
 export const Route = createFileRoute('/profile')({
-  beforeLoad: async () => {
-    const session = await getUser()
+  beforeLoad: async ({ context }) => {
+    const { session } = await context.queryClient.ensureQueryData(getAppAuthStateQueryOptions())
 
     if (!session) {
       throw redirect({
@@ -14,17 +14,17 @@ export const Route = createFileRoute('/profile')({
       })
     }
 
-    const organizationListMine = (await getOrganizationListMine()) ?? {
-      organizations: [],
-    }
+    const organizationListMine = await context.queryClient.ensureQueryData(
+      getOrganizationListMineQueryOptions(session.user.id),
+    )
 
-    return { organizationListMine, session }
+    return { organizationListMine }
   },
   component: RouteComponent,
 })
 
 function RouteComponent() {
-  const { organizationListMine, session } = Route.useRouteContext()
+  const { organizationListMine } = Route.useRouteContext()
 
-  return <ProfileFeatureIndex initialOrganizationListMine={organizationListMine} session={session} />
+  return <ProfileFeatureIndex initialOrganizationListMine={organizationListMine} />
 }

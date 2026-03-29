@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -5,48 +6,38 @@ import { toast } from 'sonner'
 import { Button } from '@tokengator/ui/components/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 
-import { useProfileListIdentities } from '@/features/profile/data-access/use-profile-list-identities'
-import { useProfileListSolanaWallets } from '@/features/profile/data-access/use-profile-list-solana-wallets'
+import { refreshAppAuthState } from '@/features/auth/data-access/get-app-auth-state'
+import { useAppAuthStateQuery } from '@/features/auth/data-access/use-app-auth-state'
 import { authClient } from '@/lib/auth-client'
 
 import { SolanaAuthActions } from '@/components/solana-auth-actions'
 
-interface OnboardFeatureIndexProps {
-  initialSession: {
-    user: {
-      id: string
-      username?: string | null
-    }
-  } | null
-}
-
-export function OnboardFeatureIndex({ initialSession }: OnboardFeatureIndexProps) {
+export function OnboardFeatureIndex() {
   const navigate = useNavigate({
     from: '/onboard',
   })
-  const { data: liveSession } = authClient.useSession()
+  const queryClient = useQueryClient()
+  const appAuthState = useAppAuthStateQuery()
   const [isDiscordPending, setIsDiscordPending] = useState(false)
-  const session = liveSession ?? initialSession
-  const identities = useProfileListIdentities(session?.user.id ?? '')
-  const solanaWallets = useProfileListSolanaWallets(session?.user.id ?? '')
-  const hasDiscordAccount = identities.data?.identities.some((identity) => identity.providerId === 'discord') ?? false
-  const hasSolanaWallet = (solanaWallets.data?.solanaWallets.length ?? 0) > 0
-  const hasUsername = Boolean(session?.user.username)
-  const isLoadingRequirements = identities.isPending || solanaWallets.isPending
-  const hasRequirementsError = identities.isError || solanaWallets.isError
+  const hasDiscordAccount = appAuthState.data?.onboardingStatus?.hasDiscordAccount ?? false
+  const hasRequirementsError = appAuthState.isError
+  const hasSolanaWallet = appAuthState.data?.onboardingStatus?.hasSolanaWallet ?? false
+  const hasUsername = appAuthState.data?.onboardingStatus?.hasUsername ?? false
+  const isLoadingRequirements = appAuthState.isPending
+  const isOnboardingComplete = appAuthState.data?.onboardingStatus?.isComplete ?? false
 
   useEffect(() => {
-    if (!hasDiscordAccount || !hasSolanaWallet || !hasUsername) {
+    if (!isOnboardingComplete) {
       return
     }
 
     void navigate({
       to: '/profile',
     })
-  }, [hasDiscordAccount, hasSolanaWallet, hasUsername, navigate])
+  }, [isOnboardingComplete, navigate])
 
   async function handleDiscordLink() {
-    const callbackURL = `${window.location.origin}/onboard`
+    const callbackURL = `${window.location.origin}/auth-callback`
 
     setIsDiscordPending(true)
 
@@ -65,7 +56,7 @@ export function OnboardFeatureIndex({ initialSession }: OnboardFeatureIndexProps
         return
       }
 
-      await identities.refetch()
+      await refreshAppAuthState(queryClient)
       setIsDiscordPending(false)
     } catch (error) {
       setIsDiscordPending(false)
@@ -100,7 +91,7 @@ export function OnboardFeatureIndex({ initialSession }: OnboardFeatureIndexProps
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-muted-foreground text-sm">There was a problem checking your Discord or Solana setup.</p>
-            <Button onClick={() => void Promise.all([identities.refetch(), solanaWallets.refetch()])} variant="outline">
+            <Button onClick={() => void refreshAppAuthState(queryClient)} variant="outline">
               Retry
             </Button>
           </CardContent>
@@ -148,12 +139,7 @@ export function OnboardFeatureIndex({ initialSession }: OnboardFeatureIndexProps
             <p className="text-muted-foreground text-sm">
               TokenGator requires at least one linked Solana wallet to finish onboarding.
             </p>
-            <SolanaAuthActions
-              action="link"
-              onSuccess={() => {
-                void solanaWallets.refetch()
-              }}
-            />
+            <SolanaAuthActions action="link" />
           </CardContent>
         </Card>
       </div>
@@ -172,7 +158,7 @@ export function OnboardFeatureIndex({ initialSession }: OnboardFeatureIndexProps
             <p className="text-muted-foreground text-sm">
               Refresh this page if your Discord username does not appear automatically after linking.
             </p>
-            <Button onClick={() => window.location.reload()} type="button" variant="outline">
+            <Button onClick={() => void refreshAppAuthState(queryClient)} type="button" variant="outline">
               Refresh
             </Button>
           </CardContent>

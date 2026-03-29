@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { Button } from '@tokengator/ui/components/button'
 import {
@@ -11,11 +12,14 @@ import {
 } from '@tokengator/ui/components/dropdown-menu'
 import { Skeleton } from '@tokengator/ui/components/skeleton'
 
+import { refreshAppAuthState } from '@/features/auth/data-access/get-app-auth-state'
+import { useAppSession } from '@/features/auth/data-access/use-app-auth-state'
 import { authClient } from '@/lib/auth-client'
 
 export default function UserMenu() {
   const navigate = useNavigate()
-  const { data: session, isPending } = authClient.useSession()
+  const queryClient = useQueryClient()
+  const { data: session, isPending } = useAppSession()
 
   if (isPending) {
     return <Skeleton className="h-8 w-24" />
@@ -67,7 +71,8 @@ export default function UserMenu() {
             onClick={() => {
               authClient.signOut({
                 fetchOptions: {
-                  onSuccess: () => {
+                  onSuccess: async () => {
+                    await refreshAppAuthState(queryClient)
                     navigate({
                       to: '/',
                     })

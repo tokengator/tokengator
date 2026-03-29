@@ -1,8 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import type { OrganizationListMineData } from './get-organization-list-mine'
-
-import { orpc } from '@/utils/orpc'
+import { getOrganizationListMineQueryOptions } from './get-organization-list-mine'
 
 interface UseOrganizationListMineOptions {
   enabled?: boolean
@@ -11,10 +10,8 @@ interface UseOrganizationListMineOptions {
 
 export function useOrganizationListMine(userId: string, options: UseOrganizationListMineOptions = {}) {
   return useQuery({
-    ...orpc.organization.listMine.queryOptions(),
+    ...getOrganizationListMineQueryOptions(userId),
     enabled: (options.enabled ?? true) && Boolean(userId),
     initialData: options.initialData,
-    queryKey: [...orpc.organization.listMine.key(), userId],
-    staleTime: Number.POSITIVE_INFINITY,
   })
 }

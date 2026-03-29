@@ -96,14 +96,25 @@ function mapDiscordProfileToUser(profile: DiscordProfile) {
   return username ? { username } : {}
 }
 
+function getDefaultCookieAttributes() {
+  const isSecureOrigin = new URL(env.BETTER_AUTH_URL).protocol === 'https:'
+
+  return {
+    httpOnly: true,
+    sameSite: isSecureOrigin ? ('none' as const) : ('lax' as const),
+    secure: isSecureOrigin,
+  }
+}
+
 const siwsUri = env.WEB_URL ?? env.BETTER_AUTH_URL
 export const auth = betterAuth({
-  advanced: {
-    defaultCookieAttributes: {
-      httpOnly: true,
-      sameSite: 'none',
-      secure: true,
+  account: {
+    accountLinking: {
+      allowDifferentEmails: true,
     },
+  },
+  advanced: {
+    defaultCookieAttributes: getDefaultCookieAttributes(),
   },
   baseURL: env.BETTER_AUTH_URL,
   database: drizzleAdapter(db, {

@@ -1,5 +1,6 @@
 import type { FormEvent } from 'react'
 import { useForm } from '@tanstack/react-form'
+import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -8,6 +9,8 @@ import { Button } from '@tokengator/ui/components/button'
 import { Input } from '@tokengator/ui/components/input'
 import { Label } from '@tokengator/ui/components/label'
 
+import { refreshAppAuthState } from '@/features/auth/data-access/get-app-auth-state'
+import { useAppAuthStateQuery } from '@/features/auth/data-access/use-app-auth-state'
 import { authClient } from '@/lib/auth-client'
 
 import Loader from './loader'
@@ -17,18 +20,19 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
   const navigate = useNavigate({
     from: '/',
   })
-  const { isPending } = authClient.useSession()
+  const queryClient = useQueryClient()
+  const { isPending } = useAppAuthStateQuery()
   const [isDiscordPending, setIsDiscordPending] = useState(false)
 
   async function handleDiscordSignIn() {
-    const callbackURL = `${window.location.origin}/onboard`
+    const callbackURL = `${window.location.origin}/auth-callback`
 
     setIsDiscordPending(true)
 
     try {
       await authClient.signIn.social({
         callbackURL,
-        errorCallbackURL: `${window.location.origin}/login`,
+        errorCallbackURL: callbackURL,
         newUserCallbackURL: callbackURL,
         provider: 'discord',
       })
@@ -55,7 +59,8 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
           onError: (error) => {
             toast.error(error.error.message || error.error.statusText)
           },
-          onSuccess: () => {
+          onSuccess: async () => {
+            await refreshAppAuthState(queryClient)
             navigate({
               to: '/onboard',
             })

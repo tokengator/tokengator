@@ -1,12 +1,22 @@
-import { useQuery } from '@tanstack/react-query'
+import { queryOptions, useQuery } from '@tanstack/react-query'
 
 import { orpc } from '@/utils/orpc'
 
+export function getProfileListIdentitiesQueryKey(userId: string) {
+  return [...orpc.profile.listIdentities.key(), userId] as const
+}
+
+export function getProfileListIdentitiesQueryOptions(userId: string) {
+  return queryOptions({
+    ...orpc.profile.listIdentities.queryOptions(),
+    queryKey: getProfileListIdentitiesQueryKey(userId),
+    staleTime: Number.POSITIVE_INFINITY,
+  })
+}
+
 export function useProfileListIdentities(userId: string) {
   return useQuery({
-    ...orpc.profile.listIdentities.queryOptions(),
+    ...getProfileListIdentitiesQueryOptions(userId),
     enabled: Boolean(userId),
-    queryKey: [...orpc.profile.listIdentities.key(), userId],
-    staleTime: Number.POSITIVE_INFINITY,
   })
 }

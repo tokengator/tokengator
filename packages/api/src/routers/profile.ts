@@ -166,7 +166,7 @@ export const profileRouter = {
 
     const [discordAccount] = await db
       .select({
-        id: account.id,
+        accountId: account.accountId,
       })
       .from(account)
       .where(and(eq(account.providerId, 'discord'), eq(account.userId, context.session.user.id)))
@@ -184,7 +184,7 @@ export const profileRouter = {
       const accountInfo = (await auth.api.accountInfo({
         headers: context.requestHeaders,
         query: {
-          accountId: discordAccount.id,
+          accountId: discordAccount.accountId,
         },
       })) as {
         data?: {

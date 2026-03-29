@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Outlet, redirect } from '@tanstack/react-router'
 
-import { getUser } from '@/functions/get-user'
+import { getAppAuthStateQueryOptions } from '@/features/auth/data-access/get-app-auth-state'
 
 type AdminLink =
   | {
@@ -37,8 +37,8 @@ const links = [
 ] satisfies AdminLink[]
 
 export const Route = createFileRoute('/admin')({
-  beforeLoad: async () => {
-    const session = await getUser()
+  beforeLoad: async ({ context }) => {
+    const { session } = await context.queryClient.ensureQueryData(getAppAuthStateQueryOptions())
 
     if (!session || session.user.role !== 'admin') {
       throw redirect({

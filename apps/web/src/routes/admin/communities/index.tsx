@@ -17,7 +17,7 @@ import {
 import { Input } from '@tokengator/ui/components/input'
 import { cn } from '@tokengator/ui/lib/utils'
 
-import { authClient } from '@/lib/auth-client'
+import { useAppSession } from '@/features/auth/data-access/use-app-auth-state'
 import { orpc } from '@/utils/orpc'
 
 const defaultCreateValues = {
@@ -49,7 +49,7 @@ export const Route = createFileRoute('/admin/communities/')({
 })
 
 function RouteComponent() {
-  const { data: session } = authClient.useSession()
+  const { data: session } = useAppSession()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [createValues, setCreateValues] = useState(defaultCreateValues)

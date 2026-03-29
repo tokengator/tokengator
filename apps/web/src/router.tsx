@@ -4,9 +4,11 @@ import { createRouter as createTanStackRouter } from '@tanstack/react-router'
 import './index.css'
 import Loader from './components/loader'
 import { routeTree } from './routeTree.gen'
-import { orpc, queryClient } from './utils/orpc'
+import { getQueryClient, orpc } from './utils/orpc'
 
 export const getRouter = () => {
+  const queryClient = getQueryClient()
+
   return createTanStackRouter({
     context: { orpc, queryClient },
     defaultNotFoundComponent: () => <div>Not Found</div>,

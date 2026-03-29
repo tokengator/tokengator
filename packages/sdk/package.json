@@ -13,12 +13,12 @@
   },
   "dependencies": {
     "@orpc/client": "catalog:",
-    "@tokengator/api": "workspace:*",
-    "@tokengator/db": "workspace:*"
+    "@tokengator/api": "workspace:*"
   },
   "devDependencies": {
     "@solana/kit": "catalog:",
     "@tokengator/config": "workspace:*",
+    "@tokengator/db": "workspace:*",
     "@types/bun": "catalog:",
     "better-auth": "catalog:",
     "better-auth-solana": "catalog:",

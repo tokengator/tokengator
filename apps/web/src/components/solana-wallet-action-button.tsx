@@ -65,7 +65,7 @@ export function SolanaWalletActionButton({
       return handleSiwsAuth({
         action,
         address: account.address,
-        refresh: action === 'verify' ? session.refetch : undefined,
+        refresh: session.refetch,
         signIn,
         statement: getActionStatement(action),
       })

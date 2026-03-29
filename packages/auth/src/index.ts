@@ -41,6 +41,24 @@ async function hasDiscordAdminAccount(userId: string) {
   return accountRecord !== undefined
 }
 
+async function hasSolanaAdminWallet(userId: string) {
+  if (env.SOLANA_ADMIN_ADDRESSES.length === 0) {
+    return false
+  }
+
+  const [walletRecord] = await db
+    .select({
+      id: schema.solanaWallet.id,
+    })
+    .from(schema.solanaWallet)
+    .where(
+      and(eq(schema.solanaWallet.userId, userId), inArray(schema.solanaWallet.address, env.SOLANA_ADMIN_ADDRESSES)),
+    )
+    .limit(1)
+
+  return walletRecord !== undefined
+}
+
 async function syncAdminRole(userId: string) {
   const [userRecord] = await db
     .select({
@@ -55,10 +73,13 @@ async function syncAdminRole(userId: string) {
     return
   }
 
-  const shouldPromoteFromDiscord = await hasDiscordAdminAccount(userId)
   const shouldPromoteFromEmail = isAdminEmail(userRecord.email, env.BETTER_AUTH_ADMIN_EMAILS)
+  const [shouldPromoteFromDiscord, shouldPromoteFromSolana] = await Promise.all([
+    hasDiscordAdminAccount(userId),
+    hasSolanaAdminWallet(userId),
+  ])
 
-  if (!shouldPromoteFromDiscord && !shouldPromoteFromEmail) {
+  if (!shouldPromoteFromDiscord && !shouldPromoteFromEmail && !shouldPromoteFromSolana) {
     return
   }
 

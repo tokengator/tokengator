@@ -25,6 +25,7 @@ const CAROL_USERNAME = 'carol'
 const ORGANIZATION_NAME = 'Acme'
 const ORGANIZATION_SLUG = 'acme'
 const ROOT_DIR = resolve(import.meta.dir, '..', '..', '..')
+const SOLANA_ADMIN_ADDRESS = 'SoAdmin1111111111111111111111111111111111111'
 const DB_PACKAGE_DIR = resolve(ROOT_DIR, 'packages', 'db')
 const USER_PASSWORD = 'password123'
 
@@ -224,6 +225,7 @@ beforeAll(async () => {
   process.env.DISCORD_CLIENT_ID = 'discord-client-id'
   process.env.DISCORD_CLIENT_SECRET = 'discord-client-secret'
   process.env.NODE_ENV = 'test'
+  process.env.SOLANA_ADMIN_ADDRESSES = SOLANA_ADMIN_ADDRESS
   process.env.SOLANA_CLUSTER = 'devnet'
   process.env.SOLANA_ENDPOINT_PUBLIC = 'https://api.devnet.solana.com'
 
@@ -964,6 +966,88 @@ describe('createOrpcClient e2e', () => {
         status: 403,
       },
     )
+  })
+
+  test('whitelisted Solana wallets auto-promote users to admin on session creation', async () => {
+    const { solanaWallet } = await import('@tokengator/db/schema/auth')
+    const solanaAdminEmail = 'solana-admin@example.com'
+    const solanaAdminName = 'Solana Admin'
+    const solanaAdminSession = createSessionClients(baseUrl)
+    const solanaAdminUsername = 'solana.admin'
+    const solanaUserEmail = 'solana-user@example.com'
+    const solanaUserName = 'Solana User'
+    const solanaUserSession = createSessionClients(baseUrl)
+    const solanaUserUsername = 'solana.user'
+
+    await signUpAndSignIn(solanaAdminSession.authClient, {
+      email: solanaAdminEmail,
+      name: solanaAdminName,
+      password: USER_PASSWORD,
+      username: solanaAdminUsername,
+    })
+    await signUpAndSignIn(solanaUserSession.authClient, {
+      email: solanaUserEmail,
+      name: solanaUserName,
+      password: USER_PASSWORD,
+      username: solanaUserUsername,
+    })
+
+    const [solanaAdminAuthSession, solanaUserAuthSession] = await Promise.all([
+      solanaAdminSession.authClient.getSession(),
+      solanaUserSession.authClient.getSession(),
+    ])
+
+    expect(solanaAdminAuthSession.data?.user.id).toBeDefined()
+    expect(solanaUserAuthSession.data?.user.id).toBeDefined()
+
+    await database.insert(solanaWallet).values([
+      {
+        address: SOLANA_ADMIN_ADDRESS,
+        isPrimary: true,
+        userId: solanaAdminAuthSession.data!.user.id,
+      },
+      {
+        address: 'SoUser111111111111111111111111111111111111111',
+        isPrimary: true,
+        userId: solanaUserAuthSession.data!.user.id,
+      },
+    ])
+
+    await Promise.all([
+      solanaAdminSession.authClient.signIn.email({
+        email: solanaAdminEmail,
+        password: USER_PASSWORD,
+      }),
+      solanaUserSession.authClient.signIn.email({
+        email: solanaUserEmail,
+        password: USER_PASSWORD,
+      }),
+    ])
+
+    await expect(solanaAdminSession.authClient.getSession()).resolves.toMatchObject({
+      data: {
+        user: {
+          email: solanaAdminEmail,
+          role: 'admin',
+        },
+      },
+      error: null,
+    })
+    await expect(solanaAdminSession.client.adminOrganization.list()).resolves.toBeDefined()
+
+    await expect(solanaUserSession.authClient.getSession()).resolves.toMatchObject({
+      data: {
+        user: {
+          email: solanaUserEmail,
+          role: 'user',
+        },
+      },
+      error: null,
+    })
+    await expectORPCError(solanaUserSession.client.adminOrganization.list(), {
+      code: 'FORBIDDEN',
+      status: 403,
+    })
   })
 
   test('expected NOT_FOUND and BAD_REQUEST responses remain intact', async () => {

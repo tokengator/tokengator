@@ -2,6 +2,8 @@ import 'dotenv/config'
 import { createEnv } from '@t3-oss/env-core'
 import { z } from 'zod'
 
+import { parseAdminEmailPatterns, parseStringList } from './lib/server-env-list'
+
 const adminEmailPatternSchema = z
   .string()
   .refine((value) => z.email().safeParse(value).success || /^\*@[^\s@]+\.[^\s@]+$/.test(value), {
@@ -11,18 +13,7 @@ const adminEmailPatternSchema = z
 const adminEmailsSchema = z
   .string()
   .optional()
-  .transform((value) =>
-    value
-      ? [
-          ...new Set(
-            value
-              .split(',')
-              .map((pattern) => pattern.trim().toLowerCase())
-              .filter(Boolean),
-          ),
-        ].sort((a, b) => a.localeCompare(b))
-      : [],
-  )
+  .transform(parseAdminEmailPatterns)
   .pipe(z.array(adminEmailPatternSchema))
 
 const corsOriginsSchema = z
@@ -42,18 +33,13 @@ const corsOriginsSchema = z
 const discordAdminIdsSchema = z
   .string()
   .optional()
-  .transform((value) =>
-    value
-      ? [
-          ...new Set(
-            value
-              .split(',')
-              .map((id) => id.trim())
-              .filter(Boolean),
-          ),
-        ].sort((a, b) => a.localeCompare(b))
-      : [],
-  )
+  .transform(parseStringList)
+  .pipe(z.array(z.string().min(1)))
+
+const solanaAdminAddressesSchema = z
+  .string()
+  .optional()
+  .transform(parseStringList)
   .pipe(z.array(z.string().min(1)))
 
 const envBooleanSchema = z
@@ -87,6 +73,7 @@ export const env = createEnv({
     DISCORD_CLIENT_ID: z.string().min(1),
     DISCORD_CLIENT_SECRET: z.string().min(1),
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+    SOLANA_ADMIN_ADDRESSES: solanaAdminAddressesSchema,
     SOLANA_CLUSTER: solanaClusterSchema,
     SOLANA_ENDPOINT_PUBLIC: z.url(),
     WEB_URL: z.url().optional(),

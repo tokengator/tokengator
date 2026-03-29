@@ -27,21 +27,18 @@ export async function handleSiwsAuth({
     statement,
   })
 
-  if (action === 'link') {
-    const result = await linkMessage({
-      address,
-      message,
-      signature,
-    })
-
-    return result
-  }
-
-  const result = await verifyMessage({
-    address,
-    message,
-    signature,
-  })
+  const result =
+    action === 'link'
+      ? await linkMessage({
+          address,
+          message,
+          signature,
+        })
+      : await verifyMessage({
+          address,
+          message,
+          signature,
+        })
 
   await refresh?.()
 

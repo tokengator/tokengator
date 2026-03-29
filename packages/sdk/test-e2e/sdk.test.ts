@@ -1,3 +1,5 @@
+import { createKeyPairSignerFromBytes, getBase58Decoder, signBytes } from '@solana/kit'
+import { createSIWSInput, siwsClient } from 'better-auth-solana/client'
 import { createAuthClient } from 'better-auth/client'
 import { usernameClient } from 'better-auth/client/plugins'
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
@@ -6,6 +8,7 @@ import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { alice, bob, type TestUser } from '@tokengator/db/dev-seed-users'
 
 import { createOrpcClient, type OrpcClient, type OrpcClientFetch } from '../src/index'
 
@@ -27,6 +30,7 @@ const ORGANIZATION_SLUG = 'acme'
 const ROOT_DIR = resolve(import.meta.dir, '..', '..', '..')
 const SOLANA_ADMIN_ADDRESS = 'SoAdmin1111111111111111111111111111111111111'
 const DB_PACKAGE_DIR = resolve(ROOT_DIR, 'packages', 'db')
+const SIWS_LINK_STATEMENT = 'Link Solana wallet to Tokengator'
 const USER_PASSWORD = 'password123'
 
 type DatabaseClient = (typeof import('@tokengator/db'))['db']
@@ -104,7 +108,28 @@ function createSessionClients(nextBaseUrl: string) {
   }
 }
 
+function createSiwsSessionClients(nextBaseUrl: string) {
+  const cookieFetch = createCookieFetch()
+
+  return {
+    authClient: createAuthClient({
+      baseURL: nextBaseUrl,
+      fetchOptions: {
+        credentials: 'include',
+        customFetchImpl: cookieFetch,
+      },
+      plugins: [siwsClient(), usernameClient()],
+    }),
+    client: createOrpcClient({
+      baseUrl: nextBaseUrl,
+      fetch: cookieFetch,
+    }),
+  }
+}
+
 type SessionClients = ReturnType<typeof createSessionClients>
+type SiwsSessionClients = ReturnType<typeof createSiwsSessionClients>
+type EmailPasswordAuthClient = SessionClients['authClient'] | SiwsSessionClients['authClient']
 
 function decodeOutput(buffer: Uint8Array | undefined) {
   return buffer ? Buffer.from(buffer).toString('utf8').trim() : ''
@@ -112,6 +137,21 @@ function decodeOutput(buffer: Uint8Array | undefined) {
 
 function ellipsifySolanaWalletAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-6)}`
+}
+
+function formatSiwsMessage(input: ReturnType<typeof createSIWSInput>) {
+  return [
+    `${input.domain} wants you to sign in with your Solana account:`,
+    input.address,
+    '',
+    input.statement,
+    '',
+    `URI: ${input.uri}`,
+    `Version: ${input.version}`,
+    `Nonce: ${input.nonce}`,
+    `Issued At: ${input.issuedAt}`,
+    `Expiration Time: ${input.expirationTime}`,
+  ].join('\n')
 }
 
 async function expectORPCError(
@@ -158,8 +198,44 @@ async function getAvailablePort() {
   })
 }
 
+async function getUserCount() {
+  const { user } = await import('@tokengator/db/schema/auth')
+
+  return (await database.select().from(user)).length
+}
+
+async function createSignedSiwsLinkPayload(authClient: SiwsSessionClients['authClient'], fixture: TestUser) {
+  const { data: challenge, error: challengeError } = await authClient.siws.nonce({
+    walletAddress: fixture.solana.publicKey,
+  })
+
+  if (!challenge) {
+    throw new Error(challengeError?.message ?? 'Failed to request SIWS challenge.')
+  }
+
+  const input = createSIWSInput({
+    address: fixture.solana.publicKey,
+    challenge,
+    statement: SIWS_LINK_STATEMENT,
+  })
+  const message = formatSiwsMessage(input)
+  const signer = await createKeyPairSignerFromBytes(new Uint8Array(fixture.solana.secret))
+
+  if (signer.address !== fixture.solana.publicKey) {
+    throw new Error(`Fixture public key mismatch for ${fixture.username}.`)
+  }
+
+  const signatureBytes = await signBytes(signer.keyPair.privateKey, new TextEncoder().encode(message))
+
+  return {
+    message,
+    signature: getBase58Decoder().decode(signatureBytes),
+    walletAddress: fixture.solana.publicKey,
+  }
+}
+
 async function signUpAndSignIn(
-  authClient: SessionClients['authClient'],
+  authClient: EmailPasswordAuthClient,
   profile: {
     email: string
     name: string
@@ -177,6 +253,31 @@ async function signUpAndSignIn(
     email: profile.email,
     password: profile.password,
   })
+}
+
+async function createUniqueUser(
+  authClient: EmailPasswordAuthClient,
+  profile: {
+    emailPrefix: string
+    namePrefix: string
+    usernamePrefix: string
+  },
+) {
+  const suffix = crypto.randomUUID().replaceAll('-', '').slice(0, 8)
+  const email = `${profile.emailPrefix}-${suffix}@example.com`
+  const username = `${profile.usernamePrefix}${suffix}`
+
+  await signUpAndSignIn(authClient, {
+    email,
+    name: `${profile.namePrefix} ${suffix}`,
+    password: USER_PASSWORD,
+    username,
+  })
+
+  return {
+    email,
+    username,
+  }
 }
 
 async function getOwnerCandidateByEmail(email: string) {
@@ -335,6 +436,151 @@ describe('createOrpcClient e2e', () => {
         },
       },
       error: null,
+    })
+  })
+
+  test('existing users can link a Solana wallet without creating a new user or changing sessions', async () => {
+    const session = createSiwsSessionClients(baseUrl)
+    const { email, username } = await createUniqueUser(session.authClient, {
+      emailPrefix: 'siws-link',
+      namePrefix: 'SIWS Link',
+      usernamePrefix: 'siwslink',
+    })
+
+    const sessionBeforeLink = await session.authClient.getSession()
+    const existingUserId = sessionBeforeLink.data?.user.id
+    const userCountBefore = await getUserCount()
+
+    expect(sessionBeforeLink).toMatchObject({
+      data: {
+        user: {
+          email,
+          id: expect.any(String),
+          username,
+        },
+      },
+      error: null,
+    })
+    expect(existingUserId).toBeDefined()
+
+    const { data: linkData, error: linkError } = await session.authClient.siws.link(
+      await createSignedSiwsLinkPayload(session.authClient, alice),
+    )
+
+    expect(linkData).toEqual({
+      success: true,
+      user: {
+        id: existingUserId!,
+        walletAddress: alice.solana.publicKey,
+      },
+    })
+    expect(linkError).toBeNull()
+
+    await expect(session.authClient.getSession()).resolves.toMatchObject({
+      data: {
+        user: {
+          email,
+          id: existingUserId,
+          username,
+        },
+      },
+      error: null,
+    })
+    await expect(session.client.privateData()).resolves.toMatchObject({
+      message: 'This is private',
+      user: {
+        email,
+        id: existingUserId,
+        username,
+      },
+    })
+    await expect(session.client.profile.listSolanaWallets()).resolves.toEqual({
+      solanaWallets: [
+        {
+          address: alice.solana.publicKey,
+          displayName: ellipsifySolanaWalletAddress(alice.solana.publicKey),
+          id: expect.any(String),
+          isPrimary: true,
+          name: null,
+        },
+      ],
+    })
+    await expect(session.client.profile.listIdentities()).resolves.toEqual({
+      identities: [
+        {
+          accountId: alice.solana.publicKey,
+          createdAt: expect.any(Number),
+          id: expect.any(String),
+          providerId: 'siws',
+        },
+      ],
+    })
+    expect(await getUserCount()).toBe(userCountBefore)
+  })
+
+  test('linking a wallet already linked to another user returns conflict and leaves the second user unchanged', async () => {
+    const firstSession = createSiwsSessionClients(baseUrl)
+    const secondSession = createSiwsSessionClients(baseUrl)
+    await createUniqueUser(firstSession.authClient, {
+      emailPrefix: 'siws-conflict-a',
+      namePrefix: 'SIWS Conflict A',
+      usernamePrefix: 'siwsa',
+    })
+    const { email: secondEmail, username: secondUsername } = await createUniqueUser(secondSession.authClient, {
+      emailPrefix: 'siws-conflict-b',
+      namePrefix: 'SIWS Conflict B',
+      usernamePrefix: 'siwsb',
+    })
+
+    const [firstSessionData, secondSessionData] = await Promise.all([
+      firstSession.authClient.getSession(),
+      secondSession.authClient.getSession(),
+    ])
+    const firstUserId = firstSessionData.data?.user.id
+    const secondUserId = secondSessionData.data?.user.id
+
+    expect(firstUserId).toBeDefined()
+    expect(secondUserId).toBeDefined()
+    expect(firstUserId).not.toBe(secondUserId)
+
+    const { data: firstLinkData, error: firstLinkError } = await firstSession.authClient.siws.link(
+      await createSignedSiwsLinkPayload(firstSession.authClient, bob),
+    )
+
+    expect(firstLinkData).toEqual({
+      success: true,
+      user: {
+        id: firstUserId!,
+        walletAddress: bob.solana.publicKey,
+      },
+    })
+    expect(firstLinkError).toBeNull()
+
+    const { data: secondLinkData, error: secondLinkError } = await secondSession.authClient.siws.link(
+      await createSignedSiwsLinkPayload(secondSession.authClient, bob),
+    )
+
+    expect(secondLinkData).toBeNull()
+    expect(secondLinkError).toMatchObject({
+      message: 'Wallet is already linked to another user.',
+      status: 409,
+    })
+
+    await expect(secondSession.authClient.getSession()).resolves.toMatchObject({
+      data: {
+        user: {
+          email: secondEmail,
+          id: secondUserId,
+          username: secondUsername,
+        },
+      },
+      error: null,
+    })
+    await expect(secondSession.client.profile.listIdentities()).resolves.toEqual({
+      identities: [],
+    })
+    await expect(secondSession.client.profile.listSolanaWallets()).resolves.toEqual({
+      solanaWallets: [],
     })
   })
 

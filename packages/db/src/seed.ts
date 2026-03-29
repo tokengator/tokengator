@@ -2,6 +2,7 @@ import dotenv from 'dotenv'
 import { and, asc, eq, inArray } from 'drizzle-orm'
 import { resolve } from 'node:path'
 
+import { alice, bob, createDevSeedUsers, DEFAULT_DEV_SEED_PASSWORD } from './dev-seed-users'
 import { isLocalDatabaseUrl } from './lib/local-database-url'
 import * as assetSchema from './schema/asset'
 import * as authSchema from './schema/auth'
@@ -14,21 +15,13 @@ dotenv.config({
 
 const BOOTSTRAP_ADMIN_EMAIL = 'db-seed-bootstrap@example.com'
 const BOOTSTRAP_ADMIN_NAME = 'DB Seed Bootstrap'
-const DEV_ADMIN_EMAIL = 'alice@example.com'
-const DEV_ADMIN_NAME = 'Alice'
-const DEV_ADMIN_USERNAME = 'alice'
-const DEV_BOB_EMAIL = 'bob@example.com'
-const DEV_BOB_NAME = 'Bob'
-const DEV_BOB_USERNAME = 'bob'
-const DEV_CAROL_EMAIL = 'carol@example.com'
-const DEV_CAROL_NAME = 'Carol'
-const DEV_CAROL_USERNAME = 'carol'
 const DEV_PRIMARY_ORGANIZATION_SLUG = 'acme'
 const DEV_SEED_NAMESPACE = 'dev'
-const DEV_SEED_PASSWORD = process.env.DEV_SEED_PASSWORD ?? 'password123'
+const DEV_SEED_PASSWORD = process.env.DEV_SEED_PASSWORD ?? DEFAULT_DEV_SEED_PASSWORD
 const DEV_PASSWORD = DEV_SEED_PASSWORD
 const BOOTSTRAP_ADMIN_PASSWORD = DEV_SEED_PASSWORD
 const SEED_SKIPPED_MESSAGE = 'Skipping local development seed because existing user or organization data was found.'
+const devSeedUsers = createDevSeedUsers(DEV_PASSWORD)
 const devSeedAssetGroups = [
   {
     address: '5XSXoWkcmynUSiwoi7XByRDiV9eomTgZQywgWrpYzKZ8',
@@ -51,16 +44,30 @@ function createSeedOrganizationMetadata(slug: string) {
   })
 }
 
+function getRequiredDevSeedUser(username: string) {
+  const user = devSeedUsers.find((candidate) => candidate.username === username)
+
+  if (!user) {
+    throw new Error(`Missing dev seed user for username ${username}.`)
+  }
+
+  return user
+}
+
+const devAdminUser = getRequiredDevSeedUser(alice.username)
+const devBobUser = getRequiredDevSeedUser(bob.username)
+const devCarolUser = getRequiredDevSeedUser('carol')
+
 const devSeedOrganizations = [
   {
     logo: null,
     members: [
       {
-        email: DEV_ADMIN_EMAIL,
+        email: devAdminUser.email,
         role: 'admin',
       },
       {
-        email: DEV_BOB_EMAIL,
+        email: devBobUser.email,
         role: 'owner',
       },
     ].sort((left, right) => left.email.localeCompare(right.email)),
@@ -72,11 +79,11 @@ const devSeedOrganizations = [
     logo: null,
     members: [
       {
-        email: DEV_ADMIN_EMAIL,
+        email: devAdminUser.email,
         role: 'admin',
       },
       {
-        email: DEV_CAROL_EMAIL,
+        email: devCarolUser.email,
         role: 'owner',
       },
     ].sort((left, right) => left.email.localeCompare(right.email)),
@@ -97,29 +104,7 @@ export const devSeed = {
   assetGroups: devSeedAssetGroups,
   organization: primaryDevSeedOrganization,
   organizations: devSeedOrganizations,
-  users: [
-    {
-      email: DEV_ADMIN_EMAIL,
-      expectedRole: 'admin',
-      name: DEV_ADMIN_NAME,
-      password: DEV_PASSWORD,
-      username: DEV_ADMIN_USERNAME,
-    },
-    {
-      email: DEV_BOB_EMAIL,
-      expectedRole: 'user',
-      name: DEV_BOB_NAME,
-      password: DEV_PASSWORD,
-      username: DEV_BOB_USERNAME,
-    },
-    {
-      email: DEV_CAROL_EMAIL,
-      expectedRole: 'user',
-      name: DEV_CAROL_NAME,
-      password: DEV_PASSWORD,
-      username: DEV_CAROL_USERNAME,
-    },
-  ].sort((left, right) => left.email.localeCompare(right.email)),
+  users: devSeedUsers,
 } as const
 
 type RuntimeModules = {
@@ -142,14 +127,17 @@ type SkippedSeedResult = {
 type SeedResult = CompletedSeedResult | SkippedSeedResult
 
 type SeedOrganization = (typeof devSeed.organizations)[number]
-type SeedAssetGroup = (typeof devSeed.assetGroups)[number]
 type SeedUser = (typeof devSeed.users)[number]
+
+function hasSolanaFixture(seedUser: SeedUser): seedUser is SeedUser & { solana: NonNullable<SeedUser['solana']> } {
+  return seedUser.solana !== undefined
+}
 
 function ensureSeedRuntimeEnv() {
   const adminEmailPatterns = [
     ...new Set([
       BOOTSTRAP_ADMIN_EMAIL,
-      DEV_ADMIN_EMAIL,
+      devAdminUser.email,
       ...(process.env.BETTER_AUTH_ADMIN_EMAILS?.split(',')
         .map((pattern) => pattern.trim().toLowerCase())
         .filter(Boolean) ?? []),
@@ -465,6 +453,34 @@ async function createSeedUsers(runtime: RuntimeModules) {
   return usersByEmail
 }
 
+async function createSeedSolanaWallets(
+  db: RuntimeModules['db'],
+  usersByEmail: Map<string, NonNullable<Awaited<ReturnType<typeof getUserByEmail>>>>,
+) {
+  const seedWallets = devSeed.users
+    .filter(hasSolanaFixture)
+    .map((seedUser) => {
+      const user = usersByEmail.get(seedUser.email)
+
+      if (!user) {
+        throw new Error(`Seed user ${seedUser.email} must exist before seeding Solana wallets.`)
+      }
+
+      return {
+        address: seedUser.solana.publicKey,
+        isPrimary: true,
+        userId: user.id,
+      }
+    })
+    .sort((left, right) => left.address.localeCompare(right.address))
+
+  if (seedWallets.length === 0) {
+    return
+  }
+
+  await db.insert(authSchema.solanaWallet).values(seedWallets)
+}
+
 function getSeedOrganizationOwner(seedOrganization: SeedOrganization) {
   const owner = seedOrganization.members.find((member) => member.role === 'owner')
 
@@ -564,14 +580,12 @@ async function createSeedAssetGroups(db: RuntimeModules['db']) {
   }
 
   await db.insert(assetSchema.assetGroup).values(
-    devSeed.assetGroups.map(
-      (assetGroup): SeedAssetGroup => ({
-        address: assetGroup.address,
-        enabled: assetGroup.enabled,
-        label: assetGroup.label,
-        type: assetGroup.type,
-      }),
-    ),
+    devSeed.assetGroups.map((assetGroup) => ({
+      address: assetGroup.address,
+      enabled: assetGroup.enabled,
+      label: assetGroup.label,
+      type: assetGroup.type,
+    })),
   )
 }
 
@@ -596,6 +610,7 @@ export async function seedDatabase(): Promise<SeedResult> {
     await clearBootstrapAdmin(runtime.db)
 
     const usersByEmail = await createSeedUsers(runtime)
+    await createSeedSolanaWallets(runtime.db, usersByEmail)
     const organizationIdsBySlug = await createSeedOrganizations(runtime, usersByEmail)
     await createSeedAssetGroups(runtime.db)
 
@@ -624,7 +639,7 @@ if (import.meta.main) {
   console.log(
     [
       'Seeded local development data.',
-      `Admin user: ${DEV_ADMIN_EMAIL} / ${DEV_PASSWORD}`,
+      `Admin user: ${devAdminUser.email} / ${DEV_PASSWORD}`,
       `Users: ${devSeed.users.map((user) => `${user.email} (@${user.username})`).join(', ')}`,
       ...devSeed.organizations.map((organization) => {
         const members = organization.members.map((member) => `${member.email} ${member.role}`).join(', ')

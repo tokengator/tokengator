@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
+import { alice, bob, DEFAULT_DEV_SEED_PASSWORD } from '../src/dev-seed-users'
+
 const DB_PACKAGE_DIR = resolve(import.meta.dir, '..')
 const ALICE_EMAIL = 'alice@example.com'
 const ALICE_NAME = 'Alice'
@@ -51,7 +53,7 @@ function createSeedEnv(databaseAuthToken: string, databaseUrl: string, envOverri
     CORS_ORIGINS: 'http://localhost:3001',
     DATABASE_AUTH_TOKEN: databaseAuthToken,
     DATABASE_URL: databaseUrl,
-    DEV_SEED_PASSWORD: 'password123',
+    DEV_SEED_PASSWORD: DEFAULT_DEV_SEED_PASSWORD,
     DISCORD_CLIENT_ID: 'discord-client-id',
     DISCORD_CLIENT_SECRET: 'discord-client-secret',
     NODE_ENV: 'test',
@@ -133,7 +135,7 @@ beforeAll(() => {
   process.env.CORS_ORIGINS = 'http://localhost:3001'
   process.env.DATABASE_AUTH_TOKEN = 'test-token'
   process.env.DATABASE_URL = databaseUrl
-  process.env.DEV_SEED_PASSWORD = 'password123'
+  process.env.DEV_SEED_PASSWORD = DEFAULT_DEV_SEED_PASSWORD
   process.env.DISCORD_CLIENT_ID = 'discord-client-id'
   process.env.DISCORD_CLIENT_SECRET = 'discord-client-secret'
   process.env.NODE_ENV = 'test'
@@ -195,6 +197,16 @@ describe('seedDatabase', () => {
         id: authSchema.session.id,
       })
       .from(authSchema.session)
+    const solanaWallets = await db
+      .select({
+        address: authSchema.solanaWallet.address,
+        email: authSchema.user.email,
+        isPrimary: authSchema.solanaWallet.isPrimary,
+        name: authSchema.solanaWallet.name,
+      })
+      .from(authSchema.solanaWallet)
+      .innerJoin(authSchema.user, eq(authSchema.solanaWallet.userId, authSchema.user.id))
+      .orderBy(asc(authSchema.user.email), asc(authSchema.solanaWallet.address))
     const users = await db
       .select({
         email: authSchema.user.email,
@@ -246,6 +258,20 @@ describe('seedDatabase', () => {
     )
     expect(assetGroups).toEqual(devSeed.assetGroups)
     expect(sessions).toHaveLength(0)
+    expect(solanaWallets).toEqual([
+      {
+        address: alice.solana.publicKey,
+        email: ALICE_EMAIL,
+        isPrimary: true,
+        name: null,
+      },
+      {
+        address: bob.solana.publicKey,
+        email: BOB_EMAIL,
+        isPrimary: true,
+        name: null,
+      },
+    ])
     expect(users).toEqual([
       {
         email: ALICE_EMAIL,

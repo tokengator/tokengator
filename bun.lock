@@ -167,9 +167,11 @@
         "@tokengator/db": "workspace:*",
       },
       "devDependencies": {
+        "@solana/kit": "catalog:",
         "@tokengator/config": "workspace:*",
         "@types/bun": "catalog:",
         "better-auth": "catalog:",
+        "better-auth-solana": "catalog:",
         "typescript": "^5",
       },
     },

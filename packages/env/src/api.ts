@@ -2,19 +2,7 @@ import 'dotenv/config'
 import { createEnv } from '@t3-oss/env-core'
 import { z } from 'zod'
 
-import { parseAdminEmailPatterns, parseStringList } from './lib/server-env-list'
-
-const adminEmailPatternSchema = z
-  .string()
-  .refine((value) => z.email().safeParse(value).success || /^\*@[^\s@]+\.[^\s@]+$/.test(value), {
-    message: 'Expected an email address or wildcard domain pattern like *@company.com',
-  })
-
-const adminEmailsSchema = z
-  .string()
-  .optional()
-  .transform(parseAdminEmailPatterns)
-  .pipe(z.array(adminEmailPatternSchema))
+import { parseStringList } from './lib/server-env-list'
 
 const corsOriginsSchema = z
   .string()
@@ -62,7 +50,6 @@ export const env = createEnv({
   emptyStringAsUndefined: true,
   runtimeEnv: process.env,
   server: {
-    BETTER_AUTH_ADMIN_EMAILS: adminEmailsSchema,
     BETTER_AUTH_SECRET: z.string().min(32),
     BETTER_AUTH_SOLANA_SIGN_IN_ENABLED: envBooleanSchema,
     BETTER_AUTH_URL: z.url(),

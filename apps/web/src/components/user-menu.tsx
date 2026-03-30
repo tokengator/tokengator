@@ -45,7 +45,6 @@ export default function UserMenu() {
             ) : null}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>{session.user.email}</DropdownMenuItem>
           {session.user.role === 'admin' ? (
             <DropdownMenuItem
               onClick={() => {

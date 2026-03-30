@@ -52,11 +52,7 @@ function getUserFilter(search?: string) {
     return undefined
   }
 
-  return or(
-    sql`${user.email} like ${pattern} escape '\\'`,
-    sql`${user.name} like ${pattern} escape '\\'`,
-    sql`${user.username} like ${pattern} escape '\\'`,
-  )
+  return or(sql`${user.name} like ${pattern} escape '\\'`, sql`${user.username} like ${pattern} escape '\\'`)
 }
 
 function includesOwner(role: string) {
@@ -102,7 +98,6 @@ async function getOrganizationMembers(organizationId: string) {
   return await db
     .select({
       createdAt: member.createdAt,
-      email: user.email,
       id: member.id,
       name: user.name,
       organizationId: member.organizationId,
@@ -113,7 +108,7 @@ async function getOrganizationMembers(organizationId: string) {
     .from(member)
     .innerJoin(user, eq(member.userId, user.id))
     .where(eq(member.organizationId, organizationId))
-    .orderBy(asc(user.name), asc(user.email))
+    .orderBy(asc(user.name), asc(user.username), asc(user.id))
 }
 
 async function getOrganizationDetail(organizationId: string) {
@@ -127,7 +122,6 @@ async function getOrganizationDetail(organizationId: string) {
   const owners = members
     .filter((entry) => includesOwner(entry.role))
     .map((entry) => ({
-      email: entry.email,
       name: entry.name,
       userId: entry.userId,
       username: entry.username,
@@ -312,7 +306,6 @@ export const adminOrganizationRouter = {
         : await db
             .select({
               createdAt: member.createdAt,
-              email: user.email,
               id: member.id,
               name: user.name,
               organizationId: member.organizationId,
@@ -323,7 +316,7 @@ export const adminOrganizationRouter = {
             .from(member)
             .innerJoin(user, eq(member.userId, user.id))
             .where(inArray(member.organizationId, organizationIds))
-            .orderBy(asc(user.name), asc(user.email))
+            .orderBy(asc(user.name), asc(user.username), asc(user.id))
 
     const membersByOrganizationId = new Map<string, typeof members>()
 
@@ -348,7 +341,6 @@ export const adminOrganizationRouter = {
           owners: organizationMembers
             .filter((memberEntry) => includesOwner(memberEntry.role))
             .map((memberEntry) => ({
-              email: memberEntry.email,
               name: memberEntry.name,
               userId: memberEntry.userId,
               username: memberEntry.username,
@@ -363,29 +355,20 @@ export const adminOrganizationRouter = {
   listOwnerCandidates: adminProcedure.input(listOwnerCandidatesInputSchema).handler(async ({ input }) => {
     const limit = input?.limit ?? 10
     const whereClause = getUserFilter(input?.search)
+    const query = db
+      .select({
+        id: user.id,
+        name: user.name,
+        username: user.username,
+      })
+      .from(user)
+      .$dynamic()
 
-    return whereClause
-      ? await db
-          .select({
-            email: user.email,
-            id: user.id,
-            name: user.name,
-            username: user.username,
-          })
-          .from(user)
-          .where(whereClause)
-          .orderBy(asc(user.name), asc(user.email))
-          .limit(limit)
-      : await db
-          .select({
-            email: user.email,
-            id: user.id,
-            name: user.name,
-            username: user.username,
-          })
-          .from(user)
-          .orderBy(asc(user.name), asc(user.email))
-          .limit(limit)
+    if (whereClause) {
+      query.where(whereClause)
+    }
+
+    return await query.orderBy(asc(user.name), asc(user.username), asc(user.id)).limit(limit)
   }),
 
   removeMember: adminProcedure

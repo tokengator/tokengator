@@ -41,6 +41,11 @@ function mergeResponseHeaders(response: Response, responseHeaders: Headers) {
 
 export function createApiApp() {
   const app = new Hono()
+  const disabledAuthRoutes = [
+    ['/api/auth/sign-in/email', 'Email sign-in is disabled.'],
+    ['/api/auth/sign-in/username', 'Username sign-in is disabled.'],
+    ['/api/auth/sign-up/email', 'Email sign-up is disabled.'],
+  ] as const
   const apiHandler = new OpenAPIHandler(appRouter, {
     interceptors: [
       onError((error) => {
@@ -84,6 +89,17 @@ export function createApiApp() {
       403,
     )
   })
+
+  for (const [path, message] of disabledAuthRoutes) {
+    app.post(path, (context) => {
+      return context.json(
+        {
+          error: message,
+        },
+        403,
+      )
+    })
+  }
 
   app.on(['POST', 'GET'], '/api/auth/*', (context) => auth.handler(context.req.raw))
 

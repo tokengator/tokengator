@@ -9,7 +9,6 @@ import { serverOrpcClient } from '@/utils/orpc-server'
 
 interface AuthContextSession {
   user: {
-    email: string
     id: string
     name: string
     role?: string | null
@@ -19,7 +18,6 @@ interface AuthContextSession {
 
 export interface AppSession {
   user: {
-    email: string
     id: string
     name: string
     role?: string | null
@@ -58,7 +56,6 @@ function toAppSession(session: AuthContextSession | null | undefined): AppSessio
 
   return {
     user: {
-      email: session.user.email,
       id: session.user.id,
       name: session.user.name,
       role: session.user.role,

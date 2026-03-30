@@ -10,7 +10,6 @@ import { db } from '@tokengator/db'
 import * as schema from '@tokengator/db/schema/auth'
 import { env } from '@tokengator/env/api'
 
-import { isAdminEmail } from './lib/admin-email'
 import {
   getDiscordUsername,
   isValidUsername,
@@ -62,7 +61,6 @@ async function hasSolanaAdminWallet(userId: string) {
 async function syncAdminRole(userId: string) {
   const [userRecord] = await db
     .select({
-      email: schema.user.email,
       role: schema.user.role,
     })
     .from(schema.user)
@@ -73,13 +71,12 @@ async function syncAdminRole(userId: string) {
     return
   }
 
-  const shouldPromoteFromEmail = isAdminEmail(userRecord.email, env.BETTER_AUTH_ADMIN_EMAILS)
   const [shouldPromoteFromDiscord, shouldPromoteFromSolana] = await Promise.all([
     hasDiscordAdminAccount(userId),
     hasSolanaAdminWallet(userId),
   ])
 
-  if (!shouldPromoteFromDiscord && !shouldPromoteFromEmail && !shouldPromoteFromSolana) {
+  if (!shouldPromoteFromDiscord && !shouldPromoteFromSolana) {
     return
   }
 
@@ -90,10 +87,24 @@ function getBetterAuthDomain(url: string) {
   return new URL(url).host
 }
 
+function getCompatibilityEmailDomain(url: string) {
+  return `discord.${new URL(url).hostname}`
+}
+
 function mapDiscordProfileToUser(profile: DiscordProfile) {
   const username = getDiscordUsername(profile.username)
+  let compatibilityEmail: string | undefined
 
-  return username ? { username } : {}
+  if ('email' in profile && typeof profile.email === 'string' && profile.email.trim()) {
+    compatibilityEmail = profile.email.trim()
+  } else if ('id' in profile && typeof profile.id === 'string') {
+    compatibilityEmail = `${profile.id}@${getCompatibilityEmailDomain(env.BETTER_AUTH_URL)}`
+  }
+
+  return {
+    ...(compatibilityEmail ? { email: compatibilityEmail } : {}),
+    ...(username ? { username } : {}),
+  }
 }
 
 function getDefaultCookieAttributes() {
@@ -141,30 +152,9 @@ export const auth = betterAuth({
         },
       },
     },
-    user: {
-      create: {
-        before: async (user) => {
-          return {
-            data: {
-              ...user,
-              role: user.email && isAdminEmail(user.email, env.BETTER_AUTH_ADMIN_EMAILS) ? 'admin' : undefined,
-            },
-          }
-        },
-      },
-    },
   },
   emailAndPassword: {
-    enabled: true,
-  },
-  emailVerification: {
-    afterEmailVerification: async (user) => {
-      if (!isAdminEmail(user.email, env.BETTER_AUTH_ADMIN_EMAILS)) {
-        return
-      }
-
-      await syncAdminRole(user.id)
-    },
+    enabled: false,
   },
   plugins: [
     admin(),

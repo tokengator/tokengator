@@ -33,7 +33,6 @@ function runSiwsLoginCheck(user: 'alice' | 'bob') {
 
   return JSON.parse(resultLine.slice('RESULT:'.length)) as {
     sessionUser: {
-      email: string
       id: string
       role: string
       username: string
@@ -59,7 +58,6 @@ describe('seeded SIWS login', () => {
 
     expect(result.userCount).toBe(3)
     expect(result.sessionUser).toMatchObject({
-      email: 'alice@example.com',
       id: result.verificationUser.id,
       role: 'admin',
       username: 'alice',
@@ -83,7 +81,6 @@ describe('seeded SIWS login', () => {
 
     expect(result.userCount).toBe(3)
     expect(result.sessionUser).toMatchObject({
-      email: 'bob@example.com',
       id: result.verificationUser.id,
       role: 'user',
       username: 'bob',

@@ -30,8 +30,8 @@ function formatDate(value: Date | string) {
   return new Date(value).toLocaleDateString()
 }
 
-function formatOwnerSummary(owner: { email: string; name: string; username?: string | null }) {
-  return owner.username ? `${owner.name} (@${owner.username}, ${owner.email})` : `${owner.name} (${owner.email})`
+function formatOwnerSummary(owner: { name: string; username?: string | null }) {
+  return owner.username ? `${owner.name} (@${owner.username})` : owner.name
 }
 
 function slugify(value: string) {
@@ -116,7 +116,6 @@ function RouteComponent() {
     ownerCandidates.data?.find((candidate) => candidate.id === selectedOwnerId) ??
     (selectedOwnerId === sessionOwnerId && session
       ? {
-          email: session.user.email,
           id: session.user.id,
           name: session.user.name,
           username: session.user.username,
@@ -235,7 +234,7 @@ function RouteComponent() {
                   <Input
                     id="owner-search"
                     onChange={(event) => setOwnerSearch(event.target.value)}
-                    placeholder="Search by name, username, or email"
+                    placeholder="Search by name or username"
                     value={ownerSearch}
                   />
                   <div className="border">
@@ -263,7 +262,6 @@ function RouteComponent() {
                               {candidate.username ? (
                                 <span className="text-muted-foreground text-xs">@{candidate.username}</span>
                               ) : null}
-                              <span className="text-muted-foreground text-xs">{candidate.email}</span>
                             </button>
                           )
                         })}

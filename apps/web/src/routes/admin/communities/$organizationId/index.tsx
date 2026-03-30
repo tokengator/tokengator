@@ -8,8 +8,8 @@ function formatDate(value: Date | string) {
   return new Date(value).toLocaleString()
 }
 
-function formatOwnerSummary(owner: { email: string; name: string; username?: string | null }) {
-  return owner.username ? `${owner.name} (@${owner.username}, ${owner.email})` : `${owner.name} (${owner.email})`
+function formatOwnerSummary(owner: { name: string; username?: string | null }) {
+  return owner.username ? `${owner.name} (@${owner.username})` : owner.name
 }
 
 export const Route = createFileRoute('/admin/communities/$organizationId/')({

@@ -1,17 +1,15 @@
 import { createKeyPairSignerFromBytes, getBase58Decoder, signBytes } from '@solana/kit'
 import { createSIWSInput, siwsClient } from 'better-auth-solana/client'
 import { createAuthClient } from 'better-auth/client'
-import { usernameClient } from 'better-auth/client/plugins'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { alice, bob, DEFAULT_DEV_SEED_PASSWORD, type TestUser } from '@tokengator/db/dev-seed-users'
+import { alice, bob, type TestUser } from '@tokengator/db/dev-seed-users'
 
 import { createOrpcClient, type OrpcClientFetch } from '../src/index'
 
-const ALICE_EMAIL = 'alice@example.com'
 const DB_PACKAGE_DIR = resolve(import.meta.dir, '..', '..', 'db')
 const SIWS_STATEMENT = 'Sign in to Tokengator'
 
@@ -90,7 +88,7 @@ function createSiwsSessionClients(baseUrl: string) {
         credentials: 'include',
         customFetchImpl: cookieFetch,
       },
-      plugins: [siwsClient(), usernameClient()],
+      plugins: [siwsClient()],
     }),
     client: createOrpcClient({
       baseUrl,
@@ -223,14 +221,12 @@ async function runSiwsLoginCheck(userKey: SeededUserKey) {
   const tempDir = mkdtempSync(resolve(tmpdir(), `tokengator-sdk-siws-${userKey}-`))
   const databaseUrl = pathToFileURL(resolve(tempDir, 'test.sqlite')).toString()
 
-  process.env.BETTER_AUTH_ADMIN_EMAILS = ALICE_EMAIL
   process.env.BETTER_AUTH_SECRET = '12345678901234567890123456789012'
   process.env.BETTER_AUTH_SOLANA_SIGN_IN_ENABLED = 'true'
   process.env.BETTER_AUTH_URL = baseUrl
   process.env.CORS_ORIGINS = 'http://127.0.0.1:3001'
   process.env.DATABASE_AUTH_TOKEN = 'test-token'
   process.env.DATABASE_URL = databaseUrl
-  process.env.DEV_SEED_PASSWORD = DEFAULT_DEV_SEED_PASSWORD
   process.env.DISCORD_CLIENT_ID = 'discord-client-id'
   process.env.DISCORD_CLIENT_SECRET = 'discord-client-secret'
   process.env.NODE_ENV = 'test'

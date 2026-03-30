@@ -29,7 +29,6 @@ export function ProfileFeatureIndex({
     <div className="min-h-full overflow-y-auto px-4 py-6">
       <div className="mx-auto grid w-full max-w-xl gap-6">
         <ProfileUiAccountCard
-          email={session.user.email}
           name={session.user.name}
           role={session.user.role ?? 'user'}
           username={session.user.username}

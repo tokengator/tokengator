@@ -5,23 +5,45 @@ import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-import { alice, bob, DEFAULT_DEV_SEED_PASSWORD } from '../src/dev-seed-users'
+import { alice, bob } from '../src/dev-seed-users'
 
-const DB_PACKAGE_DIR = resolve(import.meta.dir, '..')
-const ALICE_EMAIL = 'alice@example.com'
 const ALICE_NAME = 'Alice'
 const ALICE_USERNAME = 'alice'
-const BOB_EMAIL = 'bob@example.com'
 const BOB_NAME = 'Bob'
 const BOB_USERNAME = 'bob'
-const CAROL_EMAIL = 'carol@example.com'
 const CAROL_NAME = 'Carol'
 const CAROL_USERNAME = 'carol'
+const DB_PACKAGE_DIR = resolve(import.meta.dir, '..')
 const PRIMARY_ORGANIZATION_SLUG = 'acme'
 const SEED_SKIPPED_MESSAGE = 'Skipping local development seed because existing user or organization data was found.'
 const SECONDARY_ORGANIZATION_SLUG = 'beacon'
 
 let tempDir = ''
+
+function decodeOutput(buffer: Uint8Array | undefined) {
+  return buffer ? Buffer.from(buffer).toString('utf8').trim() : ''
+}
+
+function createDatabaseUrl(filename: string) {
+  return pathToFileURL(resolve(tempDir, filename)).toString()
+}
+
+function createSeedEnv(databaseAuthToken: string, databaseUrl: string, envOverrides: Record<string, string> = {}) {
+  return {
+    ...process.env,
+    BETTER_AUTH_SECRET: '12345678901234567890123456789012',
+    BETTER_AUTH_URL: 'http://localhost:3000',
+    CORS_ORIGINS: 'http://localhost:3001',
+    DATABASE_AUTH_TOKEN: databaseAuthToken,
+    DATABASE_URL: databaseUrl,
+    DISCORD_CLIENT_ID: 'discord-client-id',
+    DISCORD_CLIENT_SECRET: 'discord-client-secret',
+    NODE_ENV: 'test',
+    SOLANA_CLUSTER: 'devnet',
+    SOLANA_ENDPOINT_PUBLIC: 'https://api.devnet.solana.com',
+    ...envOverrides,
+  }
+}
 
 function getOrganizationIdsBySlug(
   organizations: Array<{
@@ -36,31 +58,13 @@ function getOrganizationIdsBySlug(
   )
 }
 
-function decodeOutput(buffer: Uint8Array | undefined) {
-  return buffer ? Buffer.from(buffer).toString('utf8').trim() : ''
-}
-
-function createDatabaseUrl(filename: string) {
-  return pathToFileURL(resolve(tempDir, filename)).toString()
-}
-
-function createSeedEnv(databaseAuthToken: string, databaseUrl: string, envOverrides: Record<string, string> = {}) {
-  return {
-    ...process.env,
-    BETTER_AUTH_ADMIN_EMAILS: '',
-    BETTER_AUTH_SECRET: '12345678901234567890123456789012',
-    BETTER_AUTH_URL: 'http://localhost:3000',
-    CORS_ORIGINS: 'http://localhost:3001',
-    DATABASE_AUTH_TOKEN: databaseAuthToken,
-    DATABASE_URL: databaseUrl,
-    DEV_SEED_PASSWORD: DEFAULT_DEV_SEED_PASSWORD,
-    DISCORD_CLIENT_ID: 'discord-client-id',
-    DISCORD_CLIENT_SECRET: 'discord-client-secret',
-    NODE_ENV: 'test',
-    SOLANA_CLUSTER: 'devnet',
-    SOLANA_ENDPOINT_PUBLIC: 'https://api.devnet.solana.com',
-    ...envOverrides,
+function restoreEnvVar(name: string, value: string | undefined) {
+  if (value === undefined) {
+    delete process.env[name]
+    return
   }
+
+  process.env[name] = value
 }
 
 function runSeedScript(databaseAuthToken: string, databaseUrl: string, envOverrides: Record<string, string> = {}) {
@@ -115,27 +119,16 @@ async function getTableCount(databaseUrl: string, tableName: string, databaseAut
   return Number(result.rows[0]?.count ?? 0)
 }
 
-function restoreEnvVar(name: string, value: string | undefined) {
-  if (value === undefined) {
-    delete process.env[name]
-    return
-  }
-
-  process.env[name] = value
-}
-
 beforeAll(() => {
   tempDir = mkdtempSync(resolve(tmpdir(), 'tokengator-db-seed-'))
 
   const databaseUrl = pathToFileURL(resolve(tempDir, 'test.sqlite')).toString()
 
-  process.env.BETTER_AUTH_ADMIN_EMAILS = ''
   process.env.BETTER_AUTH_SECRET = '12345678901234567890123456789012'
   process.env.BETTER_AUTH_URL = 'http://localhost:3000'
   process.env.CORS_ORIGINS = 'http://localhost:3001'
   process.env.DATABASE_AUTH_TOKEN = 'test-token'
   process.env.DATABASE_URL = databaseUrl
-  process.env.DEV_SEED_PASSWORD = DEFAULT_DEV_SEED_PASSWORD
   process.env.DISCORD_CLIENT_ID = 'discord-client-id'
   process.env.DISCORD_CLIENT_SECRET = 'discord-client-secret'
   process.env.NODE_ENV = 'test'
@@ -155,25 +148,23 @@ afterAll(() => {
 })
 
 describe('seedDatabase', () => {
-  test('creates the baseline dataset without pre-seeding sessions', async () => {
-    const { devSeed, seedDatabase } = await import('../src/seed.ts')
-    const summary = await seedDatabase()
-    const [{ auth }, { db }, assetSchema, authSchema] = await Promise.all([
-      import('../../auth/src/index.ts'),
-      import('../src/index.ts'),
-      import('../src/schema/asset.ts'),
-      import('../src/schema/auth.ts'),
+  test('creates the baseline dataset with hidden compatibility emails and seeded SIWS identities', async () => {
+    const { devSeed, seedDatabase } = await import('../src/seed')
+    const [{ db }, assetSchema, authSchema] = await Promise.all([
+      import('../src/index'),
+      import('../src/schema/asset'),
+      import('../src/schema/auth'),
     ])
-    const seedMemberships = await db
+    const summary = await seedDatabase()
+    const accounts = await db
       .select({
-        email: authSchema.user.email,
-        organizationSlug: authSchema.organization.slug,
-        role: authSchema.member.role,
+        accountId: authSchema.account.accountId,
+        providerId: authSchema.account.providerId,
+        username: authSchema.user.username,
       })
-      .from(authSchema.member)
-      .innerJoin(authSchema.organization, eq(authSchema.member.organizationId, authSchema.organization.id))
-      .innerJoin(authSchema.user, eq(authSchema.member.userId, authSchema.user.id))
-      .orderBy(asc(authSchema.organization.slug), asc(authSchema.user.email))
+      .from(authSchema.account)
+      .innerJoin(authSchema.user, eq(authSchema.account.userId, authSchema.user.id))
+      .orderBy(asc(authSchema.user.username), asc(authSchema.account.providerId))
     const assetGroups = await db
       .select({
         address: assetSchema.assetGroup.address,
@@ -192,6 +183,16 @@ describe('seedDatabase', () => {
       })
       .from(authSchema.organization)
       .orderBy(asc(authSchema.organization.slug))
+    const seedMemberships = await db
+      .select({
+        organizationSlug: authSchema.organization.slug,
+        role: authSchema.member.role,
+        username: authSchema.user.username,
+      })
+      .from(authSchema.member)
+      .innerJoin(authSchema.organization, eq(authSchema.member.organizationId, authSchema.organization.id))
+      .innerJoin(authSchema.user, eq(authSchema.member.userId, authSchema.user.id))
+      .orderBy(asc(authSchema.organization.slug), asc(authSchema.user.username))
     const sessions = await db
       .select({
         id: authSchema.session.id,
@@ -200,13 +201,13 @@ describe('seedDatabase', () => {
     const solanaWallets = await db
       .select({
         address: authSchema.solanaWallet.address,
-        email: authSchema.user.email,
         isPrimary: authSchema.solanaWallet.isPrimary,
         name: authSchema.solanaWallet.name,
+        username: authSchema.user.username,
       })
       .from(authSchema.solanaWallet)
       .innerJoin(authSchema.user, eq(authSchema.solanaWallet.userId, authSchema.user.id))
-      .orderBy(asc(authSchema.user.email), asc(authSchema.solanaWallet.address))
+      .orderBy(asc(authSchema.user.username), asc(authSchema.solanaWallet.address))
     const users = await db
       .select({
         email: authSchema.user.email,
@@ -215,7 +216,7 @@ describe('seedDatabase', () => {
         username: authSchema.user.username,
       })
       .from(authSchema.user)
-      .orderBy(asc(authSchema.user.email))
+      .orderBy(asc(authSchema.user.username))
     const organizationIdsBySlug = getOrganizationIdsBySlug(organizations)
 
     expect(summary.skipped).toBe(false)
@@ -227,28 +228,19 @@ describe('seedDatabase', () => {
     expect(summary.organizationId.length).toBeGreaterThan(0)
     expect(summary.organizationCount).toBe(devSeed.organizations.length)
     expect(summary.organizationIdsBySlug).toEqual(organizationIdsBySlug)
-    expect(seedMemberships).toEqual([
+    expect(accounts).toEqual([
       {
-        email: ALICE_EMAIL,
-        organizationSlug: PRIMARY_ORGANIZATION_SLUG,
-        role: 'admin',
+        accountId: alice.solana.publicKey,
+        providerId: 'siws',
+        username: ALICE_USERNAME,
       },
       {
-        email: BOB_EMAIL,
-        organizationSlug: PRIMARY_ORGANIZATION_SLUG,
-        role: 'owner',
-      },
-      {
-        email: ALICE_EMAIL,
-        organizationSlug: SECONDARY_ORGANIZATION_SLUG,
-        role: 'admin',
-      },
-      {
-        email: CAROL_EMAIL,
-        organizationSlug: SECONDARY_ORGANIZATION_SLUG,
-        role: 'owner',
+        accountId: bob.solana.publicKey,
+        providerId: 'siws',
+        username: BOB_USERNAME,
       },
     ])
+    expect(assetGroups).toEqual([...devSeed.assetGroups])
     expect(organizations.map(({ metadata, name, slug }) => ({ metadata, name, slug }))).toEqual(
       devSeed.organizations.map((organization) => ({
         metadata: organization.metadata,
@@ -256,86 +248,67 @@ describe('seedDatabase', () => {
         slug: organization.slug,
       })),
     )
-    expect(assetGroups).toEqual(devSeed.assetGroups)
+    expect(seedMemberships).toEqual([
+      {
+        organizationSlug: PRIMARY_ORGANIZATION_SLUG,
+        role: 'admin',
+        username: ALICE_USERNAME,
+      },
+      {
+        organizationSlug: PRIMARY_ORGANIZATION_SLUG,
+        role: 'owner',
+        username: BOB_USERNAME,
+      },
+      {
+        organizationSlug: SECONDARY_ORGANIZATION_SLUG,
+        role: 'admin',
+        username: ALICE_USERNAME,
+      },
+      {
+        organizationSlug: SECONDARY_ORGANIZATION_SLUG,
+        role: 'owner',
+        username: CAROL_USERNAME,
+      },
+    ])
     expect(sessions).toHaveLength(0)
     expect(solanaWallets).toEqual([
       {
         address: alice.solana.publicKey,
-        email: ALICE_EMAIL,
         isPrimary: true,
         name: null,
+        username: ALICE_USERNAME,
       },
       {
         address: bob.solana.publicKey,
-        email: BOB_EMAIL,
         isPrimary: true,
         name: null,
+        username: BOB_USERNAME,
       },
     ])
     expect(users).toEqual([
       {
-        email: ALICE_EMAIL,
+        email: 'alice@example.com',
         name: ALICE_NAME,
         role: 'admin',
         username: ALICE_USERNAME,
       },
       {
-        email: BOB_EMAIL,
+        email: 'bob@example.com',
         name: BOB_NAME,
         role: 'user',
         username: BOB_USERNAME,
       },
       {
-        email: CAROL_EMAIL,
+        email: 'carol@example.com',
         name: CAROL_NAME,
         role: 'user',
         username: CAROL_USERNAME,
       },
     ])
-
-    await expect(
-      auth.api.signInEmail({
-        body: {
-          email: ALICE_EMAIL,
-          password: process.env.DEV_SEED_PASSWORD!,
-        },
-      }),
-    ).resolves.toMatchObject({
-      user: {
-        email: ALICE_EMAIL,
-        role: 'admin',
-      },
-    })
-    await expect(
-      auth.api.signInEmail({
-        body: {
-          email: BOB_EMAIL,
-          password: process.env.DEV_SEED_PASSWORD!,
-        },
-      }),
-    ).resolves.toMatchObject({
-      user: {
-        email: BOB_EMAIL,
-        role: 'user',
-      },
-    })
-    await expect(
-      auth.api.signInEmail({
-        body: {
-          email: CAROL_EMAIL,
-          password: process.env.DEV_SEED_PASSWORD!,
-        },
-      }),
-    ).resolves.toMatchObject({
-      user: {
-        email: CAROL_EMAIL,
-        role: 'user',
-      },
-    })
   })
 
   test('returns a skipped result when the current database is already initialized', async () => {
-    const { seedDatabase } = await import('../src/seed.ts')
+    const { seedDatabase } = await import('../src/seed')
     const result = await seedDatabase()
 
     expect(result).toEqual({
@@ -394,14 +367,19 @@ describe('seedDatabase', () => {
     expect(result.exitCode).toBe(0)
     expect(output).toContain('Seeded local development data.')
     expect(output).not.toContain(SEED_SKIPPED_MESSAGE)
+    expect(output).not.toContain('Admin user:')
+    expect(output).not.toContain('password')
+    expect(output).toContain('Solana sign-in fixtures: @alice, @bob')
+    expect(await getTableCount(databaseUrl, 'account')).toBe(2)
     expect(await getTableCount(databaseUrl, 'asset_group')).toBe(2)
     expect(await getTableCount(databaseUrl, 'organization')).toBe(2)
+    expect(await getTableCount(databaseUrl, 'solana_wallet')).toBe(2)
     expect(await getTableCount(databaseUrl, 'user')).toBe(3)
     expect(await getTableCount(databaseUrl, 'verification')).toBe(1)
   })
 
   test('rejects non-local database urls before loading the runtime', async () => {
-    const { seedDatabase } = await import('../src/seed.ts')
+    const { seedDatabase } = await import('../src/seed')
     const previousDatabaseAuthToken = process.env.DATABASE_AUTH_TOKEN
     const previousDatabaseUrl = process.env.DATABASE_URL
     const previousNodeEnv = process.env.NODE_ENV
@@ -420,7 +398,7 @@ describe('seedDatabase', () => {
   })
 
   test('rejects remote file database urls before loading the runtime', async () => {
-    const { seedDatabase } = await import('../src/seed.ts')
+    const { seedDatabase } = await import('../src/seed')
     const previousDatabaseAuthToken = process.env.DATABASE_AUTH_TOKEN
     const previousDatabaseUrl = process.env.DATABASE_URL
     const previousNodeEnv = process.env.NODE_ENV
@@ -439,7 +417,7 @@ describe('seedDatabase', () => {
   })
 
   test('rejects localhost network databases that still require auth tokens', async () => {
-    const { seedDatabase } = await import('../src/seed.ts')
+    const { seedDatabase } = await import('../src/seed')
     const previousDatabaseAuthToken = process.env.DATABASE_AUTH_TOKEN
     const previousDatabaseUrl = process.env.DATABASE_URL
     const previousNodeEnv = process.env.NODE_ENV
@@ -477,88 +455,5 @@ describe('seedDatabase', () => {
     const result = runSeedScript('', databaseUrl)
 
     expect(result.exitCode).toBe(0)
-  })
-
-  test('removes the bootstrap admin after a seed failure on an empty database', () => {
-    const databaseUrl = createDatabaseUrl('seed-auth-failure.sqlite')
-
-    syncDatabase(databaseUrl)
-
-    const result = Bun.spawnSync({
-      cmd: [
-        'bun',
-        '-e',
-        [
-          `const { auth } = await import("../auth/src/index.ts");`,
-          `const originalSignUpEmail = auth.api.signUpEmail;`,
-          `let signUpCount = 0;`,
-          `auth.api.signUpEmail = (async (...args) => {`,
-          `  signUpCount += 1;`,
-          `  if (signUpCount > 1) {`,
-          `    throw new Error("Injected signUpEmail failure.");`,
-          `  }`,
-          `  return await originalSignUpEmail(...args);`,
-          `}) as typeof auth.api.signUpEmail;`,
-          `const { createClient } = await import("@libsql/client");`,
-          `const { seedDatabase } = await import("./src/seed.ts");`,
-          `let didFail = false;`,
-          `try {`,
-          `  await seedDatabase();`,
-          `} catch (error) {`,
-          `  didFail = true;`,
-          `  console.error(error instanceof Error ? error.message : String(error));`,
-          `}`,
-          `if (!didFail) {`,
-          `  process.exit(1);`,
-          `}`,
-          `const client = createClient({ authToken: process.env.DATABASE_AUTH_TOKEN!, url: process.env.DATABASE_URL! });`,
-          `const rows = await client.execute("select count(*) as count from user where email = 'db-seed-bootstrap@example.com'");`,
-          `console.log(JSON.stringify({ bootstrapCount: Number(rows.rows[0]?.count ?? 0) }));`,
-        ].join('\n'),
-      ],
-      cwd: DB_PACKAGE_DIR,
-      env: createSeedEnv('test-token', databaseUrl),
-      stderr: 'pipe',
-      stdout: 'pipe',
-    })
-    const output = [decodeOutput(result.stdout), decodeOutput(result.stderr)].join('\n')
-
-    expect(result.exitCode).toBe(0)
-    expect(output).toContain('Injected signUpEmail failure.')
-    expect(output).toContain('"bootstrapCount":0')
-  })
-
-  test('normalizes freshly created seed users after wildcard admin signup hooks', () => {
-    const databaseUrl = createDatabaseUrl('wildcard-admin.sqlite')
-
-    syncDatabase(databaseUrl)
-    const seedResult = runSeedScript('test-token', databaseUrl, {
-      BETTER_AUTH_ADMIN_EMAILS: '*@example.com',
-    })
-    const result = Bun.spawnSync({
-      cmd: [
-        'bun',
-        '-e',
-        [
-          'const { createClient } = await import("@libsql/client");',
-          'const client = createClient({ authToken: "test-token", url: process.env.DATABASE_URL! });',
-          'const rows = await client.execute("select email, role, username from user order by email");',
-          'console.log(JSON.stringify(rows.rows));',
-        ].join(' '),
-      ],
-      cwd: DB_PACKAGE_DIR,
-      env: {
-        ...process.env,
-        DATABASE_AUTH_TOKEN: 'test-token',
-        DATABASE_URL: databaseUrl,
-      },
-      stderr: 'pipe',
-      stdout: 'pipe',
-    })
-
-    expect(seedResult.exitCode).toBe(0)
-    expect(result.exitCode).toBe(0)
-    expect(decodeOutput(result.stdout)).toContain(`"email":"${BOB_EMAIL}","role":"user"`)
-    expect(decodeOutput(result.stdout)).toContain(`"email":"${BOB_EMAIL}","role":"user","username":"${BOB_USERNAME}"`)
   })
 })

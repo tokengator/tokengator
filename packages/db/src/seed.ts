@@ -1,8 +1,7 @@
 import dotenv from 'dotenv'
-import { and, asc, eq, inArray } from 'drizzle-orm'
 import { resolve } from 'node:path'
 
-import { alice, bob, createDevSeedUsers, DEFAULT_DEV_SEED_PASSWORD } from './dev-seed-users'
+import { alice, bob, createDevSeedUsers } from './dev-seed-users'
 import { isLocalDatabaseUrl } from './lib/local-database-url'
 import * as assetSchema from './schema/asset'
 import * as authSchema from './schema/auth'
@@ -13,15 +12,10 @@ dotenv.config({
   path: API_ENV_PATH,
 })
 
-const BOOTSTRAP_ADMIN_EMAIL = 'db-seed-bootstrap@example.com'
-const BOOTSTRAP_ADMIN_NAME = 'DB Seed Bootstrap'
 const DEV_PRIMARY_ORGANIZATION_SLUG = 'acme'
 const DEV_SEED_NAMESPACE = 'dev'
-const DEV_SEED_PASSWORD = process.env.DEV_SEED_PASSWORD ?? DEFAULT_DEV_SEED_PASSWORD
-const DEV_PASSWORD = DEV_SEED_PASSWORD
-const BOOTSTRAP_ADMIN_PASSWORD = DEV_SEED_PASSWORD
 const SEED_SKIPPED_MESSAGE = 'Skipping local development seed because existing user or organization data was found.'
-const devSeedUsers = createDevSeedUsers(DEV_PASSWORD)
+const devSeedUsers = createDevSeedUsers()
 const devSeedAssetGroups = [
   {
     address: '5XSXoWkcmynUSiwoi7XByRDiV9eomTgZQywgWrpYzKZ8',
@@ -57,7 +51,6 @@ function getRequiredDevSeedUser(username: string) {
 const devAdminUser = getRequiredDevSeedUser(alice.username)
 const devBobUser = getRequiredDevSeedUser(bob.username)
 const devCarolUser = getRequiredDevSeedUser('carol')
-
 const devSeedOrganizations = [
   {
     logo: null,
@@ -108,7 +101,6 @@ export const devSeed = {
 } as const
 
 type RuntimeModules = {
-  auth: Awaited<typeof import('../../auth/src/index.ts')>['auth']
   db: Awaited<typeof import('./index.ts')>['db']
 }
 
@@ -120,31 +112,22 @@ type CompletedSeedResult = {
   userCount: number
 }
 
-type SkippedSeedResult = {
-  skipped: true
-}
-
-type SeedResult = CompletedSeedResult | SkippedSeedResult
-
 type SeedOrganization = (typeof devSeed.organizations)[number]
+type SeedResult = CompletedSeedResult | { skipped: true }
 type SeedUser = (typeof devSeed.users)[number]
+type SeededUserRecord = {
+  email: string
+  id: string
+  name: string
+  role: 'admin' | 'user'
+  username: string
+}
 
 function hasSolanaFixture(seedUser: SeedUser): seedUser is SeedUser & { solana: NonNullable<SeedUser['solana']> } {
   return seedUser.solana !== undefined
 }
 
 function ensureSeedRuntimeEnv() {
-  const adminEmailPatterns = [
-    ...new Set([
-      BOOTSTRAP_ADMIN_EMAIL,
-      devAdminUser.email,
-      ...(process.env.BETTER_AUTH_ADMIN_EMAILS?.split(',')
-        .map((pattern) => pattern.trim().toLowerCase())
-        .filter(Boolean) ?? []),
-    ]),
-  ].sort((left, right) => left.localeCompare(right))
-
-  process.env.BETTER_AUTH_ADMIN_EMAILS = adminEmailPatterns.join(',')
   process.env.DATABASE_AUTH_TOKEN ||= 'no-token'
 }
 
@@ -170,8 +153,162 @@ function assertLocalSeedRuntime() {
   }
 }
 
-async function clearBootstrapAdmin(db: RuntimeModules['db']) {
-  await db.delete(authSchema.user).where(eq(authSchema.user.email, BOOTSTRAP_ADMIN_EMAIL))
+async function createSeedAssetGroups(db: RuntimeModules['db']) {
+  if (!devSeed.assetGroups.length) {
+    return
+  }
+
+  await db.insert(assetSchema.assetGroup).values(
+    devSeed.assetGroups.map((assetGroup) => ({
+      address: assetGroup.address,
+      enabled: assetGroup.enabled,
+      label: assetGroup.label,
+      type: assetGroup.type,
+    })),
+  )
+}
+
+function createSeedMembershipValues(args: {
+  organizationId: string
+  organizationMembers: SeedOrganization['members']
+  usersByEmail: Map<string, SeededUserRecord>
+}) {
+  const { organizationId, organizationMembers, usersByEmail } = args
+
+  return organizationMembers.map((membership) => {
+    const user = usersByEmail.get(membership.email)
+
+    if (!user) {
+      throw new Error(`Seed user ${membership.email} must exist before seeding organizations.`)
+    }
+
+    return {
+      id: crypto.randomUUID(),
+      organizationId,
+      role: membership.role,
+      userId: user.id,
+    }
+  })
+}
+
+function createSeedOrganizationSummary(organization: SeedOrganization) {
+  const members = organization.members
+    .map((membership) => {
+      const user = devSeed.users.find((candidate) => candidate.email === membership.email)
+
+      if (!user) {
+        throw new Error(`Seed user ${membership.email} must exist before printing organization summaries.`)
+      }
+
+      return `@${user.username} ${membership.role}`
+    })
+    .join(', ')
+
+  return `Organization: ${organization.name} (${organization.slug}) [${members}]`
+}
+
+function createSeedSiwsAccountValues(seedUsers: readonly SeedUser[], usersByEmail: Map<string, SeededUserRecord>) {
+  return seedUsers
+    .filter(hasSolanaFixture)
+    .map((seedUser) => {
+      const user = usersByEmail.get(seedUser.email)
+
+      if (!user) {
+        throw new Error(`Seed user ${seedUser.email} must exist before seeding SIWS accounts.`)
+      }
+
+      return {
+        accountId: seedUser.solana.publicKey,
+        createdAt: new Date(),
+        id: crypto.randomUUID(),
+        providerId: 'siws',
+        updatedAt: new Date(),
+        userId: user.id,
+      }
+    })
+    .sort((left, right) => left.accountId.localeCompare(right.accountId))
+}
+
+async function createSeedOrganizations(db: RuntimeModules['db'], usersByEmail: Map<string, SeededUserRecord>) {
+  const organizationIdsBySlug: Record<string, string> = {}
+
+  for (const organization of devSeed.organizations) {
+    const organizationId = crypto.randomUUID()
+    const membershipValues = createSeedMembershipValues({
+      organizationId,
+      organizationMembers: organization.members,
+      usersByEmail,
+    })
+
+    await db.insert(authSchema.organization).values({
+      id: organizationId,
+      logo: organization.logo,
+      metadata: organization.metadata,
+      name: organization.name,
+      slug: organization.slug,
+    })
+    await db.insert(authSchema.member).values(membershipValues)
+
+    organizationIdsBySlug[organization.slug] = organizationId
+  }
+
+  return organizationIdsBySlug
+}
+
+function createSeedSolanaWalletValues(seedUsers: readonly SeedUser[], usersByEmail: Map<string, SeededUserRecord>) {
+  return seedUsers
+    .filter(hasSolanaFixture)
+    .map((seedUser) => {
+      const user = usersByEmail.get(seedUser.email)
+
+      if (!user) {
+        throw new Error(`Seed user ${seedUser.email} must exist before seeding Solana wallets.`)
+      }
+
+      return {
+        address: seedUser.solana.publicKey,
+        isPrimary: true,
+        userId: user.id,
+      }
+    })
+    .sort((left, right) => left.address.localeCompare(right.address))
+}
+
+async function createSeedUsers(db: RuntimeModules['db']) {
+  const usersByEmail = new Map<string, SeededUserRecord>()
+
+  for (const seedUser of devSeed.users) {
+    const userValues = {
+      email: seedUser.email,
+      emailVerified: true,
+      id: crypto.randomUUID(),
+      name: seedUser.name,
+      role: seedUser.expectedRole,
+      username: seedUser.username,
+    } satisfies typeof authSchema.user.$inferInsert
+
+    await db.insert(authSchema.user).values(userValues)
+    usersByEmail.set(seedUser.email, {
+      email: seedUser.email,
+      id: userValues.id,
+      name: seedUser.name,
+      role: seedUser.expectedRole,
+      username: seedUser.username,
+    })
+  }
+
+  const seedSiwsAccountValues = createSeedSiwsAccountValues(devSeed.users, usersByEmail)
+  const seedSolanaWalletValues = createSeedSolanaWalletValues(devSeed.users, usersByEmail)
+
+  if (seedSiwsAccountValues.length) {
+    await db.insert(authSchema.account).values(seedSiwsAccountValues)
+  }
+
+  if (seedSolanaWalletValues.length) {
+    await db.insert(authSchema.solanaWallet).values(seedSolanaWalletValues)
+  }
+
+  return usersByEmail
 }
 
 async function hasExistingSeedManagedData(db: RuntimeModules['db']) {
@@ -193,119 +330,6 @@ async function hasExistingSeedManagedData(db: RuntimeModules['db']) {
   return organization !== undefined || user !== undefined
 }
 
-async function assertSeedOrganizationPreconditions(db: RuntimeModules['db']) {
-  for (const organization of devSeed.organizations) {
-    const [organizationBySlug, seedOrganization] = await Promise.all([
-      getOrganizationBySlug(db, organization.slug),
-      getSeedOrganizationByMetadata(db, organization.metadata),
-    ])
-
-    if (organizationBySlug && !isSeedOwnedOrganization(organizationBySlug)) {
-      throw new Error(`Refusing to modify existing non-seed organization with slug ${organization.slug}.`)
-    }
-
-    if (organizationBySlug && seedOrganization && organizationBySlug.id !== seedOrganization.id) {
-      throw new Error(`Refusing to modify existing non-seed organization with slug ${organization.slug}.`)
-    }
-  }
-}
-
-async function loadRuntime(): Promise<RuntimeModules> {
-  const [{ auth }, { db }] = await Promise.all([import('../../auth/src/index'), import('./index')])
-
-  return {
-    auth,
-    db,
-  }
-}
-
-async function getOrganizationBySlug(db: RuntimeModules['db'], slug: string) {
-  const [organization] = await db
-    .select({
-      id: authSchema.organization.id,
-      metadata: authSchema.organization.metadata,
-    })
-    .from(authSchema.organization)
-    .where(eq(authSchema.organization.slug, slug))
-    .limit(1)
-
-  return organization ?? null
-}
-
-async function getSeedOrganizationByMetadata(db: RuntimeModules['db'], metadata: string) {
-  const organizations = await db
-    .select({
-      id: authSchema.organization.id,
-      metadata: authSchema.organization.metadata,
-      slug: authSchema.organization.slug,
-    })
-    .from(authSchema.organization)
-    .where(eq(authSchema.organization.metadata, metadata))
-    .orderBy(asc(authSchema.organization.id))
-
-  if (organizations.length > 1) {
-    throw new Error(`Refusing to modify multiple seed-owned organizations for metadata ${metadata}.`)
-  }
-
-  return organizations[0] ?? null
-}
-
-async function getUserByEmail(db: RuntimeModules['db'], email: string) {
-  const [user] = await db
-    .select({
-      banExpires: authSchema.user.banExpires,
-      banned: authSchema.user.banned,
-      banReason: authSchema.user.banReason,
-      email: authSchema.user.email,
-      id: authSchema.user.id,
-      name: authSchema.user.name,
-      role: authSchema.user.role,
-      username: authSchema.user.username,
-    })
-    .from(authSchema.user)
-    .where(eq(authSchema.user.email, email))
-    .limit(1)
-
-  return user ?? null
-}
-
-async function normalizeSeedUser(
-  db: RuntimeModules['db'],
-  seedUser: SeedUser,
-  user: NonNullable<Awaited<ReturnType<typeof getUserByEmail>>>,
-) {
-  const nextUserValues = {
-    ...(user.banExpires === null ? {} : { banExpires: null }),
-    ...(user.banReason === null ? {} : { banReason: null }),
-    ...(user.banned === false ? {} : { banned: false }),
-    ...(user.name === seedUser.name ? {} : { name: seedUser.name }),
-    ...(user.role === seedUser.expectedRole ? {} : { role: seedUser.expectedRole }),
-    ...(user.username === seedUser.username ? {} : { username: seedUser.username }),
-  }
-
-  if (Object.keys(nextUserValues).length > 0) {
-    await db.update(authSchema.user).set(nextUserValues).where(eq(authSchema.user.id, user.id))
-  }
-
-  return (await getUserByEmail(db, seedUser.email)) ?? user
-}
-
-function isSeedOwnedOrganization(organization: { metadata: string | null }) {
-  if (!organization.metadata) {
-    return false
-  }
-
-  try {
-    const metadata = JSON.parse(organization.metadata) as {
-      seed?: string
-    }
-
-    return metadata.seed === DEV_SEED_NAMESPACE
-  } catch {
-    return false
-  }
-}
-
 function getRequiredOrganizationId(organizationIdsBySlug: Record<string, string>, slug: string) {
   const organizationId = organizationIdsBySlug[slug]
 
@@ -316,315 +340,37 @@ function getRequiredOrganizationId(organizationIdsBySlug: Record<string, string>
   return organizationId
 }
 
-async function syncOrganizationMember(db: RuntimeModules['db'], organizationId: string, userId: string, role: string) {
-  const [member] = await db
-    .select({
-      id: authSchema.member.id,
-      role: authSchema.member.role,
-    })
-    .from(authSchema.member)
-    .where(and(eq(authSchema.member.organizationId, organizationId), eq(authSchema.member.userId, userId)))
-    .limit(1)
-
-  if (member) {
-    if (member.role !== role) {
-      await db
-        .update(authSchema.member)
-        .set({
-          role,
-        })
-        .where(eq(authSchema.member.id, member.id))
-    }
-
-    return
-  }
-
-  await db.insert(authSchema.member).values({
-    id: crypto.randomUUID(),
-    organizationId,
-    role,
-    userId,
-  })
-}
-
-async function createBootstrapAdminHeaders(runtime: RuntimeModules) {
-  const { auth } = runtime
-
-  await auth.api.signUpEmail({
-    body: {
-      email: BOOTSTRAP_ADMIN_EMAIL,
-      name: BOOTSTRAP_ADMIN_NAME,
-      password: BOOTSTRAP_ADMIN_PASSWORD,
-    },
-  })
-
-  const signInResult = await auth.api.signInEmail({
-    body: {
-      email: BOOTSTRAP_ADMIN_EMAIL,
-      password: BOOTSTRAP_ADMIN_PASSWORD,
-    },
-    returnHeaders: true,
-  })
-  const sessionCookie = signInResult.headers.get('set-cookie')?.split(';', 1)[0]?.trim()
-
-  if (!sessionCookie) {
-    throw new Error('Failed to establish a bootstrap admin session for db:seed.')
-  }
-
-  return new Headers({
-    cookie: sessionCookie,
-  })
-}
-
-async function createSeedUsers(runtime: RuntimeModules) {
-  const { auth, db } = runtime
-  const bootstrapAdminHeaders = await createBootstrapAdminHeaders(runtime)
-  const usersByEmail = new Map<string, NonNullable<Awaited<ReturnType<typeof getUserByEmail>>>>()
-
-  for (const seedUser of devSeed.users) {
-    let user = await getUserByEmail(db, seedUser.email)
-
-    if (user) {
-      await auth.api.setUserPassword({
-        body: {
-          newPassword: seedUser.password,
-          userId: user.id,
-        },
-        headers: bootstrapAdminHeaders,
-      })
-    }
-
-    if (!user) {
-      await auth.api.signUpEmail({
-        body: {
-          email: seedUser.email,
-          name: seedUser.name,
-          password: seedUser.password,
-          username: seedUser.username,
-        },
-      })
-    }
-
-    user = await getUserByEmail(db, seedUser.email)
-
-    if (!user) {
-      throw new Error(`Failed to create seed user ${seedUser.email}.`)
-    }
-
-    user = await normalizeSeedUser(db, seedUser, user)
-
-    if (user.role !== seedUser.expectedRole) {
-      throw new Error(`Seed user ${seedUser.email} has role ${user.role}, expected ${seedUser.expectedRole}.`)
-    }
-
-    if (user.username !== seedUser.username) {
-      throw new Error(`Seed user ${seedUser.email} has username ${user.username}, expected ${seedUser.username}.`)
-    }
-
-    usersByEmail.set(seedUser.email, user)
-  }
-
-  const managedUserEmails = [BOOTSTRAP_ADMIN_EMAIL, ...devSeed.users.map((seedUser) => seedUser.email)].sort(
-    (left, right) => left.localeCompare(right),
-  )
-  const managedUsers = await db
-    .select({
-      email: authSchema.user.email,
-      id: authSchema.user.id,
-    })
-    .from(authSchema.user)
-    .where(inArray(authSchema.user.email, managedUserEmails))
-
-  if (managedUsers.length > 0) {
-    await db.delete(authSchema.session).where(
-      inArray(
-        authSchema.session.userId,
-        managedUsers.map((user) => user.id),
-      ),
-    )
-  }
-
-  const bootstrapUser = managedUsers.find((user) => user.email === BOOTSTRAP_ADMIN_EMAIL)
-
-  if (bootstrapUser) {
-    await db.delete(authSchema.user).where(eq(authSchema.user.id, bootstrapUser.id))
-  }
-
-  return usersByEmail
-}
-
-async function createSeedSolanaWallets(
-  db: RuntimeModules['db'],
-  usersByEmail: Map<string, NonNullable<Awaited<ReturnType<typeof getUserByEmail>>>>,
-) {
-  const seedWallets = devSeed.users
-    .filter(hasSolanaFixture)
-    .map((seedUser) => {
-      const user = usersByEmail.get(seedUser.email)
-
-      if (!user) {
-        throw new Error(`Seed user ${seedUser.email} must exist before seeding Solana wallets.`)
-      }
-
-      return {
-        address: seedUser.solana.publicKey,
-        isPrimary: true,
-        userId: user.id,
-      }
-    })
-    .sort((left, right) => left.address.localeCompare(right.address))
-
-  if (seedWallets.length === 0) {
-    return
-  }
-
-  await db.insert(authSchema.solanaWallet).values(seedWallets)
-}
-
-function getSeedOrganizationOwner(seedOrganization: SeedOrganization) {
-  const owner = seedOrganization.members.find((member) => member.role === 'owner')
-
-  if (!owner) {
-    throw new Error(`Seed organization ${seedOrganization.slug} must define an owner.`)
-  }
-
-  return owner
-}
-
-async function syncSeedOrganization(
-  runtime: RuntimeModules,
-  usersByEmail: Map<string, NonNullable<Awaited<ReturnType<typeof getUserByEmail>>>>,
-  organization: SeedOrganization,
-) {
-  const { auth, db } = runtime
-  const ownerMembership = getSeedOrganizationOwner(organization)
-  const ownerUser = usersByEmail.get(ownerMembership.email)
-
-  if (!ownerUser) {
-    throw new Error(`Seed user ${ownerMembership.email} must exist before seeding organizations.`)
-  }
-
-  const [organizationBySlug, seedOrganization] = await Promise.all([
-    getOrganizationBySlug(db, organization.slug),
-    getSeedOrganizationByMetadata(db, organization.metadata),
-  ])
-
-  if (organizationBySlug && !isSeedOwnedOrganization(organizationBySlug)) {
-    throw new Error(`Refusing to modify existing non-seed organization with slug ${organization.slug}.`)
-  }
-
-  if (organizationBySlug && seedOrganization && organizationBySlug.id !== seedOrganization.id) {
-    throw new Error(`Refusing to modify existing non-seed organization with slug ${organization.slug}.`)
-  }
-
-  const organizationId =
-    seedOrganization?.id ??
-    (
-      await auth.api.createOrganization({
-        body: {
-          logo: organization.logo ?? undefined,
-          metadata: JSON.parse(organization.metadata) as { seed: string; slug: string },
-          name: organization.name,
-          slug: organization.slug,
-          userId: ownerUser.id,
-        },
-      })
-    ).id
-
-  if (seedOrganization) {
-    await db
-      .update(authSchema.organization)
-      .set({
-        logo: organization.logo,
-        metadata: organization.metadata,
-        name: organization.name,
-        slug: organization.slug,
-      })
-      .where(eq(authSchema.organization.id, seedOrganization.id))
-  }
-
-  for (const membership of organization.members) {
-    const user = usersByEmail.get(membership.email)
-
-    if (!user) {
-      throw new Error(`Seed user ${membership.email} must exist before syncing memberships.`)
-    }
-
-    await syncOrganizationMember(db, organizationId, user.id, membership.role)
-  }
+async function loadRuntime(): Promise<RuntimeModules> {
+  const { db } = await import('./index')
 
   return {
-    id: organizationId,
-    slug: organization.slug,
+    db,
   }
-}
-
-async function createSeedOrganizations(
-  runtime: RuntimeModules,
-  usersByEmail: Map<string, NonNullable<Awaited<ReturnType<typeof getUserByEmail>>>>,
-) {
-  const organizationIdsBySlug: Record<string, string> = {}
-
-  for (const organization of devSeed.organizations) {
-    const syncedOrganization = await syncSeedOrganization(runtime, usersByEmail, organization)
-
-    organizationIdsBySlug[syncedOrganization.slug] = syncedOrganization.id
-  }
-
-  return organizationIdsBySlug
-}
-
-async function createSeedAssetGroups(db: RuntimeModules['db']) {
-  if (!devSeed.assetGroups.length) {
-    return
-  }
-
-  await db.insert(assetSchema.assetGroup).values(
-    devSeed.assetGroups.map((assetGroup) => ({
-      address: assetGroup.address,
-      enabled: assetGroup.enabled,
-      label: assetGroup.label,
-      type: assetGroup.type,
-    })),
-  )
 }
 
 export async function seedDatabase(): Promise<SeedResult> {
   ensureSeedRuntimeEnv()
   assertLocalSeedRuntime()
 
-  let runtime: RuntimeModules | null = null
-  let shouldClearBootstrapAdmin = false
+  const runtime = await loadRuntime()
 
-  try {
-    runtime = await loadRuntime()
-
-    if (await hasExistingSeedManagedData(runtime.db)) {
-      return {
-        skipped: true,
-      }
-    }
-
-    shouldClearBootstrapAdmin = true
-    await assertSeedOrganizationPreconditions(runtime.db)
-    await clearBootstrapAdmin(runtime.db)
-
-    const usersByEmail = await createSeedUsers(runtime)
-    await createSeedSolanaWallets(runtime.db, usersByEmail)
-    const organizationIdsBySlug = await createSeedOrganizations(runtime, usersByEmail)
-    await createSeedAssetGroups(runtime.db)
-
+  if (await hasExistingSeedManagedData(runtime.db)) {
     return {
-      organizationCount: devSeed.organizations.length,
-      organizationId: getRequiredOrganizationId(organizationIdsBySlug, DEV_PRIMARY_ORGANIZATION_SLUG),
-      organizationIdsBySlug,
-      skipped: false,
-      userCount: devSeed.users.length,
+      skipped: true,
     }
-  } finally {
-    if (runtime && shouldClearBootstrapAdmin) {
-      await clearBootstrapAdmin(runtime.db)
-    }
+  }
+
+  const usersByEmail = await createSeedUsers(runtime.db)
+  const organizationIdsBySlug = await createSeedOrganizations(runtime.db, usersByEmail)
+
+  await createSeedAssetGroups(runtime.db)
+
+  return {
+    organizationCount: devSeed.organizations.length,
+    organizationId: getRequiredOrganizationId(organizationIdsBySlug, DEV_PRIMARY_ORGANIZATION_SLUG),
+    organizationIdsBySlug,
+    skipped: false,
+    userCount: devSeed.users.length,
   }
 }
 
@@ -639,13 +385,12 @@ if (import.meta.main) {
   console.log(
     [
       'Seeded local development data.',
-      `Admin user: ${devAdminUser.email} / ${DEV_PASSWORD}`,
-      `Users: ${devSeed.users.map((user) => `${user.email} (@${user.username})`).join(', ')}`,
-      ...devSeed.organizations.map((organization) => {
-        const members = organization.members.map((member) => `${member.email} ${member.role}`).join(', ')
-
-        return `Organization: ${organization.name} (${organization.slug}) [${members}]`
-      }),
+      `Users: ${devSeed.users.map((user) => `${user.name} (@${user.username})`).join(', ')}`,
+      `Solana sign-in fixtures: ${devSeed.users
+        .filter(hasSolanaFixture)
+        .map((user) => `@${user.username}`)
+        .join(', ')}`,
+      ...devSeed.organizations.map((organization) => createSeedOrganizationSummary(organization)),
       `Seeded organizations: ${summary.organizationCount}`,
       `Seeded users: ${summary.userCount}`,
     ].join('\n'),

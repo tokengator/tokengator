@@ -61,11 +61,9 @@ bun run db:push
 bun run db:seed
 ```
 
-This seeds two local users you can sign in with. The command prints the seeded
-credentials when it completes.
-
-Set `DEV_SEED_PASSWORD` before running `bun run db:seed` if you want a
-different local password.
+This seeds the local users, Solana wallet fixtures, and development
+organizations. The command prints the seeded wallet usernames when it
+completes.
 
 Then, run the development apps:
 

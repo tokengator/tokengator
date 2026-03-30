@@ -1,13 +1,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 
 interface ProfileUiAccountCardProps {
-  email: string
   name: string
   role?: string | null
   username?: string | null
 }
 
-export function ProfileUiAccountCard({ email, name, role, username }: ProfileUiAccountCardProps) {
+export function ProfileUiAccountCard({ name, role, username }: ProfileUiAccountCardProps) {
   return (
     <Card>
       <CardHeader>
@@ -25,10 +24,6 @@ export function ProfileUiAccountCard({ email, name, role, username }: ProfileUiA
             <p className="font-medium">@{username}</p>
           </div>
         ) : null}
-        <div>
-          <p className="text-muted-foreground">Email</p>
-          <p className="font-medium">{email}</p>
-        </div>
         <div>
           <p className="text-muted-foreground">Role</p>
           <p className="font-medium capitalize">{role}</p>

@@ -1,12 +1,9 @@
-export const DEFAULT_DEV_SEED_PASSWORD = 'password123'
-
 type SolanaFixture = {
   publicKey: string
   secret: readonly number[]
 }
 
 export type TestUser = {
-  password: string
   solana: SolanaFixture
   username: string
 }
@@ -15,13 +12,11 @@ export type SeedUser = {
   email: string
   expectedRole: 'admin' | 'user'
   name: string
-  password: string
   solana?: SolanaFixture
   username: string
 }
 
 export const alice = {
-  password: DEFAULT_DEV_SEED_PASSWORD,
   solana: {
     publicKey: 'ALiC98dw6j47Skrxje3zBN4jTA11w67JRjQRBeZH3BRG',
     secret: [
@@ -34,7 +29,6 @@ export const alice = {
 } as const satisfies TestUser
 
 export const bob = {
-  password: DEFAULT_DEV_SEED_PASSWORD,
   solana: {
     publicKey: 'BoBigKFEgt5izFVmpZAqnHDjNXNMYFbYrbiXy4EkfJDE',
     secret: [
@@ -46,7 +40,7 @@ export const bob = {
   username: 'bob',
 } as const satisfies TestUser
 
-type SeedUserDefinition = Omit<SeedUser, 'password'>
+type SeedUserDefinition = SeedUser
 
 const seedUserDefinitions: SeedUserDefinition[] = [
   {
@@ -73,12 +67,11 @@ const seedUserDefinitions: SeedUserDefinition[] = [
 
 seedUserDefinitions.sort((left, right) => left.email.localeCompare(right.email))
 
-export function createDevSeedUsers(password = DEFAULT_DEV_SEED_PASSWORD): SeedUser[] {
+export function createDevSeedUsers(): SeedUser[] {
   return seedUserDefinitions.map((seedUser) => ({
     email: seedUser.email,
     expectedRole: seedUser.expectedRole,
     name: seedUser.name,
-    password,
     ...(seedUser.solana ? { solana: seedUser.solana } : {}),
     username: seedUser.username,
   }))

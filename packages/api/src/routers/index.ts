@@ -26,7 +26,14 @@ export const appRouter = {
   privateData: protectedProcedure.handler(({ context }) => {
     return {
       message: 'This is private',
-      user: context.session?.user,
+      user: context.session?.user
+        ? {
+            id: context.session.user.id,
+            name: context.session.user.name,
+            role: context.session.user.role,
+            username: context.session.user.username,
+          }
+        : null,
     }
   }),
   profile: profileRouter,

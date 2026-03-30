@@ -1,14 +1,14 @@
-import { createKeyPairSignerFromBytes, getBase58Decoder, signBytes } from '@solana/kit'
+import { generateKeyPairSigner, getBase58Decoder, signBytes } from '@solana/kit'
 import { createSIWSInput, siwsClient } from 'better-auth-solana/client'
 import { createAuthClient } from 'better-auth/client'
-import { usernameClient } from 'better-auth/client/plugins'
+import { makeSignature } from 'better-auth/crypto'
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { alice, bob, type TestUser } from '@tokengator/db/dev-seed-users'
+import { session as authSession, user as authUser } from '@tokengator/db/schema/auth'
 
 import { createOrpcClient, type OrpcClient, type OrpcClientFetch } from '../src/index'
 
@@ -28,12 +28,28 @@ const CAROL_USERNAME = 'carol'
 const ORGANIZATION_NAME = 'Acme'
 const ORGANIZATION_SLUG = 'acme'
 const ROOT_DIR = resolve(import.meta.dir, '..', '..', '..')
-const SOLANA_ADMIN_ADDRESS = 'SoAdmin1111111111111111111111111111111111111'
+const SESSION_COOKIE_NAME = 'better-auth.session_token'
+const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 const DB_PACKAGE_DIR = resolve(ROOT_DIR, 'packages', 'db')
 const SIWS_LINK_STATEMENT = 'Link Solana wallet to Tokengator'
-const USER_PASSWORD = 'password123'
+const SIWS_SIGN_IN_STATEMENT = 'Sign in to Tokengator'
 
 type DatabaseClient = (typeof import('@tokengator/db'))['db']
+type SessionClients = ReturnType<typeof createSessionClients>
+type SiwsSessionClients = ReturnType<typeof createSiwsSessionClients>
+type TestSessionClients = SessionClients | SiwsSessionClients
+type WalletFixture = {
+  address: string
+  privateKey: CryptoKey
+  username: string
+}
+type UserRecord = {
+  email: string
+  id: string
+  name: string
+  role: 'admin' | 'user'
+  username: string
+}
 
 let adminSession: SessionClients
 let anonymousClient: OrpcClient
@@ -41,95 +57,103 @@ let baseUrl = ''
 let bobSession: SessionClients
 let carolSession: SessionClients
 let database: DatabaseClient
+let solanaAdminFixture: WalletFixture
 let server: Bun.Server<unknown> | undefined
+let solanaUserFixture: WalletFixture
 let tempDir = ''
 
 function buildCookieHeader(cookieJar: Map<string, string>) {
   return [...cookieJar.values()].sort((left, right) => left.localeCompare(right)).join('; ')
 }
 
-function createCookieFetch(): OrpcClientFetch {
+function createCookieState() {
   const cookieJar = new Map<string, string>()
 
-  return async (input, init) => {
-    const existingCookieHeader = new Headers(init?.headers).get('cookie')
-    const nextHeaders = new Headers(init?.headers)
-    const storedCookieHeader = buildCookieHeader(cookieJar)
-    const cookieHeader = [existingCookieHeader, storedCookieHeader].filter(Boolean).join('; ')
+  return {
+    fetch: async (...[input, init]: Parameters<OrpcClientFetch>) => {
+      const existingCookieHeader = new Headers(init?.headers).get('cookie')
+      const nextHeaders = new Headers(init?.headers)
+      const storedCookieHeader = buildCookieHeader(cookieJar)
+      const cookieHeader = [existingCookieHeader, storedCookieHeader].filter(Boolean).join('; ')
 
-    if (cookieHeader) {
-      nextHeaders.set('cookie', cookieHeader)
-    }
-
-    const response = await fetch(input, {
-      ...init,
-      headers: nextHeaders,
-    })
-    const setCookies = 'getSetCookie' in response.headers ? response.headers.getSetCookie() : []
-
-    for (const setCookie of setCookies) {
-      const firstSegment = setCookie.split(';', 1)[0] ?? ''
-      const separatorIndex = firstSegment.indexOf('=')
-
-      if (separatorIndex === -1) {
-        continue
+      if (cookieHeader) {
+        nextHeaders.set('cookie', cookieHeader)
       }
 
-      const name = firstSegment.slice(0, separatorIndex).trim()
-      const value = firstSegment.slice(separatorIndex + 1).trim()
+      const response = await fetch(input, {
+        ...init,
+        headers: nextHeaders,
+      })
+      const setCookies = 'getSetCookie' in response.headers ? response.headers.getSetCookie() : []
 
-      if (!name) {
-        continue
+      for (const setCookie of setCookies) {
+        const firstSegment = setCookie.split(';', 1)[0] ?? ''
+        const separatorIndex = firstSegment.indexOf('=')
+
+        if (separatorIndex === -1) {
+          continue
+        }
+
+        const name = firstSegment.slice(0, separatorIndex).trim()
+        const value = firstSegment.slice(separatorIndex + 1).trim()
+
+        if (!name) {
+          continue
+        }
+
+        cookieJar.set(name, `${name}=${value}`)
       }
 
+      return response
+    },
+    setCookie(name: string, value: string) {
       cookieJar.set(name, `${name}=${value}`)
-    }
-
-    return response
+    },
   }
 }
 
 function createSessionClients(nextBaseUrl: string) {
-  const cookieFetch = createCookieFetch()
+  const cookieState = createCookieState()
 
   return {
     authClient: createAuthClient({
       baseURL: nextBaseUrl,
       fetchOptions: {
         credentials: 'include',
-        customFetchImpl: cookieFetch,
+        customFetchImpl: cookieState.fetch,
       },
-      plugins: [usernameClient()],
     }),
     client: createOrpcClient({
       baseUrl: nextBaseUrl,
-      fetch: cookieFetch,
+      fetch: cookieState.fetch,
     }),
+    setSessionCookie(value: string) {
+      cookieState.setCookie(SESSION_COOKIE_NAME, value)
+    },
   }
 }
 
 function createSiwsSessionClients(nextBaseUrl: string) {
-  const cookieFetch = createCookieFetch()
+  const cookieState = createCookieState()
 
   return {
     authClient: createAuthClient({
       baseURL: nextBaseUrl,
       fetchOptions: {
         credentials: 'include',
-        customFetchImpl: cookieFetch,
+        customFetchImpl: cookieState.fetch,
       },
-      plugins: [siwsClient(), usernameClient()],
+      plugins: [siwsClient()],
     }),
     client: createOrpcClient({
       baseUrl: nextBaseUrl,
-      fetch: cookieFetch,
+      fetch: cookieState.fetch,
     }),
+    setSessionCookie(value: string) {
+      cookieState.setCookie(SESSION_COOKIE_NAME, value)
+    },
   }
 }
-
-type SessionClients = ReturnType<typeof createSessionClients>
-type SiwsSessionClients = ReturnType<typeof createSiwsSessionClients>
-type EmailPasswordAuthClient = SessionClients['authClient'] | SiwsSessionClients['authClient']
 
 function decodeOutput(buffer: Uint8Array | undefined) {
   return buffer ? Buffer.from(buffer).toString('utf8').trim() : ''
@@ -199,14 +223,27 @@ async function getAvailablePort() {
 }
 
 async function getUserCount() {
-  const { user } = await import('@tokengator/db/schema/auth')
-
-  return (await database.select().from(user)).length
+  return (await database.select().from(authUser)).length
 }
 
-async function createSignedSiwsLinkPayload(authClient: SiwsSessionClients['authClient'], fixture: TestUser) {
+async function createWalletFixture(username: string): Promise<WalletFixture> {
+  const signer = await generateKeyPairSigner()
+
+  return {
+    address: signer.address,
+    privateKey: signer.keyPair.privateKey,
+    username,
+  }
+}
+
+async function createSignedSiwsPayload(args: {
+  authClient: SiwsSessionClients['authClient']
+  fixture: WalletFixture
+  statement: string
+}) {
+  const { authClient, fixture, statement } = args
   const { data: challenge, error: challengeError } = await authClient.siws.nonce({
-    walletAddress: fixture.solana.publicKey,
+    walletAddress: fixture.address,
   })
 
   if (!challenge) {
@@ -214,49 +251,63 @@ async function createSignedSiwsLinkPayload(authClient: SiwsSessionClients['authC
   }
 
   const input = createSIWSInput({
-    address: fixture.solana.publicKey,
+    address: fixture.address,
     challenge,
-    statement: SIWS_LINK_STATEMENT,
+    statement,
   })
   const message = formatSiwsMessage(input)
-  const signer = await createKeyPairSignerFromBytes(new Uint8Array(fixture.solana.secret))
-
-  if (signer.address !== fixture.solana.publicKey) {
-    throw new Error(`Fixture public key mismatch for ${fixture.username}.`)
-  }
-
-  const signatureBytes = await signBytes(signer.keyPair.privateKey, new TextEncoder().encode(message))
+  const signatureBytes = await signBytes(fixture.privateKey, new TextEncoder().encode(message))
 
   return {
     message,
     signature: getBase58Decoder().decode(signatureBytes),
-    walletAddress: fixture.solana.publicKey,
+    walletAddress: fixture.address,
   }
 }
 
-async function signUpAndSignIn(
-  authClient: EmailPasswordAuthClient,
+async function createSignedSessionToken(token: string) {
+  return `${token}.${await makeSignature(token, process.env.BETTER_AUTH_SECRET!)}`
+}
+
+async function createUserRecord(profile: { email: string; name: string; role?: 'admin' | 'user'; username: string }) {
+  const userRecord: UserRecord = {
+    email: profile.email,
+    id: crypto.randomUUID(),
+    name: profile.name,
+    role: profile.role ?? 'user',
+    username: profile.username,
+  }
+
+  await database.insert(authUser).values({
+    email: userRecord.email,
+    emailVerified: true,
+    id: userRecord.id,
+    name: userRecord.name,
+    role: userRecord.role,
+    username: userRecord.username,
+  })
+
+  return userRecord
+}
+
+async function createAuthenticatedUser(
+  sessionClients: TestSessionClients,
   profile: {
     email: string
     name: string
-    password: string
+    role?: 'admin' | 'user'
     username: string
   },
 ) {
-  await authClient.signUp.email({
-    email: profile.email,
-    name: profile.name,
-    password: profile.password,
-    username: profile.username,
-  })
-  await authClient.signIn.email({
-    email: profile.email,
-    password: profile.password,
-  })
+  const userRecord = await createUserRecord(profile)
+
+  await setSessionForUser(sessionClients, userRecord.id)
+
+  return userRecord
 }
 
 async function createUniqueUser(
-  authClient: EmailPasswordAuthClient,
+  sessionClients: TestSessionClients,
   profile: {
     emailPrefix: string
     namePrefix: string
@@ -264,28 +315,60 @@ async function createUniqueUser(
   },
 ) {
   const suffix = crypto.randomUUID().replaceAll('-', '').slice(0, 8)
-  const email = `${profile.emailPrefix}-${suffix}@example.com`
-  const username = `${profile.usernamePrefix}${suffix}`
 
-  await signUpAndSignIn(authClient, {
-    email,
+  return await createAuthenticatedUser(sessionClients, {
+    email: `${profile.emailPrefix}-${suffix}@example.com`,
     name: `${profile.namePrefix} ${suffix}`,
-    password: USER_PASSWORD,
-    username,
+    username: `${profile.usernamePrefix}${suffix}`,
   })
-
-  return {
-    email,
-    username,
-  }
 }
 
-async function getOwnerCandidateByEmail(email: string) {
+async function getOwnerCandidateByUsername(username: string) {
   const ownerCandidates = await adminSession.client.adminOrganization.listOwnerCandidates({
-    search: email,
+    search: username,
   })
 
-  return ownerCandidates.find((entry) => entry.email === email) ?? null
+  return ownerCandidates.find((entry) => entry.username === username) ?? null
+}
+
+async function postAuthRoute(pathname: string, body: Record<string, unknown>) {
+  return await fetch(`${baseUrl}${pathname}`, {
+    body: JSON.stringify(body),
+    headers: {
+      'content-type': 'application/json',
+    },
+    method: 'POST',
+  })
+}
+
+async function setSessionForUser(sessionClients: TestSessionClients, userId: string) {
+  const token = crypto.randomUUID()
+
+  await database.insert(authSession).values({
+    expiresAt: new Date(Date.now() + SESSION_MAX_AGE_MS),
+    id: crypto.randomUUID(),
+    token,
+    updatedAt: new Date(),
+    userId,
+  })
+
+  sessionClients.setSessionCookie(await createSignedSessionToken(token))
+}
+
+async function signInWithSiws(authClient: SiwsSessionClients['authClient'], fixture: WalletFixture) {
+  const { data, error } = await authClient.siws.verify(
+    await createSignedSiwsPayload({
+      authClient,
+      fixture,
+      statement: SIWS_SIGN_IN_STATEMENT,
+    }),
+  )
+
+  if (!data) {
+    throw new Error(error?.message ?? 'Failed to verify SIWS login.')
+  }
+
+  return data
 }
 
 function syncDatabase(databaseUrl: string) {
@@ -316,8 +399,11 @@ beforeAll(async () => {
   tempDir = mkdtempSync(resolve(tmpdir(), 'tokengator-sdk-e2e-'))
 
   const databaseUrl = pathToFileURL(resolve(tempDir, 'test.sqlite')).toString()
+  ;[solanaAdminFixture, solanaUserFixture] = await Promise.all([
+    createWalletFixture('solana-admin'),
+    createWalletFixture('solana-user'),
+  ])
 
-  process.env.BETTER_AUTH_ADMIN_EMAILS = ALICE_EMAIL
   process.env.BETTER_AUTH_SECRET = '12345678901234567890123456789012'
   process.env.BETTER_AUTH_URL = baseUrl
   process.env.CORS_ORIGINS = 'http://127.0.0.1:3001'
@@ -326,7 +412,7 @@ beforeAll(async () => {
   process.env.DISCORD_CLIENT_ID = 'discord-client-id'
   process.env.DISCORD_CLIENT_SECRET = 'discord-client-secret'
   process.env.NODE_ENV = 'test'
-  process.env.SOLANA_ADMIN_ADDRESSES = SOLANA_ADMIN_ADDRESS
+  process.env.SOLANA_ADMIN_ADDRESSES = solanaAdminFixture.address
   process.env.SOLANA_CLUSTER = 'devnet'
   process.env.SOLANA_ENDPOINT_PUBLIC = 'https://api.devnet.solana.com'
 
@@ -350,22 +436,20 @@ beforeAll(async () => {
   bobSession = createSessionClients(baseUrl)
   carolSession = createSessionClients(baseUrl)
 
-  await signUpAndSignIn(adminSession.authClient, {
+  await createAuthenticatedUser(adminSession, {
     email: ALICE_EMAIL,
     name: ALICE_NAME,
-    password: USER_PASSWORD,
+    role: 'admin',
     username: ALICE_USERNAME,
   })
-  await signUpAndSignIn(bobSession.authClient, {
+  await createAuthenticatedUser(bobSession, {
     email: BOB_EMAIL,
     name: BOB_NAME,
-    password: USER_PASSWORD,
     username: BOB_USERNAME,
   })
-  await signUpAndSignIn(carolSession.authClient, {
+  await createAuthenticatedUser(carolSession, {
     email: CAROL_EMAIL,
     name: CAROL_NAME,
-    password: USER_PASSWORD,
     username: CAROL_USERNAME,
   })
 })
@@ -408,40 +492,51 @@ describe('createOrpcClient e2e', () => {
     })
   })
 
-  test('session includes username and username sign-in succeeds', async () => {
+  test('session includes username and credential auth endpoints are disabled', async () => {
     const session = await bobSession.authClient.getSession()
-    const usernameSession = createSessionClients(baseUrl)
+    const [emailSignInResponse, emailSignUpResponse, usernameSignInResponse] = await Promise.all([
+      postAuthRoute('/api/auth/sign-in/email', {
+        email: BOB_EMAIL,
+        password: 'unused-password',
+      }),
+      postAuthRoute('/api/auth/sign-up/email', {
+        email: 'new-user@example.com',
+        name: 'New User',
+        password: 'unused-password',
+      }),
+      postAuthRoute('/api/auth/sign-in/username', {
+        password: 'unused-password',
+        username: BOB_USERNAME,
+      }),
+    ])
 
     expect(session).toMatchObject({
       data: {
         user: {
-          email: BOB_EMAIL,
           name: BOB_NAME,
           username: BOB_USERNAME,
         },
       },
       error: null,
     })
-
-    await usernameSession.authClient.signIn.username({
-      password: USER_PASSWORD,
-      username: BOB_USERNAME,
+    expect(emailSignInResponse.status).toBe(403)
+    expect(emailSignUpResponse.status).toBe(403)
+    expect(usernameSignInResponse.status).toBe(403)
+    await expect(emailSignInResponse.json()).resolves.toEqual({
+      error: 'Email sign-in is disabled.',
     })
-
-    await expect(usernameSession.authClient.getSession()).resolves.toMatchObject({
-      data: {
-        user: {
-          email: BOB_EMAIL,
-          username: BOB_USERNAME,
-        },
-      },
-      error: null,
+    await expect(emailSignUpResponse.json()).resolves.toEqual({
+      error: 'Email sign-up is disabled.',
+    })
+    await expect(usernameSignInResponse.json()).resolves.toEqual({
+      error: 'Username sign-in is disabled.',
     })
   })
 
   test('existing users can link a Solana wallet without creating a new user or changing sessions', async () => {
     const session = createSiwsSessionClients(baseUrl)
-    const { email, username } = await createUniqueUser(session.authClient, {
+    const walletFixture = await createWalletFixture('siws-link')
+    const userRecord = await createUniqueUser(session, {
       emailPrefix: 'siws-link',
       namePrefix: 'SIWS Link',
       usernamePrefix: 'siwslink',
@@ -454,9 +549,8 @@ describe('createOrpcClient e2e', () => {
     expect(sessionBeforeLink).toMatchObject({
       data: {
         user: {
-          email,
           id: expect.any(String),
-          username,
+          username: userRecord.username,
         },
       },
       error: null,
@@ -464,14 +558,18 @@ describe('createOrpcClient e2e', () => {
     expect(existingUserId).toBeDefined()
 
     const { data: linkData, error: linkError } = await session.authClient.siws.link(
-      await createSignedSiwsLinkPayload(session.authClient, alice),
+      await createSignedSiwsPayload({
+        authClient: session.authClient,
+        fixture: walletFixture,
+        statement: SIWS_LINK_STATEMENT,
+      }),
     )
 
     expect(linkData).toEqual({
       success: true,
       user: {
         id: existingUserId!,
-        walletAddress: alice.solana.publicKey,
+        walletAddress: walletFixture.address,
       },
     })
     expect(linkError).toBeNull()
@@ -479,9 +577,8 @@ describe('createOrpcClient e2e', () => {
     await expect(session.authClient.getSession()).resolves.toMatchObject({
       data: {
         user: {
-          email,
           id: existingUserId,
-          username,
+          username: userRecord.username,
         },
       },
       error: null,
@@ -489,16 +586,15 @@ describe('createOrpcClient e2e', () => {
     await expect(session.client.privateData()).resolves.toMatchObject({
       message: 'This is private',
       user: {
-        email,
         id: existingUserId,
-        username,
+        username: userRecord.username,
       },
     })
     await expect(session.client.profile.listSolanaWallets()).resolves.toEqual({
       solanaWallets: [
         {
-          address: alice.solana.publicKey,
-          displayName: ellipsifySolanaWalletAddress(alice.solana.publicKey),
+          address: walletFixture.address,
+          displayName: ellipsifySolanaWalletAddress(walletFixture.address),
           id: expect.any(String),
           isPrimary: true,
           name: null,
@@ -508,7 +604,7 @@ describe('createOrpcClient e2e', () => {
     await expect(session.client.profile.listIdentities()).resolves.toEqual({
       identities: [
         {
-          accountId: alice.solana.publicKey,
+          accountId: walletFixture.address,
           createdAt: expect.any(Number),
           id: expect.any(String),
           providerId: 'siws',
@@ -521,12 +617,14 @@ describe('createOrpcClient e2e', () => {
   test('linking a wallet already linked to another user returns conflict and leaves the second user unchanged', async () => {
     const firstSession = createSiwsSessionClients(baseUrl)
     const secondSession = createSiwsSessionClients(baseUrl)
-    await createUniqueUser(firstSession.authClient, {
+    const walletFixture = await createWalletFixture('siws-conflict')
+
+    await createUniqueUser(firstSession, {
       emailPrefix: 'siws-conflict-a',
       namePrefix: 'SIWS Conflict A',
       usernamePrefix: 'siwsa',
     })
-    const { email: secondEmail, username: secondUsername } = await createUniqueUser(secondSession.authClient, {
+    const secondUser = await createUniqueUser(secondSession, {
       emailPrefix: 'siws-conflict-b',
       namePrefix: 'SIWS Conflict B',
       usernamePrefix: 'siwsb',
@@ -544,20 +642,28 @@ describe('createOrpcClient e2e', () => {
     expect(firstUserId).not.toBe(secondUserId)
 
     const { data: firstLinkData, error: firstLinkError } = await firstSession.authClient.siws.link(
-      await createSignedSiwsLinkPayload(firstSession.authClient, bob),
+      await createSignedSiwsPayload({
+        authClient: firstSession.authClient,
+        fixture: walletFixture,
+        statement: SIWS_LINK_STATEMENT,
+      }),
     )
 
     expect(firstLinkData).toEqual({
       success: true,
       user: {
         id: firstUserId!,
-        walletAddress: bob.solana.publicKey,
+        walletAddress: walletFixture.address,
       },
     })
     expect(firstLinkError).toBeNull()
 
     const { data: secondLinkData, error: secondLinkError } = await secondSession.authClient.siws.link(
-      await createSignedSiwsLinkPayload(secondSession.authClient, bob),
+      await createSignedSiwsPayload({
+        authClient: secondSession.authClient,
+        fixture: walletFixture,
+        statement: SIWS_LINK_STATEMENT,
+      }),
     )
 
     expect(secondLinkData).toBeNull()
@@ -569,9 +675,8 @@ describe('createOrpcClient e2e', () => {
     await expect(secondSession.authClient.getSession()).resolves.toMatchObject({
       data: {
         user: {
-          email: secondEmail,
           id: secondUserId,
-          username: secondUsername,
+          username: secondUser.username,
         },
       },
       error: null,
@@ -773,8 +878,8 @@ describe('createOrpcClient e2e', () => {
   })
 
   test('organization listMine returns read-only memberships', async () => {
-    const bobOwner = await getOwnerCandidateByEmail(BOB_EMAIL)
-    const carolOwner = await getOwnerCandidateByEmail(CAROL_EMAIL)
+    const bobOwner = await getOwnerCandidateByUsername(BOB_USERNAME)
+    const carolOwner = await getOwnerCandidateByUsername(CAROL_USERNAME)
 
     expect(bobOwner).toBeDefined()
     expect(carolOwner).toBeDefined()
@@ -815,7 +920,7 @@ describe('createOrpcClient e2e', () => {
   })
 
   test('admin users can list organizations through the SDK', async () => {
-    const ownerCandidate = await getOwnerCandidateByEmail(BOB_EMAIL)
+    const ownerCandidate = await getOwnerCandidateByUsername(BOB_USERNAME)
 
     expect(ownerCandidate).toBeDefined()
 
@@ -958,44 +1063,36 @@ describe('createOrpcClient e2e', () => {
   })
 
   test('admin search treats LIKE wildcards as literal characters', async () => {
-    const percentMatchOwnerEmail = 'percent-match-owner@example.com'
     const percentMatchOwnerName = 'Percent 100% Owner'
-    const percentNonMatchOwnerEmail = 'percent-non-match-owner@example.com'
     const percentNonMatchOwnerName = 'Percent 1000 Owner'
-    const teamMatchOwnerEmail = 'team-match-owner@example.com'
     const teamMatchOwnerName = 'Team_1 Owner'
-    const teamNonMatchOwnerEmail = 'team-non-match-owner@example.com'
     const teamNonMatchOwnerName = 'TeamA1 Owner'
 
-    await signUpAndSignIn(createSessionClients(baseUrl).authClient, {
-      email: percentMatchOwnerEmail,
+    const percentMatchOwnerUser = await createUserRecord({
+      email: 'percent-match-owner@example.com',
       name: percentMatchOwnerName,
-      password: USER_PASSWORD,
       username: 'percent.100',
     })
-    await signUpAndSignIn(createSessionClients(baseUrl).authClient, {
-      email: percentNonMatchOwnerEmail,
+    const percentNonMatchOwnerUser = await createUserRecord({
+      email: 'percent-non-match-owner@example.com',
       name: percentNonMatchOwnerName,
-      password: USER_PASSWORD,
       username: 'percent1000',
     })
-    await signUpAndSignIn(createSessionClients(baseUrl).authClient, {
-      email: teamMatchOwnerEmail,
+    const teamMatchOwnerUser = await createUserRecord({
+      email: 'team-match-owner@example.com',
       name: teamMatchOwnerName,
-      password: USER_PASSWORD,
       username: 'team_1',
     })
-    await signUpAndSignIn(createSessionClients(baseUrl).authClient, {
-      email: teamNonMatchOwnerEmail,
+    const teamNonMatchOwnerUser = await createUserRecord({
+      email: 'team-non-match-owner@example.com',
       name: teamNonMatchOwnerName,
-      password: USER_PASSWORD,
       username: 'teama1',
     })
 
-    const percentMatchOwner = await getOwnerCandidateByEmail(percentMatchOwnerEmail)
-    const percentNonMatchOwner = await getOwnerCandidateByEmail(percentNonMatchOwnerEmail)
-    const teamMatchOwner = await getOwnerCandidateByEmail(teamMatchOwnerEmail)
-    const teamNonMatchOwner = await getOwnerCandidateByEmail(teamNonMatchOwnerEmail)
+    const percentMatchOwner = await getOwnerCandidateByUsername(percentMatchOwnerUser.username)
+    const percentNonMatchOwner = await getOwnerCandidateByUsername(percentNonMatchOwnerUser.username)
+    const teamMatchOwner = await getOwnerCandidateByUsername(teamMatchOwnerUser.username)
+    const teamNonMatchOwner = await getOwnerCandidateByUsername(teamNonMatchOwnerUser.username)
 
     expect(percentMatchOwner).toBeDefined()
     expect(percentNonMatchOwner).toBeDefined()
@@ -1038,24 +1135,24 @@ describe('createOrpcClient e2e', () => {
 
     expect(ownerCandidatesWithPercent).toContainEqual(
       expect.objectContaining({
-        email: percentMatchOwnerEmail,
         name: percentMatchOwnerName,
+        username: percentMatchOwnerUser.username,
       }),
     )
     expect(ownerCandidatesWithPercent).not.toContainEqual(
       expect.objectContaining({
-        email: percentNonMatchOwnerEmail,
+        username: percentNonMatchOwnerUser.username,
       }),
     )
     expect(ownerCandidatesWithUnderscore).toContainEqual(
       expect.objectContaining({
-        email: teamMatchOwnerEmail,
         name: teamMatchOwnerName,
+        username: teamMatchOwnerUser.username,
       }),
     )
     expect(ownerCandidatesWithUnderscore).not.toContainEqual(
       expect.objectContaining({
-        email: teamNonMatchOwnerEmail,
+        username: teamNonMatchOwnerUser.username,
       }),
     )
     expect(organizationsWithPercent.organizations).toContainEqual(
@@ -1215,65 +1312,17 @@ describe('createOrpcClient e2e', () => {
   })
 
   test('whitelisted Solana wallets auto-promote users to admin on session creation', async () => {
-    const { solanaWallet } = await import('@tokengator/db/schema/auth')
-    const solanaAdminEmail = 'solana-admin@example.com'
-    const solanaAdminName = 'Solana Admin'
-    const solanaAdminSession = createSessionClients(baseUrl)
-    const solanaAdminUsername = 'solana.admin'
-    const solanaUserEmail = 'solana-user@example.com'
-    const solanaUserName = 'Solana User'
-    const solanaUserSession = createSessionClients(baseUrl)
-    const solanaUserUsername = 'solana.user'
-
-    await signUpAndSignIn(solanaAdminSession.authClient, {
-      email: solanaAdminEmail,
-      name: solanaAdminName,
-      password: USER_PASSWORD,
-      username: solanaAdminUsername,
-    })
-    await signUpAndSignIn(solanaUserSession.authClient, {
-      email: solanaUserEmail,
-      name: solanaUserName,
-      password: USER_PASSWORD,
-      username: solanaUserUsername,
-    })
-
-    const [solanaAdminAuthSession, solanaUserAuthSession] = await Promise.all([
-      solanaAdminSession.authClient.getSession(),
-      solanaUserSession.authClient.getSession(),
-    ])
-
-    expect(solanaAdminAuthSession.data?.user.id).toBeDefined()
-    expect(solanaUserAuthSession.data?.user.id).toBeDefined()
-
-    await database.insert(solanaWallet).values([
-      {
-        address: SOLANA_ADMIN_ADDRESS,
-        isPrimary: true,
-        userId: solanaAdminAuthSession.data!.user.id,
-      },
-      {
-        address: 'SoUser111111111111111111111111111111111111111',
-        isPrimary: true,
-        userId: solanaUserAuthSession.data!.user.id,
-      },
-    ])
+    const solanaAdminSession = createSiwsSessionClients(baseUrl)
+    const solanaUserSession = createSiwsSessionClients(baseUrl)
 
     await Promise.all([
-      solanaAdminSession.authClient.signIn.email({
-        email: solanaAdminEmail,
-        password: USER_PASSWORD,
-      }),
-      solanaUserSession.authClient.signIn.email({
-        email: solanaUserEmail,
-        password: USER_PASSWORD,
-      }),
+      signInWithSiws(solanaAdminSession.authClient, solanaAdminFixture),
+      signInWithSiws(solanaUserSession.authClient, solanaUserFixture),
     ])
 
     await expect(solanaAdminSession.authClient.getSession()).resolves.toMatchObject({
       data: {
         user: {
-          email: solanaAdminEmail,
           role: 'admin',
         },
       },
@@ -1284,7 +1333,6 @@ describe('createOrpcClient e2e', () => {
     await expect(solanaUserSession.authClient.getSession()).resolves.toMatchObject({
       data: {
         user: {
-          email: solanaUserEmail,
           role: 'user',
         },
       },

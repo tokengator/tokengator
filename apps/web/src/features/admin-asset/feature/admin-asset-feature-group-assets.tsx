@@ -2,6 +2,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@tokengator/ui/components/button'
 
 import { useAdminAssetDelete } from '../data-access/use-admin-asset-delete'
+import { useAdminAssetGroupIndex } from '../data-access/use-admin-asset-group-index'
 import { useAdminAssetListQuery } from '../data-access/use-admin-asset-list-query'
 import { type AdminAssetFiltersValues, AdminAssetUiFilters } from '../ui/admin-asset-ui-filters'
 import { AdminAssetUiTable } from '../ui/admin-asset-ui-table'
@@ -46,12 +47,27 @@ export function AdminAssetFeatureGroupAssets(props: AdminAssetFeatureGroupAssets
     resolverKind: search.resolverKind,
   })
   const deleteAsset = useAdminAssetDelete()
+  const indexAssetGroup = useAdminAssetGroupIndex()
   const navigate = useNavigate()
   const shownCount = assets.data?.assets.length ?? 0
   const total = assets.data?.total ?? 0
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button
+          disabled={indexAssetGroup.isPending}
+          onClick={() => {
+            indexAssetGroup.mutate({
+              assetGroupId,
+            })
+          }}
+          type="button"
+        >
+          {indexAssetGroup.isPending ? 'Indexing...' : 'Index'}
+        </Button>
+      </div>
+
       <AdminAssetUiFilters
         initialValues={{
           address: search.address ?? '',
@@ -91,6 +107,7 @@ export function AdminAssetFeatureGroupAssets(props: AdminAssetFeatureGroupAssets
       />
 
       {assets.error ? <div className="text-destructive text-sm">{assets.error.message}</div> : null}
+      {indexAssetGroup.error ? <div className="text-destructive text-sm">{indexAssetGroup.error.message}</div> : null}
       {assets.isPending ? <div className="text-muted-foreground text-sm">Loading assets...</div> : null}
 
       <AdminAssetUiTable

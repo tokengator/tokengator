@@ -30,20 +30,26 @@ const solanaAdminAddressesSchema = z
   .transform(parseStringList)
   .pipe(z.array(z.string().min(1)))
 
-const envBooleanSchema = z
-  .string()
-  .optional()
-  .transform((value) => {
-    if (value === undefined) {
-      return true
-    }
+function createEnvBooleanSchema(defaultValue: boolean) {
+  return z
+    .string()
+    .optional()
+    .transform((value) => {
+      if (value === undefined) {
+        return defaultValue
+      }
 
-    const normalizedValue = value.trim().toLowerCase()
+      const normalizedValue = value.trim().toLowerCase()
 
-    return !['0', 'false', 'no', 'off'].includes(normalizedValue)
-  })
-  .pipe(z.boolean())
+      return !['0', 'false', 'no', 'off'].includes(normalizedValue)
+    })
+    .pipe(z.boolean())
+}
 
+const envBooleanSchema = createEnvBooleanSchema(true)
+const envBooleanDisabledSchema = createEnvBooleanSchema(false)
+
+const heliusClusterSchema = z.enum(['devnet', 'mainnet'])
 const solanaClusterSchema = z.enum(['devnet', 'localnet', 'mainnet', 'testnet'])
 
 export const env = createEnv({
@@ -59,6 +65,9 @@ export const env = createEnv({
     DISCORD_ADMIN_IDS: discordAdminIdsSchema,
     DISCORD_CLIENT_ID: z.string().min(1),
     DISCORD_CLIENT_SECRET: z.string().min(1),
+    HELIUS_API_KEY: z.string().min(1),
+    HELIUS_CLUSTER: heliusClusterSchema,
+    INDEXER_DEBUG: envBooleanDisabledSchema,
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
     SOLANA_ADMIN_ADDRESSES: solanaAdminAddressesSchema,
     SOLANA_CLUSTER: solanaClusterSchema,

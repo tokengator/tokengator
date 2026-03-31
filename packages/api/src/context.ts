@@ -12,6 +12,7 @@ export async function createContext({ context }: CreateContextOptions) {
 
   return {
     requestHeaders: context.req.raw.headers,
+    requestSignal: context.req.raw.signal,
     responseHeaders: new Headers(),
     session,
   }

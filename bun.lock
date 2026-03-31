@@ -98,6 +98,7 @@
         "@tokengator/auth": "workspace:*",
         "@tokengator/db": "workspace:*",
         "@tokengator/env": "workspace:*",
+        "@tokengator/indexer": "workspace:*",
         "dotenv": "catalog:",
         "drizzle-orm": "catalog:",
         "hono": "catalog:",

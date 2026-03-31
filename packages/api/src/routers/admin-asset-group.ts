@@ -3,8 +3,10 @@ import { asc, count, eq, or, sql } from 'drizzle-orm'
 import z from 'zod'
 import { db } from '@tokengator/db'
 import { assetGroup } from '@tokengator/db/schema/asset'
+import { env } from '@tokengator/env/api'
 
 import { adminProcedure } from '../index'
+import { AssetGroupIndexConfigError, indexAssetGroup } from '../lib/admin-asset-group-index'
 
 const assetGroupTypeSchema = z.enum(['collection', 'mint'])
 
@@ -130,6 +132,46 @@ export const adminAssetGroupRouter = {
       }
 
       return existingAssetGroup
+    }),
+
+  index: adminProcedure
+    .input(
+      z.object({
+        assetGroupId: z.string().min(1),
+      }),
+    )
+    .handler(async ({ context, input }) => {
+      const existingAssetGroup = await getAssetGroupRecordById(input.assetGroupId)
+
+      if (!existingAssetGroup) {
+        throw new ORPCError('NOT_FOUND', {
+          message: 'Asset group not found.',
+        })
+      }
+
+      try {
+        return await indexAssetGroup({
+          apiKey: env.HELIUS_API_KEY,
+          assetGroup: {
+            address: existingAssetGroup.address,
+            id: existingAssetGroup.id,
+            type: existingAssetGroup.type,
+          },
+          debug: env.INDEXER_DEBUG,
+          heliusCluster: env.HELIUS_CLUSTER,
+          signal: context.requestSignal,
+        })
+      } catch (error) {
+        if (error instanceof AssetGroupIndexConfigError) {
+          throw new ORPCError('BAD_REQUEST', {
+            message: error.message,
+          })
+        }
+
+        throw new ORPCError('INTERNAL_SERVER_ERROR', {
+          message: error instanceof Error ? error.message : 'Asset indexing failed.',
+        })
+      }
     }),
 
   list: adminProcedure.input(listAssetGroupsInputSchema).handler(async ({ input }) => {

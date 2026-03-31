@@ -3,10 +3,11 @@ import { and, asc, count, eq, sql } from 'drizzle-orm'
 import z from 'zod'
 import { db } from '@tokengator/db'
 import { asset, assetGroup } from '@tokengator/db/schema/asset'
+import { RESOLVER_KINDS } from '@tokengator/indexer'
 
 import { adminProcedure } from '../index'
 
-const assetResolverKindSchema = z.enum(['helius-collection-assets', 'helius-token-accounts'])
+const assetResolverKindSchema = z.enum(RESOLVER_KINDS)
 
 const listAssetsInputSchema = z.object({
   address: z.string().trim().min(1).optional(),

@@ -2,7 +2,7 @@ import { Button } from '@tokengator/ui/components/button'
 
 interface AdminAssetUiTableAsset {
   address: string
-  amount: number
+  amount: string
   id: string
   indexedAt: Date | string
   owner: string

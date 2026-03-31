@@ -34,7 +34,7 @@ export const asset = sqliteTable(
   {
     address: text('address').notNull(),
     addressLower: text('address_lower').notNull(),
-    amount: integer('amount').notNull(),
+    amount: text('amount').notNull(),
     assetGroupId: text('asset_group_id')
       .notNull()
       .references(() => assetGroup.id, { onDelete: 'cascade' }),

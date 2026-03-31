@@ -30,6 +30,8 @@ export interface HeliusTokenAccountsConfig {
 
 export const HELIUS_COLLECTION_ASSETS = 'helius-collection-assets'
 export const HELIUS_TOKEN_ACCOUNTS = 'helius-token-accounts'
+export const RESOLVER_KINDS = [HELIUS_COLLECTION_ASSETS, HELIUS_TOKEN_ACCOUNTS] as const
+export type ResolverKind = (typeof RESOLVER_KINDS)[number]
 
 const DEFAULT_PAGE_LIMIT = 1000
 

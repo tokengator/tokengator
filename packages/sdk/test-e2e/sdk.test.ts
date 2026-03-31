@@ -411,6 +411,8 @@ beforeAll(async () => {
   process.env.DATABASE_URL = databaseUrl
   process.env.DISCORD_CLIENT_ID = 'discord-client-id'
   process.env.DISCORD_CLIENT_SECRET = 'discord-client-secret'
+  process.env.HELIUS_API_KEY = 'helius-api-key'
+  process.env.HELIUS_CLUSTER = 'devnet'
   process.env.NODE_ENV = 'test'
   process.env.SOLANA_ADMIN_ADDRESSES = solanaAdminFixture.address
   process.env.SOLANA_CLUSTER = 'devnet'
@@ -958,7 +960,7 @@ describe('createOrpcClient e2e', () => {
     await database.insert(asset).values({
       address: 'asset-acme-1',
       addressLower: 'asset-acme-1',
-      amount: 1,
+      amount: '1',
       assetGroupId: createdAssetGroup.id,
       firstSeenAt: indexedAt,
       id: storedAssetId,
@@ -1211,7 +1213,7 @@ describe('createOrpcClient e2e', () => {
       {
         address: 'asset-100%',
         addressLower: 'asset-100%',
-        amount: 1,
+        amount: '1',
         assetGroupId: percentGroup.id,
         firstSeenAt: indexedAt,
         id: crypto.randomUUID(),
@@ -1227,7 +1229,7 @@ describe('createOrpcClient e2e', () => {
       {
         address: 'asset-1000',
         addressLower: 'asset-1000',
-        amount: 1,
+        amount: '1',
         assetGroupId: percentGroup.id,
         firstSeenAt: indexedAt,
         id: crypto.randomUUID(),

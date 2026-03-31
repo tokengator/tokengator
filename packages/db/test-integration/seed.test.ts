@@ -38,6 +38,8 @@ function createSeedEnv(databaseAuthToken: string, databaseUrl: string, envOverri
     DATABASE_URL: databaseUrl,
     DISCORD_CLIENT_ID: 'discord-client-id',
     DISCORD_CLIENT_SECRET: 'discord-client-secret',
+    HELIUS_API_KEY: 'helius-api-key',
+    HELIUS_CLUSTER: 'devnet',
     NODE_ENV: 'test',
     SOLANA_CLUSTER: 'devnet',
     SOLANA_ENDPOINT_PUBLIC: 'https://api.devnet.solana.com',
@@ -131,6 +133,8 @@ beforeAll(() => {
   process.env.DATABASE_URL = databaseUrl
   process.env.DISCORD_CLIENT_ID = 'discord-client-id'
   process.env.DISCORD_CLIENT_SECRET = 'discord-client-secret'
+  process.env.HELIUS_API_KEY = 'helius-api-key'
+  process.env.HELIUS_CLUSTER = 'devnet'
   process.env.NODE_ENV = 'test'
   process.env.SOLANA_CLUSTER = 'devnet'
   process.env.SOLANA_ENDPOINT_PUBLIC = 'https://api.devnet.solana.com'

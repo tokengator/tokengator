@@ -229,6 +229,8 @@ async function runSiwsLoginCheck(userKey: SeededUserKey) {
   process.env.DATABASE_URL = databaseUrl
   process.env.DISCORD_CLIENT_ID = 'discord-client-id'
   process.env.DISCORD_CLIENT_SECRET = 'discord-client-secret'
+  process.env.HELIUS_API_KEY = 'helius-api-key'
+  process.env.HELIUS_CLUSTER = 'devnet'
   process.env.NODE_ENV = 'test'
   process.env.SOLANA_ADMIN_ADDRESSES = ''
   process.env.SOLANA_CLUSTER = 'devnet'

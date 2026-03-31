@@ -1,0 +1,23 @@
+{
+  "name": "@tokengator/indexer",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {
+    "check-types": "tsc -b",
+    "test": "bun test ./test"
+  },
+  "dependencies": {
+    "helius-sdk": "^2.2.2"
+  },
+  "devDependencies": {
+    "@tokengator/config": "workspace:*",
+    "typescript": "^5"
+  }
+}

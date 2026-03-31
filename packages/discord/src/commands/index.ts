@@ -1,0 +1,19 @@
+import type { ChatInputCommandInteraction } from 'discord.js'
+
+import { helloCommand } from './hello'
+
+export interface DiscordChatInputCommand {
+  data: {
+    description: string
+    name: string
+  }
+  execute(interaction: ChatInputCommandInteraction): Promise<void>
+}
+
+export const discordChatInputCommands: DiscordChatInputCommand[] = [helloCommand].sort((a, b) =>
+  a.data.name.localeCompare(b.data.name),
+)
+
+export const discordChatInputCommandMap = new Map(
+  discordChatInputCommands.map((command) => [command.data.name, command] as const),
+)

@@ -3,6 +3,7 @@ import { defineConfig } from 'drizzle-kit'
 
 dotenv.config({
   path: '../../apps/api/.env',
+  quiet: true,
 })
 
 export default defineConfig({

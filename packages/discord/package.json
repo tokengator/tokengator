@@ -1,0 +1,23 @@
+{
+  "name": "@tokengator/discord",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {
+    "check-types": "tsc -b"
+  },
+  "dependencies": {
+    "@tokengator/env": "workspace:*",
+    "discord.js": "catalog:"
+  },
+  "devDependencies": {
+    "@tokengator/config": "workspace:*",
+    "typescript": "^5"
+  }
+}

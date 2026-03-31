@@ -227,6 +227,7 @@ async function runSiwsLoginCheck(userKey: SeededUserKey) {
   process.env.CORS_ORIGINS = 'http://127.0.0.1:3001'
   process.env.DATABASE_AUTH_TOKEN = 'test-token'
   process.env.DATABASE_URL = databaseUrl
+  process.env.DISCORD_BOT_TOKEN = 'discord-bot-token'
   process.env.DISCORD_CLIENT_ID = 'discord-client-id'
   process.env.DISCORD_CLIENT_SECRET = 'discord-client-secret'
   process.env.HELIUS_API_KEY = 'helius-api-key'

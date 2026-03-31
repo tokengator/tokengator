@@ -7,6 +7,8 @@
     "check-types": "tsc -b",
     "compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile api",
     "dev": "bun run --hot src/index.ts",
+    "discord:invite": "bun run src/print-discord-invite-link.ts",
+    "discord:register": "bun run src/register-discord.ts",
     "start": "bun run dist/index.mjs"
   },
   "dependencies": {
@@ -16,6 +18,7 @@
     "@tokengator/api": "workspace:*",
     "@tokengator/auth": "workspace:*",
     "@tokengator/db": "workspace:*",
+    "@tokengator/discord": "workspace:*",
     "@tokengator/env": "workspace:*",
     "better-auth": "catalog:",
     "dotenv": "catalog:",

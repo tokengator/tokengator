@@ -21,6 +21,7 @@
       "@wallet-ui/react": "^4.0.1",
       "better-auth": "1.5.6",
       "better-auth-solana": "1.0.0-canary-20260330165420",
+      "discord.js": "^14.22.1",
       "dotenv": "^17.2.2",
       "drizzle-orm": "^0.45.2",
       "hono": "^4.8.2",

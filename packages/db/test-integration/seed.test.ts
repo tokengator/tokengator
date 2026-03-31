@@ -36,6 +36,7 @@ function createSeedEnv(databaseAuthToken: string, databaseUrl: string, envOverri
     CORS_ORIGINS: 'http://localhost:3001',
     DATABASE_AUTH_TOKEN: databaseAuthToken,
     DATABASE_URL: databaseUrl,
+    DISCORD_BOT_TOKEN: 'discord-bot-token',
     DISCORD_CLIENT_ID: 'discord-client-id',
     DISCORD_CLIENT_SECRET: 'discord-client-secret',
     HELIUS_API_KEY: 'helius-api-key',
@@ -131,6 +132,7 @@ beforeAll(() => {
   process.env.CORS_ORIGINS = 'http://localhost:3001'
   process.env.DATABASE_AUTH_TOKEN = 'test-token'
   process.env.DATABASE_URL = databaseUrl
+  process.env.DISCORD_BOT_TOKEN = 'discord-bot-token'
   process.env.DISCORD_CLIENT_ID = 'discord-client-id'
   process.env.DISCORD_CLIENT_SECRET = 'discord-client-secret'
   process.env.HELIUS_API_KEY = 'helius-api-key'

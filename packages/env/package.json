@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./api": "./src/api.ts",
+    "./discord": "./src/discord.ts",
     "./web": "./src/web.ts"
   },
   "scripts": {

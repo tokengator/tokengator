@@ -10,6 +10,7 @@ const API_ENV_PATH = resolve(import.meta.dir, '..', '..', '..', 'apps', 'api', '
 
 dotenv.config({
   path: API_ENV_PATH,
+  quiet: true,
 })
 
 const DEV_PRIMARY_ORGANIZATION_SLUG = 'acme'

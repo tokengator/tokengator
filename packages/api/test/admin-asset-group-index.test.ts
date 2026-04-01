@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 import { asc, eq, sql } from 'drizzle-orm'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -10,12 +10,12 @@ type DatabaseClient = (typeof import('@tokengator/db'))['db']
 type IndexAssetGroup = (typeof import('../src/lib/admin-asset-group-index'))['indexAssetGroup']
 
 const DB_PACKAGE_DIR = resolve(import.meta.dir, '..', '..', 'db')
+const TEST_DATABASE_DIR = resolve(tmpdir(), 'tokengator-api-tests')
+const TEST_DATABASE_URL = pathToFileURL(resolve(TEST_DATABASE_DIR, 'test.sqlite')).toString()
 
 let assetSchema: AssetSchema
 let database: DatabaseClient
 let indexAssetGroup: IndexAssetGroup
-let tempDir = ''
-
 function buildIndexedAssetId(input: {
   address: string
   assetGroupId: string
@@ -178,16 +178,16 @@ function syncDatabase(databaseUrl: string) {
 }
 
 beforeAll(async () => {
-  tempDir = mkdtempSync(resolve(tmpdir(), 'tokengator-api-test-'))
-
-  const databaseUrl = pathToFileURL(resolve(tempDir, 'test.sqlite')).toString()
+  mkdirSync(TEST_DATABASE_DIR, {
+    recursive: true,
+  })
 
   process.env.BETTER_AUTH_SECRET = '12345678901234567890123456789012'
   process.env.BETTER_AUTH_SOLANA_SIGN_IN_ENABLED = 'true'
   process.env.BETTER_AUTH_URL = 'http://127.0.0.1:3000'
   process.env.CORS_ORIGINS = 'http://127.0.0.1:3001'
   process.env.DATABASE_AUTH_TOKEN = 'test-token'
-  process.env.DATABASE_URL = databaseUrl
+  process.env.DATABASE_URL = TEST_DATABASE_URL
   process.env.DISCORD_BOT_TOKEN = 'discord-bot-token'
   process.env.DISCORD_CLIENT_ID = 'discord-client-id'
   process.env.DISCORD_CLIENT_SECRET = 'discord-client-secret'
@@ -197,7 +197,7 @@ beforeAll(async () => {
   process.env.SOLANA_CLUSTER = 'devnet'
   process.env.SOLANA_ENDPOINT_PUBLIC = 'https://api.devnet.solana.com'
 
-  syncDatabase(databaseUrl)
+  syncDatabase(TEST_DATABASE_URL)
 
   ;({ db: database } = await import('@tokengator/db'))
   assetSchema = await import('@tokengator/db/schema/asset')
@@ -209,14 +209,7 @@ beforeEach(async () => {
   await database.delete(assetSchema.assetGroup).where(sql`1 = 1`)
 })
 
-afterAll(() => {
-  if (tempDir) {
-    rmSync(tempDir, {
-      force: true,
-      recursive: true,
-    })
-  }
-})
+afterAll(() => {})
 
 describe('indexAssetGroup', () => {
   test('indexes collection pages, selects the collection resolver, and deletes stale rows after success', async () => {

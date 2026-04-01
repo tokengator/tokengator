@@ -25,6 +25,7 @@ import { Route as AdminAssetsAssetGroupIdRouteRouteImport } from './routes/admin
 import { Route as AdminCommunitiesOrganizationIdIndexRouteImport } from './routes/admin/communities/$organizationId/index'
 import { Route as AdminAssetsAssetGroupIdIndexRouteImport } from './routes/admin/assets/$assetGroupId/index'
 import { Route as AdminCommunitiesOrganizationIdSettingsRouteImport } from './routes/admin/communities/$organizationId/settings'
+import { Route as AdminCommunitiesOrganizationIdRolesRouteImport } from './routes/admin/communities/$organizationId/roles'
 import { Route as AdminCommunitiesOrganizationIdMembersRouteImport } from './routes/admin/communities/$organizationId/members'
 import { Route as AdminAssetsAssetGroupIdSettingsRouteImport } from './routes/admin/assets/$assetGroupId/settings'
 import { Route as AdminAssetsAssetGroupIdAssetsRouteImport } from './routes/admin/assets/$assetGroupId/assets'
@@ -114,6 +115,12 @@ const AdminCommunitiesOrganizationIdSettingsRoute =
     path: '/settings',
     getParentRoute: () => AdminCommunitiesOrganizationIdRouteRoute,
   } as any)
+const AdminCommunitiesOrganizationIdRolesRoute =
+  AdminCommunitiesOrganizationIdRolesRouteImport.update({
+    id: '/roles',
+    path: '/roles',
+    getParentRoute: () => AdminCommunitiesOrganizationIdRouteRoute,
+  } as any)
 const AdminCommunitiesOrganizationIdMembersRoute =
   AdminCommunitiesOrganizationIdMembersRouteImport.update({
     id: '/members',
@@ -150,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/admin/assets/$assetGroupId/assets': typeof AdminAssetsAssetGroupIdAssetsRoute
   '/admin/assets/$assetGroupId/settings': typeof AdminAssetsAssetGroupIdSettingsRoute
   '/admin/communities/$organizationId/members': typeof AdminCommunitiesOrganizationIdMembersRoute
+  '/admin/communities/$organizationId/roles': typeof AdminCommunitiesOrganizationIdRolesRoute
   '/admin/communities/$organizationId/settings': typeof AdminCommunitiesOrganizationIdSettingsRoute
   '/admin/assets/$assetGroupId/': typeof AdminAssetsAssetGroupIdIndexRoute
   '/admin/communities/$organizationId/': typeof AdminCommunitiesOrganizationIdIndexRoute
@@ -168,6 +176,7 @@ export interface FileRoutesByTo {
   '/admin/assets/$assetGroupId/assets': typeof AdminAssetsAssetGroupIdAssetsRoute
   '/admin/assets/$assetGroupId/settings': typeof AdminAssetsAssetGroupIdSettingsRoute
   '/admin/communities/$organizationId/members': typeof AdminCommunitiesOrganizationIdMembersRoute
+  '/admin/communities/$organizationId/roles': typeof AdminCommunitiesOrganizationIdRolesRoute
   '/admin/communities/$organizationId/settings': typeof AdminCommunitiesOrganizationIdSettingsRoute
   '/admin/assets/$assetGroupId': typeof AdminAssetsAssetGroupIdIndexRoute
   '/admin/communities/$organizationId': typeof AdminCommunitiesOrganizationIdIndexRoute
@@ -190,6 +199,7 @@ export interface FileRoutesById {
   '/admin/assets/$assetGroupId/assets': typeof AdminAssetsAssetGroupIdAssetsRoute
   '/admin/assets/$assetGroupId/settings': typeof AdminAssetsAssetGroupIdSettingsRoute
   '/admin/communities/$organizationId/members': typeof AdminCommunitiesOrganizationIdMembersRoute
+  '/admin/communities/$organizationId/roles': typeof AdminCommunitiesOrganizationIdRolesRoute
   '/admin/communities/$organizationId/settings': typeof AdminCommunitiesOrganizationIdSettingsRoute
   '/admin/assets/$assetGroupId/': typeof AdminAssetsAssetGroupIdIndexRoute
   '/admin/communities/$organizationId/': typeof AdminCommunitiesOrganizationIdIndexRoute
@@ -213,6 +223,7 @@ export interface FileRouteTypes {
     | '/admin/assets/$assetGroupId/assets'
     | '/admin/assets/$assetGroupId/settings'
     | '/admin/communities/$organizationId/members'
+    | '/admin/communities/$organizationId/roles'
     | '/admin/communities/$organizationId/settings'
     | '/admin/assets/$assetGroupId/'
     | '/admin/communities/$organizationId/'
@@ -231,6 +242,7 @@ export interface FileRouteTypes {
     | '/admin/assets/$assetGroupId/assets'
     | '/admin/assets/$assetGroupId/settings'
     | '/admin/communities/$organizationId/members'
+    | '/admin/communities/$organizationId/roles'
     | '/admin/communities/$organizationId/settings'
     | '/admin/assets/$assetGroupId'
     | '/admin/communities/$organizationId'
@@ -252,6 +264,7 @@ export interface FileRouteTypes {
     | '/admin/assets/$assetGroupId/assets'
     | '/admin/assets/$assetGroupId/settings'
     | '/admin/communities/$organizationId/members'
+    | '/admin/communities/$organizationId/roles'
     | '/admin/communities/$organizationId/settings'
     | '/admin/assets/$assetGroupId/'
     | '/admin/communities/$organizationId/'
@@ -380,6 +393,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCommunitiesOrganizationIdSettingsRouteImport
       parentRoute: typeof AdminCommunitiesOrganizationIdRouteRoute
     }
+    '/admin/communities/$organizationId/roles': {
+      id: '/admin/communities/$organizationId/roles'
+      path: '/roles'
+      fullPath: '/admin/communities/$organizationId/roles'
+      preLoaderRoute: typeof AdminCommunitiesOrganizationIdRolesRouteImport
+      parentRoute: typeof AdminCommunitiesOrganizationIdRouteRoute
+    }
     '/admin/communities/$organizationId/members': {
       id: '/admin/communities/$organizationId/members'
       path: '/members'
@@ -424,6 +444,7 @@ const AdminAssetsAssetGroupIdRouteRouteWithChildren =
 
 interface AdminCommunitiesOrganizationIdRouteRouteChildren {
   AdminCommunitiesOrganizationIdMembersRoute: typeof AdminCommunitiesOrganizationIdMembersRoute
+  AdminCommunitiesOrganizationIdRolesRoute: typeof AdminCommunitiesOrganizationIdRolesRoute
   AdminCommunitiesOrganizationIdSettingsRoute: typeof AdminCommunitiesOrganizationIdSettingsRoute
   AdminCommunitiesOrganizationIdIndexRoute: typeof AdminCommunitiesOrganizationIdIndexRoute
 }
@@ -432,6 +453,8 @@ const AdminCommunitiesOrganizationIdRouteRouteChildren: AdminCommunitiesOrganiza
   {
     AdminCommunitiesOrganizationIdMembersRoute:
       AdminCommunitiesOrganizationIdMembersRoute,
+    AdminCommunitiesOrganizationIdRolesRoute:
+      AdminCommunitiesOrganizationIdRolesRoute,
     AdminCommunitiesOrganizationIdSettingsRoute:
       AdminCommunitiesOrganizationIdSettingsRoute,
     AdminCommunitiesOrganizationIdIndexRoute:

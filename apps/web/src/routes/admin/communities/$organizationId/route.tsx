@@ -18,6 +18,11 @@ const organizationTabs = [
     value: 'members',
   },
   {
+    label: 'Roles',
+    to: '/admin/communities/$organizationId/roles',
+    value: 'roles',
+  },
+  {
     label: 'Settings',
     to: '/admin/communities/$organizationId/settings',
     value: 'settings',
@@ -39,6 +44,10 @@ export const Route = createFileRoute('/admin/communities/$organizationId')({
 function getCurrentTab(pathname: string) {
   if (pathname.endsWith('/members')) {
     return 'members'
+  }
+
+  if (pathname.endsWith('/roles')) {
+    return 'roles'
   }
 
   if (pathname.endsWith('/settings')) {

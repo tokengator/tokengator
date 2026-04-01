@@ -113,6 +113,15 @@ function RouteComponent() {
                   <div className="flex flex-col gap-1">
                     <p className="text-sm">{member.name}</p>
                     {member.username ? <p className="text-muted-foreground text-xs">@{member.username}</p> : null}
+                    <p className="text-muted-foreground text-xs">
+                      {member.isManaged ? 'Managed by TokenGator' : 'Manual membership'}
+                    </p>
+                    <p className="text-muted-foreground text-xs">
+                      Gated roles:{' '}
+                      {member.gatedRoles.length
+                        ? member.gatedRoles.map((gatedRole) => gatedRole.name).join(', ')
+                        : 'none'}
+                    </p>
                   </div>
                   <select
                     aria-label={`Role for ${member.name}`}

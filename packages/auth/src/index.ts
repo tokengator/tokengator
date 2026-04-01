@@ -160,6 +160,9 @@ export const auth = betterAuth({
     admin(),
     organization({
       allowUserToCreateOrganization: false,
+      teams: {
+        enabled: true,
+      },
     }),
     siws({
       anonymous: true,

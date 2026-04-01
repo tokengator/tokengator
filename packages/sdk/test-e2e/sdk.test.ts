@@ -901,6 +901,7 @@ describe('createOrpcClient e2e', () => {
     await expect(bobSession.client.organization.listMine()).resolves.toEqual({
       organizations: [
         {
+          gatedRoles: [],
           id: bobOrganization.id,
           logo: null,
           name: BOB_ORGANIZATION_NAME,
@@ -912,6 +913,7 @@ describe('createOrpcClient e2e', () => {
     await expect(carolSession.client.organization.listMine()).resolves.toEqual({
       organizations: [
         {
+          gatedRoles: [],
           id: carolOrganization.id,
           logo: null,
           name: CAROL_ORGANIZATION_NAME,
@@ -1062,6 +1064,248 @@ describe('createOrpcClient e2e', () => {
 
     await expect(adminSession.client.adminAssetGroup.delete({ assetGroupId: createdAssetGroup.id })).resolves.toEqual({
       assetGroupId: createdAssetGroup.id,
+    })
+  })
+
+  test('admin users can manage community roles and sync gated access through the SDK', async () => {
+    const ownerSession = createSessionClients(baseUrl)
+    const gatedMemberSession = createSessionClients(baseUrl)
+    const [{ asset }, { solanaWallet }, gatedMemberUser, ownerUser] = await Promise.all([
+      import('@tokengator/db/schema/asset'),
+      import('@tokengator/db/schema/auth'),
+      createUniqueUser(gatedMemberSession, {
+        emailPrefix: 'gated-member',
+        namePrefix: 'Gated Member',
+        usernamePrefix: 'gatedmember',
+      }),
+      createUniqueUser(ownerSession, {
+        emailPrefix: 'role-owner',
+        namePrefix: 'Role Owner',
+        usernamePrefix: 'roleowner',
+      }),
+    ])
+    const ownerCandidate = await getOwnerCandidateByUsername(ownerUser.username)
+
+    expect(ownerCandidate).toBeDefined()
+
+    const organization = await adminSession.client.adminOrganization.create({
+      name: `Community ${ownerUser.username}`,
+      ownerUserId: ownerCandidate!.id,
+      slug: `community-${ownerUser.username}`,
+    })
+    const assetGroup = await adminSession.client.adminAssetGroup.create({
+      address: `collection-${ownerUser.username}`,
+      enabled: true,
+      label: `Collection ${ownerUser.username}`,
+      type: 'collection',
+    })
+    const ownerWalletAddress = `wallet-${ownerUser.username}`
+    const gatedMemberWalletAddress = `wallet-${gatedMemberUser.username}`
+    const indexedAt = new Date()
+
+    await database.insert(solanaWallet).values([
+      {
+        address: gatedMemberWalletAddress,
+        id: crypto.randomUUID(),
+        isPrimary: true,
+        userId: gatedMemberUser.id,
+      },
+      {
+        address: ownerWalletAddress,
+        id: crypto.randomUUID(),
+        isPrimary: true,
+        userId: ownerUser.id,
+      },
+    ])
+    await database.insert(asset).values([
+      {
+        address: `asset-${gatedMemberUser.username}`,
+        addressLower: `asset-${gatedMemberUser.username}`,
+        amount: '1',
+        assetGroupId: assetGroup.id,
+        firstSeenAt: indexedAt,
+        id: crypto.randomUUID(),
+        indexedAssetId: `v2:${JSON.stringify([assetGroup.id, `asset-${gatedMemberUser.username}`, gatedMemberWalletAddress, 'helius-collection-assets'])}`,
+        indexedAt,
+        lastSeenAt: indexedAt,
+        metadata: null,
+        metadataDescription: null,
+        metadataImageUrl: null,
+        metadataJson: null,
+        metadataJsonUrl: null,
+        metadataName: 'Gated Member Asset',
+        metadataProgramAccount: null,
+        metadataSymbol: null,
+        owner: gatedMemberWalletAddress,
+        ownerLower: gatedMemberWalletAddress,
+        page: 1,
+        raw: null,
+        resolverId: assetGroup.id,
+        resolverKind: 'helius-collection-assets',
+      },
+      {
+        address: `asset-${ownerUser.username}`,
+        addressLower: `asset-${ownerUser.username}`,
+        amount: '1',
+        assetGroupId: assetGroup.id,
+        firstSeenAt: indexedAt,
+        id: crypto.randomUUID(),
+        indexedAssetId: `v2:${JSON.stringify([assetGroup.id, `asset-${ownerUser.username}`, ownerWalletAddress, 'helius-collection-assets'])}`,
+        indexedAt,
+        lastSeenAt: indexedAt,
+        metadata: null,
+        metadataDescription: null,
+        metadataImageUrl: null,
+        metadataJson: null,
+        metadataJsonUrl: null,
+        metadataName: 'Owner Asset',
+        metadataProgramAccount: null,
+        metadataSymbol: null,
+        owner: ownerWalletAddress,
+        ownerLower: ownerWalletAddress,
+        page: 1,
+        raw: null,
+        resolverId: assetGroup.id,
+        resolverKind: 'helius-collection-assets',
+      },
+    ])
+
+    const createdRole = await adminSession.client.adminCommunityRole.create({
+      data: {
+        conditions: [
+          {
+            assetGroupId: assetGroup.id,
+            maximumAmount: '1',
+            minimumAmount: '1',
+          },
+        ],
+        enabled: true,
+        matchMode: 'any',
+        name: 'Collectors',
+        slug: 'collectors',
+      },
+      organizationId: organization.id,
+    })
+
+    expect(createdRole).toMatchObject({
+      conditions: [
+        {
+          assetGroupId: assetGroup.id,
+          maximumAmount: '1',
+          minimumAmount: '1',
+        },
+      ],
+      enabled: true,
+      matchMode: 'any',
+      name: 'Collectors',
+      organizationId: organization.id,
+      slug: 'collectors',
+      teamMemberCount: 0,
+    })
+
+    const updatedRole = await adminSession.client.adminCommunityRole.update({
+      communityRoleId: createdRole.id,
+      data: {
+        conditions: [
+          {
+            assetGroupId: assetGroup.id,
+            maximumAmount: '2',
+            minimumAmount: '1',
+          },
+        ],
+        enabled: true,
+        matchMode: 'any',
+        name: 'VIP Collectors',
+        slug: 'vip-collectors',
+      },
+    })
+
+    expect(updatedRole).toMatchObject({
+      conditions: [
+        {
+          assetGroupId: assetGroup.id,
+          maximumAmount: '2',
+          minimumAmount: '1',
+        },
+      ],
+      id: createdRole.id,
+      name: 'VIP Collectors',
+      slug: 'vip-collectors',
+      teamId: createdRole.teamId,
+      teamName: 'VIP Collectors',
+    })
+
+    await expect(
+      adminSession.client.adminCommunityRole.list({ organizationId: organization.id }),
+    ).resolves.toMatchObject({
+      communityRoles: [
+        {
+          id: updatedRole.id,
+          name: 'VIP Collectors',
+          slug: 'vip-collectors',
+        },
+      ],
+    })
+
+    const preview = await adminSession.client.adminCommunityRole.previewSync({
+      organizationId: organization.id,
+    })
+
+    expect(preview.summary).toEqual({
+      addToOrganizationCount: 1,
+      addToTeamCount: 2,
+      qualifiedUserCount: 2,
+      removeFromOrganizationCount: 0,
+      removeFromTeamCount: 0,
+      usersChangedCount: 2,
+    })
+
+    const applied = await adminSession.client.adminCommunityRole.applySync({
+      organizationId: organization.id,
+    })
+
+    expect(applied.summary).toEqual(preview.summary)
+    await expect(gatedMemberSession.client.organization.listMine()).resolves.toEqual({
+      organizations: [
+        {
+          gatedRoles: [
+            {
+              id: updatedRole.id,
+              name: 'VIP Collectors',
+              slug: 'vip-collectors',
+            },
+          ],
+          id: organization.id,
+          logo: null,
+          name: `Community ${ownerUser.username}`,
+          role: 'member',
+          slug: `community-${ownerUser.username}`,
+        },
+      ],
+    })
+
+    const organizationDetail = await adminSession.client.adminOrganization.get({
+      organizationId: organization.id,
+    })
+
+    expect(organizationDetail.members).toContainEqual(
+      expect.objectContaining({
+        gatedRoles: [
+          {
+            id: updatedRole.id,
+            name: 'VIP Collectors',
+            slug: 'vip-collectors',
+          },
+        ],
+        isManaged: true,
+        role: 'member',
+        userId: gatedMemberUser.id,
+      }),
+    )
+
+    await expect(adminSession.client.adminCommunityRole.delete({ communityRoleId: updatedRole.id })).resolves.toEqual({
+      communityRoleId: updatedRole.id,
+      organizationId: organization.id,
     })
   })
 

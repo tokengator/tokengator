@@ -42,6 +42,8 @@ export const organization = sqliteTable(
 export const session = sqliteTable(
   'session',
   {
+    activeOrganizationId: text('active_organization_id'),
+    activeTeamId: text('active_team_id'),
     createdAt: integer('created_at', { mode: 'timestamp_ms' })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),
@@ -58,7 +60,11 @@ export const session = sqliteTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
   },
-  (table) => [index('session_userId_idx').on(table.userId)],
+  (table) => [
+    index('session_activeOrganizationId_idx').on(table.activeOrganizationId),
+    index('session_activeTeamId_idx').on(table.activeTeamId),
+    index('session_userId_idx').on(table.userId),
+  ],
 )
 
 export const account = sqliteTable(
@@ -108,11 +114,13 @@ export const invitation = sqliteTable(
       .references(() => organization.id, { onDelete: 'cascade' }),
     role: text('role'),
     status: text('status').notNull(),
+    teamId: text('team_id').references(() => team.id, { onDelete: 'set null' }),
   },
   (table) => [
     index('invitation_email_idx').on(table.email),
     index('invitation_inviterId_idx').on(table.inviterId),
     index('invitation_organizationId_idx').on(table.organizationId),
+    index('invitation_teamId_idx').on(table.teamId),
   ],
 )
 
@@ -132,6 +140,46 @@ export const member = sqliteTable(
       .references(() => user.id, { onDelete: 'cascade' }),
   },
   (table) => [index('member_organizationId_idx').on(table.organizationId), index('member_userId_idx').on(table.userId)],
+)
+
+export const team = sqliteTable(
+  'team',
+  {
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    organizationId: text('organization_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [index('team_name_idx').on(table.name), index('team_organizationId_idx').on(table.organizationId)],
+)
+
+export const teamMember = sqliteTable(
+  'team_member',
+  {
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    id: text('id').primaryKey(),
+    teamId: text('team_id')
+      .notNull()
+      .references(() => team.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+  },
+  (table) => [
+    index('team_member_teamId_idx').on(table.teamId),
+    index('team_member_userId_idx').on(table.userId),
+    uniqueIndex('team_member_teamId_userId_idx').on(table.teamId, table.userId),
+  ],
 )
 
 export const verification = sqliteTable(
@@ -190,6 +238,10 @@ export const invitationRelations = relations(invitation, ({ one }) => ({
     fields: [invitation.organizationId],
     references: [organization.id],
   }),
+  team: one(team, {
+    fields: [invitation.teamId],
+    references: [team.id],
+  }),
 }))
 
 export const memberRelations = relations(member, ({ one }) => ({
@@ -206,9 +258,18 @@ export const memberRelations = relations(member, ({ one }) => ({
 export const organizationRelations = relations(organization, ({ many }) => ({
   invitations: many(invitation),
   members: many(member),
+  teams: many(team),
 }))
 
 export const sessionRelations = relations(session, ({ one }) => ({
+  activeOrganization: one(organization, {
+    fields: [session.activeOrganizationId],
+    references: [organization.id],
+  }),
+  activeTeam: one(team, {
+    fields: [session.activeTeamId],
+    references: [team.id],
+  }),
   user: one(user, {
     fields: [session.userId],
     references: [user.id],
@@ -222,10 +283,31 @@ export const solanaWalletRelations = relations(solanaWallet, ({ one }) => ({
   }),
 }))
 
+export const teamMemberRelations = relations(teamMember, ({ one }) => ({
+  team: one(team, {
+    fields: [teamMember.teamId],
+    references: [team.id],
+  }),
+  user: one(user, {
+    fields: [teamMember.userId],
+    references: [user.id],
+  }),
+}))
+
+export const teamRelations = relations(team, ({ many, one }) => ({
+  invitations: many(invitation),
+  organization: one(organization, {
+    fields: [team.organizationId],
+    references: [organization.id],
+  }),
+  teamMembers: many(teamMember),
+}))
+
 export const userRelations = relations(user, ({ many }) => ({
   accounts: many(account),
   invitations: many(invitation),
   members: many(member),
   sessions: many(session),
   solanaWallets: many(solanaWallet),
+  teamMembers: many(teamMember),
 }))

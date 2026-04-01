@@ -4,6 +4,7 @@ import { env } from '@tokengator/env/api'
 import { protectedProcedure, publicProcedure } from '../index'
 import { adminAssetRouter } from './admin-asset'
 import { adminAssetGroupRouter } from './admin-asset-group'
+import { adminCommunityRoleRouter } from './admin-community-role'
 import { adminOrganizationRouter } from './admin-organization'
 import { organizationRouter } from './organization'
 import { profileRouter } from './profile'
@@ -11,6 +12,7 @@ import { profileRouter } from './profile'
 export const appRouter = {
   adminAsset: adminAssetRouter,
   adminAssetGroup: adminAssetGroupRouter,
+  adminCommunityRole: adminCommunityRoleRouter,
   adminOrganization: adminOrganizationRouter,
   appConfig: publicProcedure.handler(() => {
     return {

@@ -156,10 +156,11 @@ afterAll(() => {
 describe('seedDatabase', () => {
   test('creates the baseline dataset with hidden compatibility emails and seeded SIWS identities', async () => {
     const { devSeed, seedDatabase } = await import('../src/seed')
-    const [{ db }, assetSchema, authSchema] = await Promise.all([
+    const [{ db }, assetSchema, authSchema, communityRoleSchema] = await Promise.all([
       import('../src/index'),
       import('../src/schema/asset'),
       import('../src/schema/auth'),
+      import('../src/schema/community-role'),
     ])
     const summary = await seedDatabase()
     const accounts = await db
@@ -199,6 +200,38 @@ describe('seedDatabase', () => {
       .innerJoin(authSchema.organization, eq(authSchema.member.organizationId, authSchema.organization.id))
       .innerJoin(authSchema.user, eq(authSchema.member.userId, authSchema.user.id))
       .orderBy(asc(authSchema.organization.slug), asc(authSchema.user.username))
+    const seededCommunityRoles = await db
+      .select({
+        assetGroupLabel: assetSchema.assetGroup.label,
+        enabled: communityRoleSchema.communityRole.enabled,
+        matchMode: communityRoleSchema.communityRole.matchMode,
+        maximumAmount: communityRoleSchema.communityRoleCondition.maximumAmount,
+        minimumAmount: communityRoleSchema.communityRoleCondition.minimumAmount,
+        name: communityRoleSchema.communityRole.name,
+        organizationSlug: authSchema.organization.slug,
+        slug: communityRoleSchema.communityRole.slug,
+        teamName: authSchema.team.name,
+      })
+      .from(communityRoleSchema.communityRole)
+      .innerJoin(
+        authSchema.organization,
+        eq(communityRoleSchema.communityRole.organizationId, authSchema.organization.id),
+      )
+      .innerJoin(authSchema.team, eq(communityRoleSchema.communityRole.teamId, authSchema.team.id))
+      .innerJoin(
+        communityRoleSchema.communityRoleCondition,
+        eq(communityRoleSchema.communityRoleCondition.communityRoleId, communityRoleSchema.communityRole.id),
+      )
+      .innerJoin(
+        assetSchema.assetGroup,
+        eq(communityRoleSchema.communityRoleCondition.assetGroupId, assetSchema.assetGroup.id),
+      )
+      .orderBy(
+        asc(authSchema.organization.slug),
+        asc(communityRoleSchema.communityRole.slug),
+        asc(assetSchema.assetGroup.label),
+        asc(communityRoleSchema.communityRoleCondition.minimumAmount),
+      )
     const sessions = await db
       .select({
         id: authSchema.session.id,
@@ -276,6 +309,23 @@ describe('seedDatabase', () => {
         username: CAROL_USERNAME,
       },
     ])
+    expect(seededCommunityRoles).toEqual(
+      devSeed.organizations.flatMap((organization) =>
+        devSeed.communityRoles.flatMap((communityRole) =>
+          communityRole.conditions.map((condition) => ({
+            assetGroupLabel: condition.assetGroupLabel,
+            enabled: communityRole.enabled,
+            matchMode: communityRole.matchMode,
+            maximumAmount: condition.maximumAmount,
+            minimumAmount: condition.minimumAmount,
+            name: communityRole.name,
+            organizationSlug: organization.slug,
+            slug: communityRole.slug,
+            teamName: communityRole.name,
+          })),
+        ),
+      ),
+    )
     expect(sessions).toHaveLength(0)
     expect(solanaWallets).toEqual([
       {
@@ -359,6 +409,7 @@ describe('seedDatabase', () => {
   })
 
   test('still seeds when unrelated verification data already exists', async () => {
+    const { devSeed } = await import('../src/seed')
     const databaseUrl = createDatabaseUrl('seed-with-verification.sqlite')
 
     syncDatabase(databaseUrl)
@@ -378,8 +429,16 @@ describe('seedDatabase', () => {
     expect(output).toContain('Solana sign-in fixtures: @alice, @bob')
     expect(await getTableCount(databaseUrl, 'account')).toBe(2)
     expect(await getTableCount(databaseUrl, 'asset_group')).toBe(2)
+    expect(await getTableCount(databaseUrl, 'community_role')).toBe(
+      devSeed.organizations.length * devSeed.communityRoles.length,
+    )
+    expect(await getTableCount(databaseUrl, 'community_role_condition')).toBe(
+      devSeed.organizations.length *
+        devSeed.communityRoles.reduce((count, communityRole) => count + communityRole.conditions.length, 0),
+    )
     expect(await getTableCount(databaseUrl, 'organization')).toBe(2)
     expect(await getTableCount(databaseUrl, 'solana_wallet')).toBe(2)
+    expect(await getTableCount(databaseUrl, 'team')).toBe(devSeed.organizations.length * devSeed.communityRoles.length)
     expect(await getTableCount(databaseUrl, 'user')).toBe(3)
     expect(await getTableCount(databaseUrl, 'verification')).toBe(1)
   })

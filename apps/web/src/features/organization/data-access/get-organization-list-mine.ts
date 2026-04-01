@@ -6,6 +6,11 @@ import { orpc } from '@/utils/orpc'
 import { serverOrpcClient } from '@/utils/orpc-server'
 
 export interface OrganizationListMineOrganization {
+  gatedRoles: Array<{
+    id: string
+    name: string
+    slug: string
+  }>
   id: string
   logo: string | null
   name: string

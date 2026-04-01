@@ -1,11 +1,16 @@
 import { ORPCError } from '@orpc/server'
-import { asc, count, eq, inArray, or, sql } from 'drizzle-orm'
+import { and, asc, count, eq, inArray, or, sql } from 'drizzle-orm'
 import z from 'zod'
 import { auth } from '@tokengator/auth'
 import { db } from '@tokengator/db'
-import { invitation, member, organization, user } from '@tokengator/db/schema/auth'
+import { invitation, member, organization, session, team, teamMember, user } from '@tokengator/db/schema/auth'
+import { communityManagedMember } from '@tokengator/db/schema/community-role'
 
 import { adminProcedure } from '../index'
+import {
+  listCommunityManagedMemberUserIds,
+  listCommunityRoleAssignmentsForUsers,
+} from '../lib/admin-community-role-sync'
 
 const memberRoleSchema = z.enum(['admin', 'member', 'owner'])
 
@@ -111,6 +116,52 @@ async function getOrganizationMembers(organizationId: string) {
     .orderBy(asc(user.name), asc(user.username), asc(user.id))
 }
 
+async function decorateOrganizationMembers(
+  members: Awaited<ReturnType<typeof getOrganizationMembers>>,
+  organizationId: string,
+) {
+  if (members.length === 0) {
+    return []
+  }
+
+  const userIds = members.map((memberRecord) => memberRecord.userId)
+  const [managedMembers, gatedRoleAssignments] = await Promise.all([
+    listCommunityManagedMemberUserIds({
+      organizationIds: [organizationId],
+      userIds,
+    }),
+    listCommunityRoleAssignmentsForUsers({
+      organizationIds: [organizationId],
+      userIds,
+    }),
+  ])
+  const managedUserIds = new Set(
+    managedMembers
+      .filter((managedMember) => managedMember.organizationId === organizationId)
+      .map((managedMember) => managedMember.userId),
+  )
+  const gatedRolesByUserId = new Map<string, Array<{ id: string; name: string; slug: string }>>()
+
+  for (const gatedRoleAssignment of gatedRoleAssignments) {
+    const existingRoles = gatedRolesByUserId.get(gatedRoleAssignment.userId) ?? []
+
+    gatedRolesByUserId.set(gatedRoleAssignment.userId, [
+      ...existingRoles,
+      {
+        id: gatedRoleAssignment.roleId,
+        name: gatedRoleAssignment.name,
+        slug: gatedRoleAssignment.slug,
+      },
+    ])
+  }
+
+  return members.map((memberRecord) => ({
+    ...memberRecord,
+    gatedRoles: gatedRolesByUserId.get(memberRecord.userId) ?? [],
+    isManaged: managedUserIds.has(memberRecord.userId),
+  }))
+}
+
 async function getOrganizationDetail(organizationId: string) {
   const organizationRecord = await getOrganizationRecordById(organizationId)
 
@@ -118,7 +169,7 @@ async function getOrganizationDetail(organizationId: string) {
     return null
   }
 
-  const members = await getOrganizationMembers(organizationId)
+  const members = await decorateOrganizationMembers(await getOrganizationMembers(organizationId), organizationId)
   const owners = members
     .filter((entry) => includesOwner(entry.role))
     .map((entry) => ({
@@ -225,11 +276,59 @@ export const adminOrganizationRouter = {
         })
       }
 
+      const organizationTeamIds = await db
+        .select({
+          id: team.id,
+        })
+        .from(team)
+        .where(eq(team.organizationId, input.organizationId))
+        .orderBy(asc(team.id))
+
       await db.transaction(async (tx) => {
+        await tx.delete(communityManagedMember).where(eq(communityManagedMember.organizationId, input.organizationId))
         await tx.delete(invitation).where(eq(invitation.organizationId, input.organizationId))
+        if (organizationTeamIds.length > 0) {
+          await tx.delete(teamMember).where(
+            inArray(
+              teamMember.teamId,
+              organizationTeamIds.map((teamRecord) => teamRecord.id),
+            ),
+          )
+          await tx.delete(team).where(
+            inArray(
+              team.id,
+              organizationTeamIds.map((teamRecord) => teamRecord.id),
+            ),
+          )
+        }
         await tx.delete(member).where(eq(member.organizationId, input.organizationId))
         await tx.delete(organization).where(eq(organization.id, input.organizationId))
       })
+      if (organizationTeamIds.length > 0) {
+        await db
+          .update(session)
+          .set({
+            activeOrganizationId: null,
+            activeTeamId: null,
+          })
+          .where(
+            or(
+              eq(session.activeOrganizationId, input.organizationId),
+              inArray(
+                session.activeTeamId,
+                organizationTeamIds.map((teamRecord) => teamRecord.id),
+              ),
+            ),
+          )
+      } else {
+        await db
+          .update(session)
+          .set({
+            activeOrganizationId: null,
+            activeTeamId: null,
+          })
+          .where(eq(session.activeOrganizationId, input.organizationId))
+      }
 
       return {
         organizationId: input.organizationId,
@@ -405,9 +504,69 @@ export const adminOrganizationRouter = {
         }
       }
 
+      const organizationTeamIds = await db
+        .select({
+          id: team.id,
+        })
+        .from(team)
+        .where(eq(team.organizationId, existingMember.organizationId))
+        .orderBy(asc(team.id))
+
       await db.transaction(async (tx) => {
+        await tx
+          .delete(communityManagedMember)
+          .where(
+            and(
+              eq(communityManagedMember.organizationId, existingMember.organizationId),
+              eq(communityManagedMember.userId, existingMember.userId),
+            ),
+          )
+        if (organizationTeamIds.length > 0) {
+          await tx.delete(teamMember).where(
+            and(
+              eq(teamMember.userId, existingMember.userId),
+              inArray(
+                teamMember.teamId,
+                organizationTeamIds.map((teamRecord) => teamRecord.id),
+              ),
+            ),
+          )
+        }
         await tx.delete(member).where(eq(member.id, input.memberId))
       })
+      if (organizationTeamIds.length > 0) {
+        await db
+          .update(session)
+          .set({
+            activeOrganizationId: null,
+            activeTeamId: null,
+          })
+          .where(
+            and(
+              eq(session.userId, existingMember.userId),
+              or(
+                eq(session.activeOrganizationId, existingMember.organizationId),
+                inArray(
+                  session.activeTeamId,
+                  organizationTeamIds.map((teamRecord) => teamRecord.id),
+                ),
+              ),
+            ),
+          )
+      } else {
+        await db
+          .update(session)
+          .set({
+            activeOrganizationId: null,
+            activeTeamId: null,
+          })
+          .where(
+            and(
+              eq(session.userId, existingMember.userId),
+              eq(session.activeOrganizationId, existingMember.organizationId),
+            ),
+          )
+      }
 
       return {
         memberId: existingMember.id,
@@ -486,6 +645,7 @@ export const adminOrganizationRouter = {
           id: member.id,
           organizationId: member.organizationId,
           role: member.role,
+          userId: member.userId,
         })
         .from(member)
         .where(eq(member.id, input.memberId))
@@ -513,6 +673,14 @@ export const adminOrganizationRouter = {
           role: input.role,
         })
         .where(eq(member.id, input.memberId))
+      await db
+        .delete(communityManagedMember)
+        .where(
+          and(
+            eq(communityManagedMember.organizationId, existingMember.organizationId),
+            eq(communityManagedMember.userId, existingMember.userId),
+          ),
+        )
 
       return {
         memberId: existingMember.id,

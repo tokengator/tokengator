@@ -1,6 +1,11 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 
 type ProfileCommunity = {
+  gatedRoles: Array<{
+    id: string
+    name: string
+    slug: string
+  }>
   id: string
   logo: string | null
   name: string
@@ -37,6 +42,15 @@ export function ProfileUiCommunitiesCard({ communities, isPending = false }: Pro
                   </div>
                   <p className="text-muted-foreground text-xs capitalize">{formatCommunityRole(community.role)}</p>
                 </div>
+                {community.gatedRoles?.length ? (
+                  <div className="flex flex-wrap gap-2">
+                    {community.gatedRoles.map((gatedRole) => (
+                      <span className="bg-muted rounded-full px-2 py-1 text-xs" key={gatedRole.id}>
+                        {gatedRole.name}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             ))
           : null}

@@ -3,8 +3,14 @@ import { db } from '@tokengator/db'
 import { member, organization } from '@tokengator/db/schema/auth'
 
 import { protectedProcedure } from '../index'
+import { listCommunityRoleAssignmentsForUsers } from '../lib/admin-community-role-sync'
 
 type OrganizationMembershipRecord = {
+  gatedRoles: Array<{
+    id: string
+    name: string
+    slug: string
+  }>
   id: string
   logo: string | null
   name: string
@@ -12,7 +18,9 @@ type OrganizationMembershipRecord = {
   slug: string
 }
 
-async function listOrganizationMembershipRecords(userId: string): Promise<OrganizationMembershipRecord[]> {
+type OrganizationMembershipRecordBase = Omit<OrganizationMembershipRecord, 'gatedRoles'>
+
+async function listOrganizationMembershipRecords(userId: string): Promise<OrganizationMembershipRecordBase[]> {
   return await db
     .select({
       id: organization.id,
@@ -30,9 +38,30 @@ async function listOrganizationMembershipRecords(userId: string): Promise<Organi
 export const organizationRouter = {
   listMine: protectedProcedure.handler(async ({ context }) => {
     const organizations = await listOrganizationMembershipRecords(context.session.user.id)
+    const gatedRoles = await listCommunityRoleAssignmentsForUsers({
+      organizationIds: organizations.map((organizationRecord) => organizationRecord.id),
+      userIds: [context.session.user.id],
+    })
+    const gatedRolesByOrganizationId = new Map<string, OrganizationMembershipRecord['gatedRoles']>()
+
+    for (const gatedRole of gatedRoles) {
+      const existingRoles = gatedRolesByOrganizationId.get(gatedRole.organizationId) ?? []
+
+      gatedRolesByOrganizationId.set(gatedRole.organizationId, [
+        ...existingRoles,
+        {
+          id: gatedRole.roleId,
+          name: gatedRole.name,
+          slug: gatedRole.slug,
+        },
+      ])
+    }
 
     return {
-      organizations,
+      organizations: organizations.map((organizationRecord) => ({
+        ...organizationRecord,
+        gatedRoles: gatedRolesByOrganizationId.get(organizationRecord.id) ?? [],
+      })),
     }
   }),
 }

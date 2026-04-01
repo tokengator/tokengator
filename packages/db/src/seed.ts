@@ -5,6 +5,7 @@ import { alice, bob, createDevSeedUsers } from './dev-seed-users'
 import { isLocalDatabaseUrl } from './lib/local-database-url'
 import * as assetSchema from './schema/asset'
 import * as authSchema from './schema/auth'
+import * as communityRoleSchema from './schema/community-role'
 
 const API_ENV_PATH = resolve(import.meta.dir, '..', '..', '..', 'apps', 'api', '.env')
 
@@ -29,6 +30,86 @@ const devSeedAssetGroups = [
     enabled: true,
     label: 'STORE',
     type: 'mint',
+  },
+] as const
+const devSeedCommunityRoles = [
+  {
+    conditions: [
+      {
+        assetGroupLabel: 'PERK',
+        maximumAmount: '9',
+        minimumAmount: '2',
+      },
+    ],
+    enabled: true,
+    matchMode: 'any',
+    name: 'Perk shark',
+    slug: 'perk-shark',
+  },
+  {
+    conditions: [
+      {
+        assetGroupLabel: 'PERK',
+        maximumAmount: '1',
+        minimumAmount: '1',
+      },
+    ],
+    enabled: true,
+    matchMode: 'any',
+    name: 'Perk shrimp',
+    slug: 'perk-shrimp',
+  },
+  {
+    conditions: [
+      {
+        assetGroupLabel: 'PERK',
+        maximumAmount: null,
+        minimumAmount: '10',
+      },
+    ],
+    enabled: true,
+    matchMode: 'any',
+    name: 'Perk whale',
+    slug: 'perk-whale',
+  },
+  {
+    conditions: [
+      {
+        assetGroupLabel: 'STORE',
+        maximumAmount: '999999',
+        minimumAmount: '100000',
+      },
+    ],
+    enabled: true,
+    matchMode: 'any',
+    name: 'Store shark',
+    slug: 'store-shark',
+  },
+  {
+    conditions: [
+      {
+        assetGroupLabel: 'STORE',
+        maximumAmount: '99999',
+        minimumAmount: '1',
+      },
+    ],
+    enabled: true,
+    matchMode: 'any',
+    name: 'Store shrimp',
+    slug: 'store-shrimp',
+  },
+  {
+    conditions: [
+      {
+        assetGroupLabel: 'STORE',
+        maximumAmount: null,
+        minimumAmount: '1000000',
+      },
+    ],
+    enabled: true,
+    matchMode: 'any',
+    name: 'Store whale',
+    slug: 'store-whale',
   },
 ] as const
 
@@ -96,6 +177,7 @@ if (!primaryDevSeedOrganization) {
 
 export const devSeed = {
   assetGroups: devSeedAssetGroups,
+  communityRoles: devSeedCommunityRoles,
   organization: primaryDevSeedOrganization,
   organizations: devSeedOrganizations,
   users: devSeedUsers,
@@ -115,6 +197,7 @@ type CompletedSeedResult = {
 
 type SeedOrganization = (typeof devSeed.organizations)[number]
 type SeedResult = CompletedSeedResult | { skipped: true }
+type SeedCommunityRole = (typeof devSeed.communityRoles)[number]
 type SeedUser = (typeof devSeed.users)[number]
 type SeededUserRecord = {
   email: string
@@ -155,18 +238,29 @@ function assertLocalSeedRuntime() {
 }
 
 async function createSeedAssetGroups(db: RuntimeModules['db']) {
+  const assetGroupIdsByLabel: Record<string, string> = {}
+
   if (!devSeed.assetGroups.length) {
-    return
+    return assetGroupIdsByLabel
   }
 
   await db.insert(assetSchema.assetGroup).values(
-    devSeed.assetGroups.map((assetGroup) => ({
-      address: assetGroup.address,
-      enabled: assetGroup.enabled,
-      label: assetGroup.label,
-      type: assetGroup.type,
-    })),
+    devSeed.assetGroups.map((assetGroup) => {
+      const id = crypto.randomUUID()
+
+      assetGroupIdsByLabel[assetGroup.label] = id
+
+      return {
+        address: assetGroup.address,
+        enabled: assetGroup.enabled,
+        id,
+        label: assetGroup.label,
+        type: assetGroup.type,
+      }
+    }),
   )
+
+  return assetGroupIdsByLabel
 }
 
 function createSeedMembershipValues(args: {
@@ -341,6 +435,88 @@ function getRequiredOrganizationId(organizationIdsBySlug: Record<string, string>
   return organizationId
 }
 
+function getRequiredAssetGroupId(
+  assetGroupIdsByLabel: Record<string, string>,
+  label: SeedCommunityRole['conditions'][number]['assetGroupLabel'],
+) {
+  const assetGroupId = assetGroupIdsByLabel[label]
+
+  if (!assetGroupId) {
+    throw new Error(`Missing asset group id for seed asset group ${label}.`)
+  }
+
+  return assetGroupId
+}
+
+function getRequiredSeedId(idsByKey: Record<string, string>, key: string, label: string) {
+  const id = idsByKey[key]
+
+  if (!id) {
+    throw new Error(`Missing ${label} id for ${key}.`)
+  }
+
+  return id
+}
+
+async function createSeedCommunityRoles(args: {
+  assetGroupIdsByLabel: Record<string, string>
+  db: RuntimeModules['db']
+  organizationIdsBySlug: Record<string, string>
+}) {
+  const { assetGroupIdsByLabel, db, organizationIdsBySlug } = args
+
+  if (!devSeed.communityRoles.length) {
+    return
+  }
+
+  for (const organization of devSeed.organizations) {
+    const organizationId = getRequiredOrganizationId(organizationIdsBySlug, organization.slug)
+    const communityRoleIdsBySlug: Record<string, string> = {}
+    const teamIdsBySlug: Record<string, string> = {}
+
+    const teamValues = devSeed.communityRoles.map((communityRole) => {
+      const teamId = crypto.randomUUID()
+
+      teamIdsBySlug[communityRole.slug] = teamId
+
+      return {
+        id: teamId,
+        name: communityRole.name,
+        organizationId,
+      } satisfies typeof authSchema.team.$inferInsert
+    })
+    const communityRoleValues = devSeed.communityRoles.map((communityRole) => {
+      const communityRoleId = crypto.randomUUID()
+
+      communityRoleIdsBySlug[communityRole.slug] = communityRoleId
+
+      return {
+        enabled: communityRole.enabled,
+        id: communityRoleId,
+        matchMode: communityRole.matchMode,
+        name: communityRole.name,
+        organizationId,
+        slug: communityRole.slug,
+        teamId: getRequiredSeedId(teamIdsBySlug, communityRole.slug, 'team'),
+      } satisfies typeof communityRoleSchema.communityRole.$inferInsert
+    })
+    const communityRoleConditionValues = devSeed.communityRoles.flatMap((communityRole) =>
+      communityRole.conditions.map((condition) => ({
+        assetGroupId: getRequiredAssetGroupId(assetGroupIdsByLabel, condition.assetGroupLabel),
+        communityRoleId: getRequiredSeedId(communityRoleIdsBySlug, communityRole.slug, 'community role'),
+        maximumAmount: condition.maximumAmount,
+        minimumAmount: condition.minimumAmount,
+      })),
+    )
+
+    await db.transaction(async (transaction) => {
+      await transaction.insert(authSchema.team).values(teamValues)
+      await transaction.insert(communityRoleSchema.communityRole).values(communityRoleValues)
+      await transaction.insert(communityRoleSchema.communityRoleCondition).values(communityRoleConditionValues)
+    })
+  }
+}
+
 async function loadRuntime(): Promise<RuntimeModules> {
   const { db } = await import('./index')
 
@@ -363,8 +539,13 @@ export async function seedDatabase(): Promise<SeedResult> {
 
   const usersByEmail = await createSeedUsers(runtime.db)
   const organizationIdsBySlug = await createSeedOrganizations(runtime.db, usersByEmail)
+  const assetGroupIdsByLabel = await createSeedAssetGroups(runtime.db)
 
-  await createSeedAssetGroups(runtime.db)
+  await createSeedCommunityRoles({
+    assetGroupIdsByLabel,
+    db: runtime.db,
+    organizationIdsBySlug,
+  })
 
   return {
     organizationCount: devSeed.organizations.length,

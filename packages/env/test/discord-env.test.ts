@@ -1,11 +1,13 @@
 import { describe, expect, test } from 'bun:test'
 
 const DISCORD_ENV_KEYS = [
+  'BETTER_AUTH_URL',
   'DISCORD_BOT_START',
   'DISCORD_BOT_TOKEN',
   'DISCORD_CLIENT_ID',
   'DISCORD_GUILD_ID',
   'NODE_ENV',
+  'WEB_URL',
 ] as const
 
 function withDiscordEnv(overrides: Partial<Record<(typeof DISCORD_ENV_KEYS)[number], string | undefined>> = {}) {
@@ -16,6 +18,7 @@ function withDiscordEnv(overrides: Partial<Record<(typeof DISCORD_ENV_KEYS)[numb
   }
 
   Object.assign(process.env, {
+    BETTER_AUTH_URL: 'http://127.0.0.1:3000',
     NODE_ENV: 'development',
   })
 
@@ -49,6 +52,7 @@ describe('discord env', () => {
       DISCORD_BOT_TOKEN: undefined,
       DISCORD_CLIENT_ID: undefined,
       DISCORD_GUILD_ID: undefined,
+      WEB_URL: undefined,
     })
 
     try {
@@ -58,6 +62,7 @@ describe('discord env', () => {
       expect(env.DISCORD_BOT_TOKEN).toBeUndefined()
       expect(env.DISCORD_CLIENT_ID).toBeUndefined()
       expect(env.DISCORD_GUILD_ID).toBeUndefined()
+      expect(env.WEB_URL).toBeUndefined()
     } finally {
       restoreEnv()
     }
@@ -72,6 +77,22 @@ describe('discord env', () => {
       const { env } = await import(`../src/discord.ts?test=${Date.now()}-false`)
 
       expect(env.DISCORD_BOT_START).toBe(false)
+    } finally {
+      restoreEnv()
+    }
+  })
+
+  test('parses BETTER_AUTH_URL and optional WEB_URL', async () => {
+    const restoreEnv = withDiscordEnv({
+      BETTER_AUTH_URL: 'https://auth.example.com',
+      WEB_URL: 'https://app.example.com',
+    })
+
+    try {
+      const { env } = await import(`../src/discord.ts?test=${Date.now()}-urls`)
+
+      expect(env.BETTER_AUTH_URL).toBe('https://auth.example.com')
+      expect(env.WEB_URL).toBe('https://app.example.com')
     } finally {
       restoreEnv()
     }

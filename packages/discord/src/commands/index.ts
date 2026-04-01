@@ -1,6 +1,7 @@
 import type { ChatInputCommandInteraction } from 'discord.js'
 
 import { helloCommand } from './hello'
+import { whoamiCommand } from './whoami'
 
 export interface DiscordChatInputCommand {
   data: {
@@ -10,7 +11,7 @@ export interface DiscordChatInputCommand {
   execute(interaction: ChatInputCommandInteraction): Promise<void>
 }
 
-export const discordChatInputCommands: DiscordChatInputCommand[] = [helloCommand].sort((a, b) =>
+export const discordChatInputCommands: DiscordChatInputCommand[] = [helloCommand, whoamiCommand].sort((a, b) =>
   a.data.name.localeCompare(b.data.name),
 )
 

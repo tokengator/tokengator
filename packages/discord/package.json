@@ -10,9 +10,11 @@
     }
   },
   "scripts": {
-    "check-types": "tsc -b"
+    "check-types": "tsc -b",
+    "test": "bun test ./test"
   },
   "dependencies": {
+    "@tokengator/db": "workspace:*",
     "@tokengator/env": "workspace:*",
     "discord.js": "catalog:"
   },

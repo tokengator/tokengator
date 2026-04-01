@@ -150,6 +150,7 @@
     "packages/discord": {
       "name": "@tokengator/discord",
       "dependencies": {
+        "@tokengator/db": "workspace:*",
         "@tokengator/env": "workspace:*",
         "discord.js": "catalog:",
       },

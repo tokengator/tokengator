@@ -16,6 +16,10 @@ export function getDiscordClientId(clientId?: string) {
   return clientId ?? getRequiredEnvValue('DISCORD_CLIENT_ID', env.DISCORD_CLIENT_ID)
 }
 
+export function getDiscordPlatformUrl() {
+  return env.WEB_URL ?? env.BETTER_AUTH_URL
+}
+
 export function getDiscordGuildId(guildId?: string) {
   return guildId ?? getRequiredEnvValue('DISCORD_GUILD_ID', env.DISCORD_GUILD_ID)
 }

@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@toke
 import { Input } from '@tokengator/ui/components/input'
 
 import { SolanaWalletActionButton } from '@/components/solana-wallet-action-button'
+import { useSignInWallets } from '@/components/solana/use-sign-in-wallets'
 import { Route as RootRoute } from '@/routes/__root'
 import { orpc } from '@/utils/orpc'
 
@@ -157,8 +158,9 @@ export function ProfileUiSolanaCard({
   solanaWallets: ProfileSolanaWallet[]
 }) {
   const { appConfig } = RootRoute.useRouteContext()
-  const { account, disconnect, wallet, wallets } = useWalletUi()
-  const sortedWallets = [...wallets].sort((left, right) => left.name.localeCompare(right.name))
+  const { account, disconnect, wallet } = useWalletUi()
+  const sortedWallets = useSignInWallets()
+
   const connectedWalletAddress = account?.address ?? null
   const connectedLinkedWallet = connectedWalletAddress
     ? (solanaWallets.find((entry) => entry.address === connectedWalletAddress) ?? null)

@@ -1,13 +1,12 @@
-import { useWalletUi } from '@wallet-ui/react'
 import { Button } from '@tokengator/ui/components/button'
 
 import { SolanaWalletActionButton } from '@/components/solana-wallet-action-button'
+import { useSignInWallets } from '@/components/solana/use-sign-in-wallets'
 import { Route as RootRoute } from '@/routes/__root'
 
 export function SolanaAuthActions({ action, onSuccess }: { action: 'link' | 'verify'; onSuccess?: () => void }) {
   const { appConfig } = RootRoute.useRouteContext()
-  const { wallets } = useWalletUi()
-  const sortedWallets = [...wallets].sort((left, right) => left.name.localeCompare(right.name))
+  const sortedWallets = useSignInWallets()
 
   if (action === 'verify' && !appConfig.solanaSignInEnabled) {
     return null

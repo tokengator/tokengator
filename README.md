@@ -1,33 +1,33 @@
 # tokengator
 
-A Bun platform template with TanStack Start, Hono, oRPC, Better Auth, Drizzle, SQLite/Turso, and shared UI packages.
+TokenGator lets Discord communities gate access by validating onchain asset ownership.
 
-## Create a New Project
-
-```bash
-bun x create-seed@latest my-project -t tokengator
-```
+Under the hood it uses TanStack Start, Hono, oRPC, Better Auth, Drizzle, SQLite/Turso, and shared packages for auth, indexing, and UI.
 
 ## Features
 
-- **TypeScript** - For type safety and improved developer experience
-- **TanStack Start** - SSR framework with TanStack Router
-- **TailwindCSS** - Utility-first CSS for rapid UI development
-- **Shared UI package** - shadcn/ui primitives live in `packages/ui`
+- **Authentication** - Better Auth with Discord and Solana sign-in/linking
+- **Bun** - Runtime environment
+- **Discord bot integration** - API-hosted Discord bot helpers and command registration
+- **Drizzle** - TypeScript-first ORM
 - **Hono** - Lightweight, performant server framework
 - **oRPC** - End-to-end type-safe APIs with OpenAPI integration
-- **Bun** - Runtime environment
-- **Drizzle** - TypeScript-first ORM
-- **SQLite/Turso** - Database engine
-- **Authentication** - Better-Auth
 - **Oxlint** - Oxlint + Oxfmt (linting & formatting)
+- **Shared UI package** - shadcn/ui primitives live in `packages/ui`
+- **Solana asset indexing** - Helius-backed ownership indexing and asset group sync
+- **SQLite/Turso** - Database engine
+- **TailwindCSS** - Utility-first CSS for rapid UI development
+- **TanStack Start** - SSR framework with TanStack Router
 - **Turborepo** - Optimized monorepo build system
+- **TypeScript** - For type safety and improved developer experience
 
 ## Getting Started
 
-After scaffolding with `create-seed` or cloning the project directly, install the dependencies:
+Clone the repository and install the dependencies:
 
 ```bash
+git clone https://github.com/tokengator/tokengator.git tokengator
+cd tokengator
 bun install
 ```
 
@@ -49,6 +49,8 @@ bun run db:local
 
 2. Update your `.env` file in the `apps/api` directory with the appropriate connection details if needed.
 
+For the full local TokenGator flow, fill in the Discord and Helius values in addition to the local database defaults.
+
 3. Apply the schema to your database:
 
 ```bash
@@ -61,14 +63,13 @@ bun run db:push
 bun run db:seed
 ```
 
-This seeds the local users, Solana wallet fixtures, and development
-organizations. The command prints the seeded wallet usernames when it
-completes.
+This seeds local users, Solana sign-in fixtures, and development organizations. The command prints the seeded usernames and organization summaries when it completes.
 
-Then, run the development apps:
+Then, start the development apps in separate terminals:
 
 ```bash
-bun run dev
+bun run dev:api
+bun run dev:web
 ```
 
 Open [http://localhost:3001](http://localhost:3001) in your browser to see the web application.
@@ -76,7 +77,8 @@ The API is running at [http://localhost:3000](http://localhost:3000).
 
 ## `dev:local`
 
-For the full local stack, you can also run:
+Use the split `dev:api` and `dev:web` flow above for regular development.
+To quickly start the full local stack and verify the setup is coherent, run:
 
 ```bash
 bun run dev:local
@@ -84,7 +86,7 @@ bun run dev:local
 
 This starts the local database, waits for it to be ready, runs `db:push`, runs `db:seed`, and then opens the database, API, and web processes in a `tmux` session.
 
-This helps when you are iterating on the repo locally and want one command instead of manually coordinating multiple terminals and startup order.
+This helps when you want a quick end-to-end local setup check without manually coordinating multiple terminals and startup order.
 
 Useful `tmux` shortcuts with the default setup:
 
@@ -97,11 +99,11 @@ Useful `tmux` shortcuts with the default setup:
 
 ## UI Customization
 
-React web apps in this stack share shadcn/ui primitives through `packages/ui`.
+React web apps in this project share shadcn/ui primitives through `packages/ui`.
 
+- Adjust shadcn aliases or style config in `packages/ui/components.json` and `apps/web/components.json`
 - Change design tokens and global styles in `packages/ui/src/styles/globals.css`
 - Update shared primitives in `packages/ui/src/components/*`
-- Adjust shadcn aliases or style config in `packages/ui/components.json` and `apps/web/components.json`
 
 ### Add more shared components
 
@@ -127,31 +129,42 @@ If you want to add app-specific blocks instead of shared primitives, run the sha
 
 ## Project Structure
 
-```
+```text
 tokengator/
 ├── apps/
-│   ├── web/         # Frontend application (React + TanStack Start)
-│   └── api/         # Backend API (Hono, ORPC)
-├── packages/
-│   ├── ui/          # Shared shadcn/ui components and styles
-│   ├── api/         # API layer / business logic
-│   ├── auth/        # Authentication configuration & logic
-│   └── db/          # Database schema & queries
+│   ├── api/         # Backend API (Hono, oRPC, Discord bot host)
+│   └── web/         # Frontend application (React + TanStack Start)
+└── packages/
+    ├── api/         # Shared API layer, routers, and server composition
+    ├── auth/        # Authentication configuration for Discord and Solana sign-in
+    ├── config/      # Shared TypeScript and tooling configuration
+    ├── db/          # Database schema, queries, and seed scripts
+    ├── discord/     # Discord bot runtime and command helpers
+    ├── env/         # Typed environment variable definitions
+    ├── indexer/     # Solana ownership indexing utilities and Helius integration
+    ├── sdk/         # Shared client SDK for calling the API
+    └── ui/          # Shared shadcn/ui components and styles
 ```
 
 ## Available Scripts
 
 - `bun run build`: Build all applications
 - `bun run check-types`: Check TypeScript types across all apps
+- `bun run ci`: Run the full CI task set locally
 - `bun run db:generate`: Generate database client/types
 - `bun run db:local`: Start the local SQLite database
 - `bun run db:migrate`: Run database migrations
 - `bun run db:push`: Push schema changes to database
+- `bun run db:reset`: Remove the local SQLite database files
 - `bun run db:seed`: Seed the local development dataset
 - `bun run db:studio`: Open database studio UI
+- `bun run dev`: Start all applications in development mode
 - `bun run dev:api`: Start only the API
 - `bun run dev:local`: Start the local database, apply schema/seed, and open API/web in `tmux`
 - `bun run dev:web`: Start only the web application
-- `bun run dev`: Start all applications in development mode
 - `bun run lint`: Run Oxlint and Oxfmt in check mode
 - `bun run lint:fix`: Run Oxlint and Oxfmt with auto-fixing
+- `bun run setup`: Create local env files and generate placeholder secrets
+- `bun run test`: Run the workspace test suite
+- `bun run test:e2e`: Run the workspace end-to-end tests
+- `bun run test:integration`: Run the workspace integration tests

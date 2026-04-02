@@ -26,6 +26,7 @@
     "@orpc/zod": "catalog:",
     "@tokengator/auth": "workspace:*",
     "@tokengator/db": "workspace:*",
+    "@tokengator/discord": "workspace:*",
     "@tokengator/env": "workspace:*",
     "@tokengator/indexer": "workspace:*",
     "dotenv": "catalog:",

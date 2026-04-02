@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import { PermissionFlagsBits } from 'discord.js'
 
 import type { DiscordEnv } from '@tokengator/env/discord'
 
@@ -18,7 +19,7 @@ const baseEnv = {
 describe('Discord env helpers', () => {
   test('createDiscordBotInviteUrl uses injected env values by default', () => {
     expect(createDiscordBotInviteUrl({ env: baseEnv })).toBe(
-      'https://discord.com/oauth2/authorize?client_id=client-id&disable_guild_select=true&guild_id=guild-id&permissions=0&scope=applications.commands+bot',
+      `https://discord.com/oauth2/authorize?client_id=client-id&disable_guild_select=true&guild_id=guild-id&permissions=${PermissionFlagsBits.ManageRoles.toString()}&scope=applications.commands+bot`,
     )
   })
 
@@ -32,7 +33,7 @@ describe('Discord env helpers', () => {
         },
       ),
     ).toBe(
-      'https://discord.com/oauth2/authorize?client_id=override-client-id&disable_guild_select=true&guild_id=override-guild-id&permissions=0&scope=applications.commands+bot',
+      `https://discord.com/oauth2/authorize?client_id=override-client-id&disable_guild_select=true&guild_id=override-guild-id&permissions=${PermissionFlagsBits.ManageRoles.toString()}&scope=applications.commands+bot`,
     )
   })
 

@@ -1,4 +1,4 @@
-import { OAuth2Scopes } from 'discord.js'
+import { OAuth2Scopes, PermissionFlagsBits } from 'discord.js'
 
 import type { DiscordContext } from './discord-context'
 import { getDiscordClientId, getOptionalDiscordGuildId } from './discord-env'
@@ -23,7 +23,7 @@ export function createDiscordBotInviteUrl(
     query.set('guild_id', guildId)
   }
 
-  query.set('permissions', '0')
+  query.set('permissions', PermissionFlagsBits.ManageRoles.toString())
   query.set('scope', [OAuth2Scopes.ApplicationsCommands, OAuth2Scopes.Bot].join(' '))
 
   return `https://discord.com/oauth2/authorize?${query.toString()}`

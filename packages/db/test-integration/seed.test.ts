@@ -39,6 +39,7 @@ function createSeedEnv(databaseAuthToken: string, databaseUrl: string, envOverri
     DISCORD_BOT_TOKEN: 'discord-bot-token',
     DISCORD_CLIENT_ID: 'discord-client-id',
     DISCORD_CLIENT_SECRET: 'discord-client-secret',
+    DISCORD_GUILD_ID: '',
     HELIUS_API_KEY: 'helius-api-key',
     HELIUS_CLUSTER: 'devnet',
     NODE_ENV: 'test',
@@ -122,6 +123,29 @@ async function getTableCount(databaseUrl: string, tableName: string, databaseAut
   return Number(result.rows[0]?.count ?? 0)
 }
 
+async function getSeededCommunityDiscordConnections(databaseUrl: string, databaseAuthToken = 'test-token') {
+  const { createClient } = await import('@libsql/client')
+  const client = createClient({
+    authToken: databaseAuthToken,
+    url: databaseUrl,
+  })
+  const result = await client.execute(`
+    select
+      community_discord_connection.guild_id as guildId,
+      organization.slug as organizationSlug,
+      community_discord_connection.status as status
+    from community_discord_connection
+    inner join organization on organization.id = community_discord_connection.organization_id
+    order by organization.slug
+  `)
+
+  return result.rows.map((row) => ({
+    guildId: String(row.guildId),
+    organizationSlug: String(row.organizationSlug),
+    status: String(row.status),
+  }))
+}
+
 beforeAll(() => {
   tempDir = mkdtempSync(resolve(tmpdir(), 'tokengator-db-seed-'))
 
@@ -135,6 +159,7 @@ beforeAll(() => {
   process.env.DISCORD_BOT_TOKEN = 'discord-bot-token'
   process.env.DISCORD_CLIENT_ID = 'discord-client-id'
   process.env.DISCORD_CLIENT_SECRET = 'discord-client-secret'
+  process.env.DISCORD_GUILD_ID = ''
   process.env.HELIUS_API_KEY = 'helius-api-key'
   process.env.HELIUS_CLUSTER = 'devnet'
   process.env.NODE_ENV = 'test'
@@ -429,6 +454,7 @@ describe('seedDatabase', () => {
     expect(output).toContain('Solana sign-in fixtures: @alice, @bob')
     expect(await getTableCount(databaseUrl, 'account')).toBe(2)
     expect(await getTableCount(databaseUrl, 'asset_group')).toBe(2)
+    expect(await getTableCount(databaseUrl, 'community_discord_connection')).toBe(0)
     expect(await getTableCount(databaseUrl, 'community_role')).toBe(
       devSeed.organizations.length * devSeed.communityRoles.length,
     )
@@ -441,6 +467,26 @@ describe('seedDatabase', () => {
     expect(await getTableCount(databaseUrl, 'team')).toBe(devSeed.organizations.length * devSeed.communityRoles.length)
     expect(await getTableCount(databaseUrl, 'user')).toBe(3)
     expect(await getTableCount(databaseUrl, 'verification')).toBe(1)
+  })
+
+  test('seeds the env Discord guild for the Acme organization when DISCORD_GUILD_ID is set', async () => {
+    const databaseUrl = createDatabaseUrl('seed-with-discord-guild.sqlite')
+
+    syncDatabase(databaseUrl)
+
+    const result = runSeedScript('test-token', databaseUrl, {
+      DISCORD_GUILD_ID: '123456789012345678',
+    })
+
+    expect(result.exitCode).toBe(0)
+    expect(await getTableCount(databaseUrl, 'community_discord_connection')).toBe(1)
+    expect(await getSeededCommunityDiscordConnections(databaseUrl)).toEqual([
+      {
+        guildId: '123456789012345678',
+        organizationSlug: PRIMARY_ORGANIZATION_SLUG,
+        status: 'needs_attention',
+      },
+    ])
   })
 
   test('rejects non-local database urls before loading the runtime', async () => {

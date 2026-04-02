@@ -96,6 +96,36 @@ export const communityManagedMember = sqliteTable(
   ],
 )
 
+export const communityDiscordConnection = sqliteTable(
+  'community_discord_connection',
+  {
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    diagnostics: text('diagnostics'),
+    guildId: text('guild_id').notNull(),
+    guildName: text('guild_name'),
+    lastCheckedAt: integer('last_checked_at', { mode: 'timestamp_ms' }),
+    organizationId: text('organization_id')
+      .notNull()
+      .primaryKey()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    status: text('status', { enum: ['connected', 'needs_attention'] }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [uniqueIndex('community_discord_connection_guildId_idx').on(table.guildId)],
+)
+
+export const communityDiscordConnectionRelations = relations(communityDiscordConnection, ({ one }) => ({
+  organization: one(organization, {
+    fields: [communityDiscordConnection.organizationId],
+    references: [organization.id],
+  }),
+}))
+
 export const communityManagedMemberRelations = relations(communityManagedMember, ({ one }) => ({
   organization: one(organization, {
     fields: [communityManagedMember.organizationId],

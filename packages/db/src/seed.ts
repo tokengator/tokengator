@@ -350,6 +350,26 @@ async function createSeedOrganizations(db: RuntimeModules['db'], usersByEmail: M
   return organizationIdsBySlug
 }
 
+async function createSeedCommunityDiscordConnections(
+  db: RuntimeModules['db'],
+  organizationIdsBySlug: Record<string, string>,
+) {
+  const guildId = process.env.DISCORD_GUILD_ID?.trim()
+
+  if (!guildId) {
+    return
+  }
+
+  await db.insert(communityRoleSchema.communityDiscordConnection).values({
+    diagnostics: null,
+    guildId,
+    guildName: null,
+    lastCheckedAt: null,
+    organizationId: getRequiredOrganizationId(organizationIdsBySlug, DEV_PRIMARY_ORGANIZATION_SLUG),
+    status: 'needs_attention',
+  })
+}
+
 function createSeedSolanaWalletValues(seedUsers: readonly SeedUser[], usersByEmail: Map<string, SeededUserRecord>) {
   return seedUsers
     .filter(hasSolanaFixture)
@@ -539,6 +559,7 @@ export async function seedDatabase(): Promise<SeedResult> {
 
   const usersByEmail = await createSeedUsers(runtime.db)
   const organizationIdsBySlug = await createSeedOrganizations(runtime.db, usersByEmail)
+  await createSeedCommunityDiscordConnections(runtime.db, organizationIdsBySlug)
   const assetGroupIdsByLabel = await createSeedAssetGroups(runtime.db)
 
   await createSeedCommunityRoles({

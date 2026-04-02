@@ -8,6 +8,13 @@ import { communityManagedMember } from '@tokengator/db/schema/community-role'
 
 import { adminProcedure } from '../index'
 import {
+  deleteCommunityDiscordConnectionByOrganizationId,
+  DISCORD_GUILD_ID_PATTERN,
+  getCommunityDiscordConnectionByOrganizationId,
+  refreshCommunityDiscordConnection,
+  upsertCommunityDiscordConnection,
+} from '../lib/admin-community-discord-connection'
+import {
   listCommunityManagedMemberUserIds,
   listCommunityRoleAssignmentsForUsers,
 } from '../lib/admin-community-role-sync'
@@ -169,7 +176,10 @@ async function getOrganizationDetail(organizationId: string) {
     return null
   }
 
-  const members = await decorateOrganizationMembers(await getOrganizationMembers(organizationId), organizationId)
+  const [discordConnection, members] = await Promise.all([
+    getCommunityDiscordConnectionByOrganizationId(organizationId),
+    decorateOrganizationMembers(await getOrganizationMembers(organizationId), organizationId),
+  ])
   const owners = members
     .filter((entry) => includesOwner(entry.role))
     .map((entry) => ({
@@ -180,6 +190,7 @@ async function getOrganizationDetail(organizationId: string) {
 
   return {
     createdAt: organizationRecord.createdAt,
+    discordConnection,
     id: organizationRecord.id,
     logo: organizationRecord.logo,
     memberCount: members.length,
@@ -335,6 +346,28 @@ export const adminOrganizationRouter = {
       }
     }),
 
+  deleteDiscordConnection: adminProcedure
+    .input(
+      z.object({
+        organizationId: z.string().min(1),
+      }),
+    )
+    .handler(async ({ input }) => {
+      const existingOrganization = await getOrganizationRecordById(input.organizationId)
+
+      if (!existingOrganization) {
+        throw new ORPCError('NOT_FOUND', {
+          message: 'Organization not found.',
+        })
+      }
+
+      await deleteCommunityDiscordConnectionByOrganizationId(input.organizationId)
+
+      return {
+        organizationId: input.organizationId,
+      }
+    }),
+
   get: adminProcedure
     .input(
       z.object({
@@ -469,6 +502,32 @@ export const adminOrganizationRouter = {
 
     return await query.orderBy(asc(user.name), asc(user.username), asc(user.id)).limit(limit)
   }),
+
+  refreshDiscordConnection: adminProcedure
+    .input(
+      z.object({
+        organizationId: z.string().min(1),
+      }),
+    )
+    .handler(async ({ input }) => {
+      const existingOrganization = await getOrganizationRecordById(input.organizationId)
+
+      if (!existingOrganization) {
+        throw new ORPCError('NOT_FOUND', {
+          message: 'Organization not found.',
+        })
+      }
+
+      const connection = await refreshCommunityDiscordConnection(input.organizationId)
+
+      if (!connection) {
+        throw new ORPCError('NOT_FOUND', {
+          message: 'Discord connection not found.',
+        })
+      }
+
+      return connection
+    }),
 
   removeMember: adminProcedure
     .input(
@@ -687,5 +746,27 @@ export const adminOrganizationRouter = {
         organizationId: existingMember.organizationId,
         role: input.role,
       }
+    }),
+
+  upsertDiscordConnection: adminProcedure
+    .input(
+      z.object({
+        guildId: z.string().trim().regex(DISCORD_GUILD_ID_PATTERN, 'Guild ID must be a numeric Discord snowflake.'),
+        organizationId: z.string().min(1),
+      }),
+    )
+    .handler(async ({ input }) => {
+      const existingOrganization = await getOrganizationRecordById(input.organizationId)
+
+      if (!existingOrganization) {
+        throw new ORPCError('NOT_FOUND', {
+          message: 'Organization not found.',
+        })
+      }
+
+      return await upsertCommunityDiscordConnection({
+        guildId: input.guildId,
+        organizationId: input.organizationId,
+      })
     }),
 }

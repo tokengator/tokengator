@@ -6,6 +6,9 @@ dotenv.config({
   quiet: true,
 })
 
-const { createDiscordBotInviteUrl } = await import('@tokengator/discord')
+const [{ createDiscordBotInviteUrl }, { env: discordEnv }] = await Promise.all([
+  import('@tokengator/discord'),
+  import('@tokengator/env/discord'),
+])
 
-console.info(createDiscordBotInviteUrl())
+console.info(createDiscordBotInviteUrl({ env: discordEnv }))

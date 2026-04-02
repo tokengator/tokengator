@@ -8,6 +8,7 @@ import {
   type InteractionReplyOptions,
 } from 'discord.js'
 
+import type { DiscordContext } from '../discord-context'
 import { getDiscordPlatformUrl } from '../discord-env'
 
 type WhoamiIdentity = {
@@ -218,9 +219,8 @@ export function createUnknownWhoamiReply(args: { registerUrl: string }): Interac
   }
 }
 
-async function getWhoamiProfile(discordUserId: string): Promise<WhoamiProfile | null> {
-  const { db } = await import('@tokengator/db')
-  const discordAccount = await db.query.account.findFirst({
+async function getWhoamiProfile(ctx: Pick<DiscordContext, 'db'>, discordUserId: string): Promise<WhoamiProfile | null> {
+  const discordAccount = await ctx.db.query.account.findFirst({
     columns: {
       userId: true,
     },
@@ -242,7 +242,7 @@ async function getWhoamiProfile(discordUserId: string): Promise<WhoamiProfile | 
   }
 
   const [identities, solanaWallets] = await Promise.all([
-    db.query.account.findMany({
+    ctx.db.query.account.findMany({
       columns: {
         accountId: true,
         providerId: true,
@@ -251,7 +251,7 @@ async function getWhoamiProfile(discordUserId: string): Promise<WhoamiProfile | 
       where: (account, { and, eq, ne }) =>
         and(eq(account.userId, discordAccount.userId), ne(account.providerId, 'credential')),
     }),
-    db.query.solanaWallet.findMany({
+    ctx.db.query.solanaWallet.findMany({
       columns: {
         address: true,
         isPrimary: true,
@@ -273,8 +273,8 @@ async function getWhoamiProfile(discordUserId: string): Promise<WhoamiProfile | 
   }
 }
 
-function getWhoamiUrls() {
-  const baseUrl = getDiscordPlatformUrl()
+function getWhoamiUrls(ctx: Pick<DiscordContext, 'env'>) {
+  const baseUrl = getDiscordPlatformUrl(ctx)
 
   return {
     manageProfileUrl: new URL('/profile', baseUrl).toString(),
@@ -287,13 +287,13 @@ export const whoamiCommand = {
     description: 'Show your TokenGator account details.',
     name: 'whoami',
   },
-  async execute(interaction: ChatInputCommandInteraction) {
+  async execute(ctx: DiscordContext, interaction: ChatInputCommandInteraction) {
     await interaction.deferReply({
       flags: MessageFlags.Ephemeral,
     })
 
-    const profilePromise = getWhoamiProfile(interaction.user.id)
-    const urls = getWhoamiUrls()
+    const profilePromise = getWhoamiProfile(ctx, interaction.user.id)
+    const urls = getWhoamiUrls(ctx)
     const profile = await profilePromise
     const reply = profile
       ? createKnownWhoamiReply({

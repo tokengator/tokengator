@@ -1,5 +1,6 @@
 import type { ChatInputCommandInteraction } from 'discord.js'
 
+import type { DiscordContext } from '../discord-context'
 import { helloCommand } from './hello'
 import { whoamiCommand } from './whoami'
 
@@ -8,7 +9,7 @@ export interface DiscordChatInputCommand {
     description: string
     name: string
   }
-  execute(interaction: ChatInputCommandInteraction): Promise<void>
+  execute(ctx: DiscordContext, interaction: ChatInputCommandInteraction): Promise<void>
 }
 
 export const discordChatInputCommands: DiscordChatInputCommand[] = [helloCommand, whoamiCommand].sort((a, b) =>

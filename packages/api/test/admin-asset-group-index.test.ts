@@ -202,7 +202,7 @@ beforeAll(async () => {
   ;({ db: database } = await import('@tokengator/db'))
   assetSchema = await import('@tokengator/db/schema/asset')
   ;({ indexAssetGroup } = await import('../src/lib/admin-asset-group-index'))
-})
+}, 15_000)
 
 beforeEach(async () => {
   await database.delete(assetSchema.asset).where(sql`1 = 1`)

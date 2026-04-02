@@ -23,3 +23,5 @@ export const env = createEnv({
     WEB_URL: z.url().optional(),
   },
 })
+
+export type DiscordEnv = typeof env

@@ -1,5 +1,6 @@
 import { OAuth2Scopes } from 'discord.js'
 
+import type { DiscordContext } from './discord-context'
 import { getDiscordClientId, getOptionalDiscordGuildId } from './discord-env'
 
 export interface CreateDiscordBotInviteUrlOptions {
@@ -7,9 +8,12 @@ export interface CreateDiscordBotInviteUrlOptions {
   guildId?: string
 }
 
-export function createDiscordBotInviteUrl(options: CreateDiscordBotInviteUrlOptions = {}) {
-  const clientId = getDiscordClientId(options.clientId)
-  const guildId = getOptionalDiscordGuildId(options.guildId)
+export function createDiscordBotInviteUrl(
+  ctx: Pick<DiscordContext, 'env'>,
+  options: CreateDiscordBotInviteUrlOptions = {},
+) {
+  const clientId = getDiscordClientId(ctx, options.clientId)
+  const guildId = getOptionalDiscordGuildId(ctx, options.guildId)
   const query = new URLSearchParams()
 
   query.set('client_id', clientId)

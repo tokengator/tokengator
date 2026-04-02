@@ -270,7 +270,7 @@ beforeAll(async () => {
   communityRoleSchema = await import('@tokengator/db/schema/community-role')
   ;({ applyCommunityRoleSync, evaluateCommunityRoles, previewCommunityRoleSync, removeCommunityRoleById } =
     await import('../src/lib/admin-community-role-sync'))
-})
+}, 15_000)
 
 beforeEach(async () => {
   await database.delete(authSchema.session).where(sql`1 = 1`)

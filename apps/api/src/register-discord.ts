@@ -6,6 +6,9 @@ dotenv.config({
   quiet: true,
 })
 
-const { registerDiscordCommands } = await import('@tokengator/discord')
+const [{ registerDiscordCommands }, { env: discordEnv }] = await Promise.all([
+  import('@tokengator/discord'),
+  import('@tokengator/env/discord'),
+])
 
-await registerDiscordCommands()
+await registerDiscordCommands({ env: discordEnv })

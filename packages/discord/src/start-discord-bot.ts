@@ -1,6 +1,7 @@
 import { Client, Events, GatewayIntentBits } from 'discord.js'
 import { once } from 'node:events'
 
+import type { DiscordContext } from './discord-context'
 import { discordChatInputCommandMap } from './commands'
 import { getDiscordBotToken } from './discord-env'
 
@@ -12,8 +13,11 @@ export interface StartDiscordBotOptions {
   token?: string
 }
 
-export async function startDiscordBot(options: StartDiscordBotOptions = {}): Promise<DiscordBotRuntime> {
-  const token = getDiscordBotToken(options.token)
+export async function startDiscordBot(
+  ctx: DiscordContext,
+  options: StartDiscordBotOptions = {},
+): Promise<DiscordBotRuntime> {
+  const token = getDiscordBotToken(ctx, options.token)
   const client = new Client({
     intents: [GatewayIntentBits.Guilds],
   })
@@ -39,7 +43,7 @@ export async function startDiscordBot(options: StartDiscordBotOptions = {}): Pro
     }
 
     try {
-      await command.execute(interaction)
+      await command.execute(ctx, interaction)
     } catch (error) {
       console.error(`[discord] Failed to execute /${interaction.commandName}.`, error)
 

@@ -1,5 +1,7 @@
 import { createApiApp } from '@tokengator/api/app'
+import { db } from '@tokengator/db'
 import { shouldStartDiscord, startDiscordBot } from '@tokengator/discord'
+import { env as discordEnv } from '@tokengator/env/discord'
 
 type DiscordBotRuntime = Awaited<ReturnType<typeof startDiscordBot>>
 
@@ -15,14 +17,14 @@ app.get('/', (c) => {
 })
 
 function createDiscordBotRuntimePromise() {
-  return startDiscordBot().catch((error) => {
+  return startDiscordBot({ db, env: discordEnv }).catch((error) => {
     globalThis.__tokengatorDiscordBotRuntime = undefined
 
     throw error
   })
 }
 
-if (shouldStartDiscord()) {
+if (shouldStartDiscord({ env: discordEnv })) {
   globalThis.__tokengatorDiscordBotRuntime ??= createDiscordBotRuntimePromise()
 
   await globalThis.__tokengatorDiscordBotRuntime

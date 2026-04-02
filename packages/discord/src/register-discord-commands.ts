@@ -1,5 +1,6 @@
 import { REST, Routes } from 'discord.js'
 
+import type { DiscordContext } from './discord-context'
 import { discordChatInputCommands } from './commands'
 import { getDiscordBotToken, getDiscordClientId, getDiscordGuildId } from './discord-env'
 
@@ -9,10 +10,13 @@ export interface RegisterDiscordCommandsOptions {
   token?: string
 }
 
-export async function registerDiscordCommands(options: RegisterDiscordCommandsOptions = {}) {
-  const clientId = getDiscordClientId(options.clientId)
-  const guildId = getDiscordGuildId(options.guildId)
-  const token = getDiscordBotToken(options.token)
+export async function registerDiscordCommands(
+  ctx: Pick<DiscordContext, 'env'>,
+  options: RegisterDiscordCommandsOptions = {},
+) {
+  const clientId = getDiscordClientId(ctx, options.clientId)
+  const guildId = getDiscordGuildId(ctx, options.guildId)
+  const token = getDiscordBotToken(ctx, options.token)
   const rest = new REST({ version: '10' }).setToken(token)
 
   try {

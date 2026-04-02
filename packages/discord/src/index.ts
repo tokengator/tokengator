@@ -1,4 +1,5 @@
 export * from './create-discord-bot-invite-url'
+export * from './ensure-discord-role'
 export * from './inspect-discord-guild-connection'
 export * from './register-discord-commands'
 export { shouldStartDiscord } from './discord-env'

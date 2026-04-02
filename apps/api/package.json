@@ -8,6 +8,7 @@
     "compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile api",
     "dev": "bun run --hot src/index.ts",
     "discord:invite": "bun run src/print-discord-invite-link.ts",
+    "discord:provision-roles": "bun run src/provision-discord-roles.ts",
     "discord:register": "bun run src/register-discord.ts",
     "start": "bun run dist/index.mjs"
   },

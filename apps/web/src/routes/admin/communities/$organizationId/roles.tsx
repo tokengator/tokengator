@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { Loader2, PencilLine, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
@@ -52,6 +52,129 @@ type CommunityRoleSubmitValues = {
   matchMode: 'all' | 'any'
   name: string
   slug: string
+}
+
+type CommunityRoleRecord = Awaited<ReturnType<typeof orpc.adminCommunityRole.list.call>>['communityRoles'][number]
+type DiscordGuildRoleRecord = Awaited<
+  ReturnType<typeof orpc.adminCommunityRole.listDiscordGuildRoles.call>
+>['guildRoles'][number]
+type DiscordGuildRolesResult = Awaited<ReturnType<typeof orpc.adminCommunityRole.listDiscordGuildRoles.call>>
+
+const discordCheckLabels: Record<string, string> = {
+  bot_identity_lookup_failed: 'TokenGator could not identify the Discord bot account.',
+  bot_not_in_guild: 'The Discord bot is not a member of this server yet.',
+  bot_token_missing: 'The Discord bot token is not configured for the API environment.',
+  discord_connection_missing: 'Connect a Discord server for this community before mapping roles.',
+  discord_role_hierarchy_blocked: 'The bot role must be above this Discord role in the server hierarchy.',
+  discord_role_is_default: 'The @everyone role cannot be used for TokenGator role mapping.',
+  discord_role_managed: 'Managed or integration-owned Discord roles cannot be used for TokenGator role mapping.',
+  discord_role_not_found: 'The mapped Discord role no longer exists in the connected server.',
+  discord_validation_unavailable: 'Discord role validation is unavailable right now.',
+  guild_fetch_failed: 'TokenGator could not load the Discord server details.',
+  guild_not_found: 'The Discord server could not be found from the configured guild ID.',
+  guild_roles_fetch_failed: 'TokenGator could not load the Discord role list for this server.',
+  manage_roles_missing: 'The Discord bot is missing the Manage Roles permission.',
+}
+
+function formatDiscordCheck(
+  check: string,
+  options?: {
+    botHighestRolePosition?: number | null
+    guildRolePosition?: number | null
+  },
+) {
+  if (
+    check === 'discord_role_hierarchy_blocked' &&
+    options?.botHighestRolePosition !== null &&
+    options?.botHighestRolePosition !== undefined &&
+    options?.guildRolePosition !== null &&
+    options?.guildRolePosition !== undefined &&
+    options.botHighestRolePosition === options.guildRolePosition
+  ) {
+    return 'The bot role is on the same level as this Discord role. Move the bot role above it in the server hierarchy.'
+  }
+
+  return discordCheckLabels[check] ?? check.replaceAll('_', ' ')
+}
+
+function formatLastCheckedAt(value: Date | string | null) {
+  if (!value) {
+    return 'Never'
+  }
+
+  return new Date(value).toLocaleString()
+}
+
+function getDiscordMappingStatusClassName(status: 'needs_attention' | 'not_mapped' | 'ready') {
+  if (status === 'ready') {
+    return 'border border-emerald-600/30 bg-emerald-600/10 px-2 py-1 text-xs font-medium text-emerald-700'
+  }
+
+  if (status === 'needs_attention') {
+    return 'border border-amber-600/30 bg-amber-600/10 px-2 py-1 text-xs font-medium text-amber-700'
+  }
+
+  return 'border px-2 py-1 text-xs font-medium'
+}
+
+function normalizeDiscordRoleName(name: string) {
+  return name.replaceAll(/\s+/g, ' ').trim().toLowerCase()
+}
+
+function getDiscordMappingState(input: {
+  discordGuildRoles?: DiscordGuildRolesResult
+  discordGuildRolesError: boolean
+  role: CommunityRoleRecord
+}) {
+  if (!input.role.discordRoleId) {
+    return {
+      checks: [] as string[],
+      guildRole: null as DiscordGuildRoleRecord | null,
+      status: 'not_mapped' as const,
+    }
+  }
+
+  if (input.discordGuildRolesError) {
+    return {
+      checks: ['discord_validation_unavailable'],
+      guildRole: null,
+      status: 'needs_attention' as const,
+    }
+  }
+
+  if (!input.discordGuildRoles?.connection) {
+    return {
+      checks: ['discord_connection_missing'],
+      guildRole: null,
+      status: 'needs_attention' as const,
+    }
+  }
+
+  const guildRole = input.discordGuildRoles.guildRoles.find(
+    (currentGuildRole) => currentGuildRole.id === input.role.discordRoleId,
+  )
+
+  if (!guildRole) {
+    return {
+      checks: ['discord_role_not_found'],
+      guildRole: null,
+      status: 'needs_attention' as const,
+    }
+  }
+
+  const checks = [
+    ...new Set(
+      [...input.discordGuildRoles.connection.diagnostics.checks, ...guildRole.checks].sort((left, right) =>
+        left.localeCompare(right),
+      ),
+    ),
+  ]
+
+  return {
+    checks,
+    guildRole,
+    status: guildRole.assignable && checks.length === 0 ? ('ready' as const) : ('needs_attention' as const),
+  }
 }
 
 function isPositiveInteger(value: string) {
@@ -356,6 +479,7 @@ function RouteComponent() {
   const { organizationId } = Route.useParams()
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [deletePendingRole, setDeletePendingRole] = useState<{ id: string; name: string } | null>(null)
+  const [discordRoleDrafts, setDiscordRoleDrafts] = useState<Record<string, string>>({})
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null)
   const [syncResult, setSyncResult] = useState<Awaited<
     ReturnType<typeof orpc.adminCommunityRole.previewSync.call>
@@ -370,6 +494,13 @@ function RouteComponent() {
   )
   const communityRoles = useQuery(
     orpc.adminCommunityRole.list.queryOptions({
+      input: {
+        organizationId,
+      },
+    }),
+  )
+  const discordGuildRoles = useQuery(
+    orpc.adminCommunityRole.listDiscordGuildRoles.queryOptions({
       input: {
         organizationId,
       },
@@ -483,9 +614,71 @@ function RouteComponent() {
       },
     }),
   )
+  const setDiscordRoleMappingMutation = useMutation(
+    orpc.adminCommunityRole.setDiscordRoleMapping.mutationOptions({
+      onError: (error) => {
+        toast.error(error.message)
+      },
+      onSuccess: async (result, variables) => {
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: orpc.adminCommunityRole.list.key({
+              input: {
+                organizationId,
+              },
+            }),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: orpc.adminCommunityRole.listDiscordGuildRoles.key({
+              input: {
+                organizationId,
+              },
+            }),
+          }),
+        ])
+        setDiscordRoleDrafts((currentDrafts) => {
+          const nextDrafts = { ...currentDrafts }
+
+          if (variables.discordRoleId === null) {
+            nextDrafts[variables.communityRoleId] = ''
+          } else {
+            delete nextDrafts[variables.communityRoleId]
+          }
+
+          return nextDrafts
+        })
+        toast.success(
+          result.mapping.status === 'ready'
+            ? 'Discord role mapping saved.'
+            : variables.discordRoleId === null
+              ? 'Discord role mapping cleared.'
+              : 'Discord role mapping saved. Check diagnostics before syncing Discord roles.',
+        )
+      },
+    }),
+  )
   const assetGroupOptions = assetGroups.data?.assetGroups ?? []
+  const discordConnection = discordGuildRoles.data?.connection ?? null
+  const discordGuildRolesById = new Map(
+    (discordGuildRoles.data?.guildRoles ?? []).map((guildRole) => [guildRole.id, guildRole] as const),
+  )
+  const mappedCommunityRolesByDiscordRoleId = new Map(
+    (communityRoles.data?.communityRoles ?? [])
+      .filter((communityRole) => communityRole.discordRoleId)
+      .map((communityRole) => [communityRole.discordRoleId as string, communityRole] as const),
+  )
+  const canConfigureDiscordMappings =
+    !discordGuildRoles.isPending &&
+    !discordGuildRoles.error &&
+    Boolean(discordConnection) &&
+    (discordGuildRoles.data?.guildRoles.length ?? 0) > 0
   const editingRole =
     communityRoles.data?.communityRoles.find((communityRole) => communityRole.id === editingRoleId) ?? null
+  const discordConnectionChecks = discordConnection?.diagnostics.checks ?? []
+  const discordConnectionStatusClassName =
+    discordConnection?.status === 'connected'
+      ? 'border border-emerald-600/30 bg-emerald-600/10 px-2 py-1 text-xs font-medium text-emerald-700'
+      : 'border border-amber-600/30 bg-amber-600/10 px-2 py-1 text-xs font-medium text-amber-700'
 
   if (!organization.data) {
     return null
@@ -493,6 +686,88 @@ function RouteComponent() {
 
   return (
     <div className="flex flex-col gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Discord Role Mapping</CardTitle>
+          <CardDescription>
+            Map each TokenGator community role to one Discord role in this community’s connected server.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {discordGuildRoles.isPending ? (
+            <div className="text-muted-foreground flex items-center gap-2 text-sm">
+              <Loader2 className="size-4 animate-spin" />
+              Loading Discord role diagnostics...
+            </div>
+          ) : null}
+          {discordGuildRoles.error ? (
+            <div className="text-destructive text-sm">{discordGuildRoles.error.message}</div>
+          ) : null}
+          {!discordGuildRoles.isPending && !discordGuildRoles.error && !discordConnection ? (
+            <div className="grid gap-2 rounded-lg border p-3 text-sm">
+              <div className="font-medium">No Discord server connected</div>
+              <p className="text-muted-foreground">
+                Connect a Discord server in{' '}
+                <Link
+                  className="underline underline-offset-4"
+                  params={{ organizationId }}
+                  to="/admin/communities/$organizationId/settings"
+                >
+                  Settings
+                </Link>{' '}
+                before mapping community roles.
+              </p>
+            </div>
+          ) : null}
+          {discordConnection ? (
+            <>
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-lg border p-3 text-sm">
+                  <div className="text-muted-foreground">Discord Server</div>
+                  <div>{discordConnection.guildName ?? 'Unknown'}</div>
+                  <div className="text-muted-foreground">{discordConnection.guildId}</div>
+                </div>
+                <div className="rounded-lg border p-3 text-sm">
+                  <div className="text-muted-foreground">Status</div>
+                  <div className="mt-1">
+                    <span className={discordConnectionStatusClassName}>
+                      {discordConnection.status === 'connected' ? 'Connected' : 'Needs attention'}
+                    </span>
+                  </div>
+                  <div className="text-muted-foreground mt-2">
+                    Last checked: {formatLastCheckedAt(discordConnection.lastCheckedAt)}
+                  </div>
+                </div>
+                <div className="rounded-lg border p-3 text-sm">
+                  <div className="text-muted-foreground">Bot Role Readiness</div>
+                  <div>
+                    Manage Roles: {discordConnection.diagnostics.permissions.manageRoles ? 'Granted' : 'Missing'}
+                  </div>
+                  <div>
+                    Highest role:{' '}
+                    {discordConnection.diagnostics.botHighestRole
+                      ? `${discordConnection.diagnostics.botHighestRole.name ?? 'Unknown'} (#${discordConnection.diagnostics.botHighestRole.position})`
+                      : 'Unknown'}
+                  </div>
+                </div>
+              </div>
+              <div className="grid gap-2 rounded-lg border p-3">
+                <div className="text-sm font-medium">Diagnostics</div>
+                {discordConnectionChecks.length ? (
+                  <ol className="list-decimal space-y-1 pl-5 text-sm">
+                    {discordConnectionChecks.map((check) => (
+                      <li key={check}>{formatDiscordCheck(check)}</li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="text-muted-foreground text-sm">Ready. Discord roles can be listed for this server.</p>
+                )}
+              </div>
+            </>
+          ) : null}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Access Sync</CardTitle>
@@ -601,6 +876,45 @@ function RouteComponent() {
             <p className="text-muted-foreground text-sm">No token-gated roles yet.</p>
           ) : null}
           {communityRoles.data?.communityRoles.map((communityRole) => {
+            const currentDiscordMappingState = getDiscordMappingState({
+              discordGuildRoles: discordGuildRoles.data,
+              discordGuildRolesError: Boolean(discordGuildRoles.error),
+              role: communityRole,
+            })
+            const hasDiscordRoleDraft = Object.prototype.hasOwnProperty.call(discordRoleDrafts, communityRole.id)
+            const autoSelectedDiscordRoleMatches =
+              hasDiscordRoleDraft || communityRole.discordRoleId
+                ? []
+                : (discordGuildRoles.data?.guildRoles ?? []).filter((guildRole) => {
+                    const mappedOwner = mappedCommunityRolesByDiscordRoleId.get(guildRole.id)
+
+                    if (guildRole.isDefault || guildRole.managed) {
+                      return false
+                    }
+
+                    if (mappedOwner && mappedOwner.id !== communityRole.id) {
+                      return false
+                    }
+
+                    return normalizeDiscordRoleName(guildRole.name) === normalizeDiscordRoleName(communityRole.name)
+                  })
+            const autoSelectedDiscordRoleId =
+              autoSelectedDiscordRoleMatches.length === 1 ? autoSelectedDiscordRoleMatches[0].id : ''
+            const currentDiscordRoleDraft = hasDiscordRoleDraft
+              ? (discordRoleDrafts[communityRole.id] ?? '')
+              : (communityRole.discordRoleId ?? autoSelectedDiscordRoleId)
+            const currentGuildRole = currentDiscordMappingState.guildRole
+            const isDiscordRoleMappingDirty = currentDiscordRoleDraft !== (communityRole.discordRoleId ?? '')
+            const isDiscordRoleMappingPending =
+              setDiscordRoleMappingMutation.isPending &&
+              setDiscordRoleMappingMutation.variables?.communityRoleId === communityRole.id
+            const mappedDiscordRole = communityRole.discordRoleId
+              ? (discordGuildRolesById.get(communityRole.discordRoleId) ?? null)
+              : null
+            const mappedDiscordRoleMissing = Boolean(communityRole.discordRoleId) && !mappedDiscordRole
+            const selectedDraftRoleOwner = currentDiscordRoleDraft
+              ? (mappedCommunityRolesByDiscordRoleId.get(currentDiscordRoleDraft) ?? null)
+              : null
             const previewRole = syncResult?.roles.find((role) => role.id === communityRole.id)
 
             return (
@@ -634,7 +948,7 @@ function RouteComponent() {
                   </div>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3 text-sm">
-                  <div className="grid gap-2 md:grid-cols-2">
+                  <div className="grid gap-2 md:grid-cols-3">
                     <div className="rounded-lg border p-3">
                       <div className="text-muted-foreground">Current Team Members</div>
                       <div>{communityRole.teamMemberCount}</div>
@@ -645,6 +959,156 @@ function RouteComponent() {
                         +{previewRole?.addCount ?? 0} / -{previewRole?.removeCount ?? 0}
                       </div>
                     </div>
+                    <div className="rounded-lg border p-3">
+                      <div className="text-muted-foreground">Discord Mapping</div>
+                      <div className="mt-1">
+                        <span className={getDiscordMappingStatusClassName(currentDiscordMappingState.status)}>
+                          {currentDiscordMappingState.status === 'ready'
+                            ? 'Ready'
+                            : currentDiscordMappingState.status === 'needs_attention'
+                              ? 'Needs attention'
+                              : 'Not mapped'}
+                        </span>
+                      </div>
+                      <div className="text-muted-foreground mt-2">
+                        {currentGuildRole
+                          ? `${currentGuildRole.name} (#${currentGuildRole.position})`
+                          : communityRole.discordRoleId
+                            ? `Missing role (${communityRole.discordRoleId})`
+                            : 'No Discord role selected'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid gap-3 rounded-lg border p-3">
+                    <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <div className="font-medium">Discord Role Target</div>
+                        <div className="text-muted-foreground">
+                          Select one Discord role from the connected server for this TokenGator role.
+                        </div>
+                      </div>
+                      {!communityRole.enabled ? (
+                        <div className="text-muted-foreground text-xs">
+                          Disabled roles keep their mapping but will not drive later Discord sync until re-enabled.
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-end">
+                      <div className="grid gap-1.5">
+                        <Label htmlFor={`community-role-discord-role-${communityRole.id}`}>Discord Role</Label>
+                        <select
+                          className="bg-background border px-2 py-1 text-sm"
+                          disabled={isDiscordRoleMappingPending || !canConfigureDiscordMappings}
+                          id={`community-role-discord-role-${communityRole.id}`}
+                          onChange={(event) =>
+                            setDiscordRoleDrafts((currentDrafts) => ({
+                              ...currentDrafts,
+                              [communityRole.id]: event.target.value,
+                            }))
+                          }
+                          value={currentDiscordRoleDraft}
+                        >
+                          <option value="">Not mapped</option>
+                          {mappedDiscordRoleMissing && communityRole.discordRoleId ? (
+                            <option
+                              value={communityRole.discordRoleId}
+                            >{`Missing Discord role (${communityRole.discordRoleId})`}</option>
+                          ) : null}
+                          {discordGuildRoles.data?.guildRoles.map((guildRole) => {
+                            const mappedOwner = mappedCommunityRolesByDiscordRoleId.get(guildRole.id)
+                            const mappedElsewhere = mappedOwner ? mappedOwner.id !== communityRole.id : false
+
+                            if (guildRole.isDefault) {
+                              return null
+                            }
+
+                            return (
+                              <option
+                                disabled={guildRole.managed || mappedElsewhere}
+                                key={guildRole.id}
+                                value={guildRole.id}
+                              >
+                                {`${guildRole.name} (#${guildRole.position})${
+                                  guildRole.managed
+                                    ? ' · managed'
+                                    : mappedElsewhere
+                                      ? ` · mapped to ${mappedOwner?.name ?? 'another role'}`
+                                      : ''
+                                }`}
+                              </option>
+                            )
+                          })}
+                        </select>
+                      </div>
+                      <Button
+                        disabled={
+                          isDiscordRoleMappingPending ||
+                          !canConfigureDiscordMappings ||
+                          !currentDiscordRoleDraft ||
+                          !isDiscordRoleMappingDirty
+                        }
+                        onClick={() =>
+                          setDiscordRoleMappingMutation.mutate({
+                            communityRoleId: communityRole.id,
+                            discordRoleId: currentDiscordRoleDraft,
+                          })
+                        }
+                        type="button"
+                      >
+                        {isDiscordRoleMappingPending ? <Loader2 className="size-4 animate-spin" /> : null}
+                        Save Mapping
+                      </Button>
+                      <Button
+                        disabled={
+                          isDiscordRoleMappingPending || (!communityRole.discordRoleId && !currentDiscordRoleDraft)
+                        }
+                        onClick={() =>
+                          setDiscordRoleMappingMutation.mutate({
+                            communityRoleId: communityRole.id,
+                            discordRoleId: null,
+                          })
+                        }
+                        type="button"
+                        variant="outline"
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                    {!canConfigureDiscordMappings ? (
+                      <div className="text-muted-foreground text-xs">
+                        Fix the Discord server connection above before saving new role mappings. Clearing an existing
+                        mapping still works.
+                      </div>
+                    ) : null}
+                    {currentDiscordRoleDraft &&
+                    selectedDraftRoleOwner &&
+                    selectedDraftRoleOwner.id !== communityRole.id ? (
+                      <div className="text-destructive text-xs">
+                        This Discord role is already mapped to {selectedDraftRoleOwner.name}.
+                      </div>
+                    ) : null}
+                    {currentDiscordMappingState.checks.length ? (
+                      <div className="grid gap-1">
+                        <div className="font-medium">Mapping Diagnostics</div>
+                        <ol className="list-decimal space-y-1 pl-5 text-xs">
+                          {currentDiscordMappingState.checks.map((check) => (
+                            <li key={`${communityRole.id}-${check}`}>
+                              {formatDiscordCheck(check, {
+                                botHighestRolePosition:
+                                  discordGuildRoles.data?.connection?.diagnostics.botHighestRole?.position ?? null,
+                                guildRolePosition: currentGuildRole?.position ?? null,
+                              })}
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    ) : (
+                      <div className="text-muted-foreground text-xs">
+                        {communityRole.discordRoleId
+                          ? 'This Discord role is ready for future sync execution.'
+                          : 'No Discord role selected yet.'}
+                      </div>
+                    )}
                   </div>
                   <div className="grid gap-2">
                     {communityRole.conditions.map((condition) => (

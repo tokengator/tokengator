@@ -10,6 +10,7 @@ export const communityRole = sqliteTable(
     createdAt: integer('created_at', { mode: 'timestamp_ms' })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),
+    discordRoleId: text('discord_role_id'),
     enabled: integer('enabled', { mode: 'boolean' }).default(true).notNull(),
     id: text('id')
       .$defaultFn(() => crypto.randomUUID())
@@ -29,9 +30,11 @@ export const communityRole = sqliteTable(
       .notNull(),
   },
   (table) => [
+    index('community_role_discordRoleId_idx').on(table.discordRoleId),
     index('community_role_enabled_idx').on(table.enabled),
     index('community_role_name_idx').on(table.name),
     index('community_role_organizationId_idx').on(table.organizationId),
+    uniqueIndex('community_role_organizationId_discordRoleId_idx').on(table.organizationId, table.discordRoleId),
     uniqueIndex('community_role_organizationId_slug_idx').on(table.organizationId, table.slug),
     uniqueIndex('community_role_teamId_idx').on(table.teamId),
   ],

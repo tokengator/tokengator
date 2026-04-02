@@ -8,6 +8,7 @@ import { normalizeAmountToBigInt } from '@tokengator/indexer'
 type CommunityRoleRecord = {
   conditions: CommunityRoleConditionRecord[]
   createdAt: Date
+  discordRoleId?: string | null
   enabled: boolean
   id: string
   matchMode: 'all' | 'any'
@@ -171,6 +172,7 @@ export async function listCommunityRoleRecords(organizationId: string): Promise<
   const roleRows = await db
     .select({
       createdAt: communityRole.createdAt,
+      discordRoleId: communityRole.discordRoleId,
       enabled: communityRole.enabled,
       id: communityRole.id,
       matchMode: communityRole.matchMode,
@@ -250,6 +252,7 @@ export async function listCommunityRoleRecords(organizationId: string): Promise<
   return roleRows.map((roleRecord) => ({
     conditions: conditionsByRoleId.get(roleRecord.id) ?? [],
     createdAt: roleRecord.createdAt,
+    discordRoleId: roleRecord.discordRoleId,
     enabled: roleRecord.enabled,
     id: roleRecord.id,
     matchMode: roleRecord.matchMode,

@@ -6,16 +6,30 @@ import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 type AssetSchema = typeof import('@tokengator/db/schema/asset')
+type AutomationSchema = typeof import('@tokengator/db/schema/automation')
 type DatabaseClient = (typeof import('@tokengator/db'))['db']
+type AcquireAutomationLock = (typeof import('../src/lib/automation-lock'))['acquireAutomationLock']
+type GetAssetGroupIndexStatusSummaries =
+  (typeof import('../src/lib/admin-asset-group-index'))['getAssetGroupIndexStatusSummaries']
 type IndexAssetGroup = (typeof import('../src/lib/admin-asset-group-index'))['indexAssetGroup']
+type ListAssetGroupIndexRuns = (typeof import('../src/lib/admin-asset-group-index'))['listAssetGroupIndexRuns']
+type ListEnabledAssetGroupsDueForScheduledIndexing =
+  (typeof import('../src/lib/admin-asset-group-index'))['listEnabledAssetGroupsDueForScheduledIndexing']
+type RunScheduledAssetGroupIndex = (typeof import('../src/lib/admin-asset-group-index'))['runScheduledAssetGroupIndex']
 
 const DB_PACKAGE_DIR = resolve(import.meta.dir, '..', '..', 'db')
 const TEST_DATABASE_DIR = resolve(tmpdir(), 'tokengator-api-tests')
 const TEST_DATABASE_URL = pathToFileURL(resolve(TEST_DATABASE_DIR, 'test.sqlite')).toString()
 
 let assetSchema: AssetSchema
+let automationSchema: AutomationSchema
+let acquireAutomationLock: AcquireAutomationLock
 let database: DatabaseClient
+let getAssetGroupIndexStatusSummaries: GetAssetGroupIndexStatusSummaries
 let indexAssetGroup: IndexAssetGroup
+let listAssetGroupIndexRuns: ListAssetGroupIndexRuns
+let listEnabledAssetGroupsDueForScheduledIndexing: ListEnabledAssetGroupsDueForScheduledIndexing
+let runScheduledAssetGroupIndex: RunScheduledAssetGroupIndex
 function buildIndexedAssetId(input: {
   address: string
   assetGroupId: string
@@ -27,6 +41,26 @@ function buildIndexedAssetId(input: {
 
 function decodeOutput(buffer: Uint8Array | undefined) {
   return buffer ? Buffer.from(buffer).toString('utf8').trim() : ''
+}
+
+function createInsertFailureDatabase(failingTable: unknown) {
+  return new Proxy(database, {
+    get(target, property, receiver) {
+      if (property === 'insert') {
+        return (table: unknown) => {
+          if (table === failingTable) {
+            throw new Error('Run insert failed.')
+          }
+
+          return target.insert(table as never)
+        }
+      }
+
+      const value = Reflect.get(target, property, receiver)
+
+      return typeof value === 'function' ? value.bind(target) : value
+    },
+  })
 }
 
 function getCollectionAdapter(input: {
@@ -201,15 +235,79 @@ beforeAll(async () => {
 
   ;({ db: database } = await import('@tokengator/db'))
   assetSchema = await import('@tokengator/db/schema/asset')
-  ;({ indexAssetGroup } = await import('../src/lib/admin-asset-group-index'))
+  automationSchema = await import('@tokengator/db/schema/automation')
+  ;({ acquireAutomationLock } = await import('../src/lib/automation-lock'))
+  ;({
+    getAssetGroupIndexStatusSummaries,
+    indexAssetGroup,
+    listAssetGroupIndexRuns,
+    listEnabledAssetGroupsDueForScheduledIndexing,
+    runScheduledAssetGroupIndex,
+  } = await import('../src/lib/admin-asset-group-index'))
 }, 15_000)
 
 beforeEach(async () => {
+  await database.delete(automationSchema.automationLock).where(sql`1 = 1`)
   await database.delete(assetSchema.asset).where(sql`1 = 1`)
   await database.delete(assetSchema.assetGroup).where(sql`1 = 1`)
 })
 
 afterAll(() => {})
+
+describe('acquireAutomationLock', () => {
+  test('returns acquired false when a concurrent insert wins the lock key first', async () => {
+    const transaction = {
+      insert() {
+        return {
+          values() {
+            return {
+              onConflictDoNothing() {
+                return {
+                  async returning() {
+                    return []
+                  },
+                }
+              },
+            }
+          },
+        }
+      },
+      select() {
+        return {
+          from() {
+            return {
+              where() {
+                return {
+                  async limit() {
+                    return []
+                  },
+                }
+              },
+            }
+          },
+        }
+      },
+    }
+    const fakeDatabase = {
+      async transaction<T>(callback: (currentTransaction: typeof transaction) => Promise<T>) {
+        return await callback(transaction)
+      },
+    }
+
+    await expect(
+      acquireAutomationLock({
+        database: fakeDatabase as never,
+        expiresAt: new Date('2026-04-04T10:05:00.000Z'),
+        key: 'community-sync:org-1',
+        runId: 'run-1',
+        startedAt: new Date('2026-04-04T10:00:00.000Z'),
+      }),
+    ).resolves.toEqual({
+      acquired: false,
+      staleRunId: null,
+    })
+  })
+})
 
 describe('indexAssetGroup', () => {
   test('indexes collection pages, selects the collection resolver, and deletes stale rows after success', async () => {
@@ -314,6 +412,41 @@ describe('indexAssetGroup', () => {
         resolverKind: 'helius-collection-assets',
       },
     ])
+    await expect(
+      listAssetGroupIndexRuns({
+        assetGroupId,
+        limit: 5,
+      }),
+    ).resolves.toMatchObject([
+      {
+        assetGroupId,
+        deletedCount: 1,
+        errorMessage: null,
+        insertedCount: 2,
+        pagesProcessed: 2,
+        resolverKind: 'helius-collection-assets',
+        status: 'succeeded',
+        totalCount: 2,
+        triggerSource: 'manual',
+        updatedCount: 0,
+      },
+    ])
+    await expect(
+      getAssetGroupIndexStatusSummaries({
+        assetGroupIds: [assetGroupId],
+        now: () => new Date('2026-03-31T10:30:00.000Z'),
+      }),
+    ).resolves.toEqual(
+      new Map([
+        [
+          assetGroupId,
+          expect.objectContaining({
+            freshnessStatus: 'fresh',
+            isRunning: false,
+          }),
+        ],
+      ]),
+    )
   })
 
   test('updates existing rows, preserves firstSeenAt, and inserts new rows on rerun', async () => {
@@ -534,5 +667,287 @@ describe('indexAssetGroup', () => {
         resolverKind: 'helius-token-accounts',
       },
     ])
+  })
+
+  test('chunks large page writes so collection indexing stays under SQLite variable limits', async () => {
+    const assetGroupId = crypto.randomUUID()
+    const now = new Date('2026-03-31T13:30:00.000Z')
+    const itemCount = 950
+    const { adapter } = getCollectionAdapter({
+      pageOneItems: Array.from(
+        {
+          length: itemCount,
+        },
+        (_, index) => ({
+          content: {
+            metadata: {
+              name: `Asset ${index + 1}`,
+            },
+          },
+          id: `asset-${index + 1}`,
+          ownership: {
+            owner: `wallet-${index + 1}`,
+          },
+        }),
+      ),
+    })
+
+    await insertAssetGroupRecord({
+      address: 'collection-large-page',
+      id: assetGroupId,
+      type: 'collection',
+    })
+
+    const result = await indexAssetGroup({
+      adapter,
+      apiKey: 'helius-api-key',
+      assetGroup: {
+        address: 'collection-large-page',
+        id: assetGroupId,
+        type: 'collection',
+      },
+      heliusCluster: 'devnet',
+      now: () => now,
+    })
+
+    expect(result).toMatchObject({
+      assetGroupId,
+      deleted: 0,
+      inserted: itemCount,
+      pages: 1,
+      resolverKind: 'helius-collection-assets',
+      total: itemCount,
+      updated: 0,
+    })
+    await expect(getStoredAssets(assetGroupId)).resolves.toHaveLength(itemCount)
+  })
+
+  test('releases the automation lock when the index run insert fails', async () => {
+    const assetGroupId = crypto.randomUUID()
+
+    await insertAssetGroupRecord({
+      address: 'collection-lock-release',
+      id: assetGroupId,
+      type: 'collection',
+    })
+
+    await expect(
+      indexAssetGroup({
+        adapter: getCollectionAdapter({
+          pageOneItems: [],
+        }).adapter,
+        apiKey: 'helius-api-key',
+        assetGroup: {
+          address: 'collection-lock-release',
+          id: assetGroupId,
+          type: 'collection',
+        },
+        database: createInsertFailureDatabase(assetSchema.assetGroupIndexRun) as never,
+        heliusCluster: 'devnet',
+        now: () => new Date('2026-03-31T13:45:00.000Z'),
+      }),
+    ).rejects.toThrow('Run insert failed.')
+
+    expect(await database.select().from(automationSchema.automationLock)).toHaveLength(0)
+  })
+
+  test('keeps the last successful freshness state when a later scheduled run fails', async () => {
+    const assetGroupId = crypto.randomUUID()
+    const firstRunAt = new Date('2026-03-31T14:00:00.000Z')
+    const secondRunAt = new Date('2026-03-31T14:20:00.000Z')
+
+    await insertAssetGroupRecord({
+      address: 'collection-failure-history',
+      id: assetGroupId,
+      type: 'collection',
+    })
+    await indexAssetGroup({
+      adapter: getCollectionAdapter({
+        pageOneItems: [
+          {
+            content: {
+              metadata: {
+                name: 'Alpha',
+              },
+            },
+            id: 'asset-a',
+            ownership: {
+              owner: 'wallet-a',
+            },
+          },
+        ],
+      }).adapter,
+      apiKey: 'helius-api-key',
+      assetGroup: {
+        address: 'collection-failure-history',
+        id: assetGroupId,
+        type: 'collection',
+      },
+      heliusCluster: 'devnet',
+      now: () => firstRunAt,
+    })
+
+    await expect(
+      runScheduledAssetGroupIndex({
+        adapter: getCollectionAdapter({
+          pageOneCursor: 'page-2',
+          pageOneItems: [
+            {
+              content: {
+                metadata: {
+                  name: 'Alpha',
+                },
+              },
+              id: 'asset-a',
+              ownership: {
+                owner: 'wallet-a',
+              },
+            },
+          ],
+          pageTwoError: new Error('Page 2 failed.'),
+        }).adapter,
+        apiKey: 'helius-api-key',
+        assetGroup: {
+          address: 'collection-failure-history',
+          id: assetGroupId,
+          type: 'collection',
+        },
+        heliusCluster: 'devnet',
+        now: () => secondRunAt,
+      }),
+    ).rejects.toThrow('Page 2 failed.')
+
+    await expect(
+      listAssetGroupIndexRuns({
+        assetGroupId,
+        limit: 5,
+      }),
+    ).resolves.toMatchObject([
+      {
+        errorMessage: 'Page 2 failed.',
+        status: 'failed',
+        triggerSource: 'scheduled',
+      },
+      {
+        errorMessage: null,
+        status: 'succeeded',
+        triggerSource: 'manual',
+      },
+    ])
+    await expect(
+      getAssetGroupIndexStatusSummaries({
+        assetGroupIds: [assetGroupId],
+        now: () => new Date('2026-03-31T14:30:00.000Z'),
+      }),
+    ).resolves.toEqual(
+      new Map([
+        [
+          assetGroupId,
+          expect.objectContaining({
+            freshnessStatus: 'fresh',
+            lastRun: expect.objectContaining({
+              status: 'failed',
+            }),
+            lastSuccessfulRun: expect.objectContaining({
+              startedAt: firstRunAt,
+              status: 'succeeded',
+            }),
+          }),
+        ],
+      ]),
+    )
+  })
+
+  test('uses the last attempt startedAt when selecting due asset groups for scheduling', async () => {
+    const dueAssetGroupId = 'asset-group-due'
+    const recentAssetGroupId = 'asset-group-recent'
+    const runAt = new Date('2026-03-31T15:00:00.000Z')
+
+    await insertAssetGroupRecord({
+      address: 'collection-due',
+      id: dueAssetGroupId,
+      type: 'collection',
+    })
+    await insertAssetGroupRecord({
+      address: 'collection-recent',
+      id: recentAssetGroupId,
+      type: 'collection',
+    })
+    await indexAssetGroup({
+      adapter: getCollectionAdapter({
+        pageOneItems: [],
+      }).adapter,
+      apiKey: 'helius-api-key',
+      assetGroup: {
+        address: 'collection-recent',
+        id: recentAssetGroupId,
+        type: 'collection',
+      },
+      heliusCluster: 'devnet',
+      now: () => runAt,
+    })
+
+    await expect(
+      listEnabledAssetGroupsDueForScheduledIndexing({
+        now: () => new Date('2026-03-31T15:29:00.000Z'),
+      }),
+    ).resolves.toEqual([
+      {
+        address: 'collection-due',
+        id: dueAssetGroupId,
+        type: 'collection',
+      },
+    ])
+    await expect(
+      listEnabledAssetGroupsDueForScheduledIndexing({
+        now: () => new Date('2026-03-31T16:01:00.000Z'),
+      }),
+    ).resolves.toEqual([
+      {
+        address: 'collection-due',
+        id: dueAssetGroupId,
+        type: 'collection',
+      },
+      {
+        address: 'collection-recent',
+        id: recentAssetGroupId,
+        type: 'collection',
+      },
+    ])
+  })
+
+  test('chunks large asset-group ID sets when selecting due scheduled indexing', async () => {
+    const now = new Date('2026-03-31T09:00:00.000Z')
+
+    await database.insert(assetSchema.assetGroup).values(
+      Array.from({ length: 901 }, (_, index) => {
+        const suffix = String(index).padStart(4, '0')
+
+        return {
+          address: `collection-${suffix}`,
+          createdAt: now,
+          enabled: true,
+          id: `asset-group-${suffix}`,
+          indexingStartedAt: null,
+          label: `Collection ${suffix}`,
+          type: 'collection' as const,
+          updatedAt: now,
+        }
+      }),
+    )
+
+    const dueAssetGroups = await listEnabledAssetGroupsDueForScheduledIndexing({
+      now: () => new Date('2026-03-31T09:30:00.000Z'),
+    })
+
+    expect(dueAssetGroups).toHaveLength(901)
+    expect(dueAssetGroups[0]).toMatchObject({
+      address: 'collection-0000',
+      id: 'asset-group-0000',
+    })
+    expect(dueAssetGroups.at(-1)).toMatchObject({
+      address: 'collection-0900',
+      id: 'asset-group-0900',
+    })
   })
 })

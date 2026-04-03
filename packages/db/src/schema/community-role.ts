@@ -122,9 +122,87 @@ export const communityDiscordConnection = sqliteTable(
   (table) => [uniqueIndex('community_discord_connection_guildId_idx').on(table.guildId)],
 )
 
+export const communityDiscordSyncRun = sqliteTable(
+  'community_discord_sync_run',
+  {
+    appliedGrantCount: integer('applied_grant_count').default(0).notNull(),
+    appliedRevokeCount: integer('applied_revoke_count').default(0).notNull(),
+    blockedAssetGroupIds: text('blocked_asset_group_ids'),
+    dependencyAssetGroupIds: text('dependency_asset_group_ids').notNull(),
+    dependencyFreshAtStart: integer('dependency_fresh_at_start', { mode: 'boolean' }).notNull(),
+    errorMessage: text('error_message'),
+    errorPayload: text('error_payload'),
+    failedCount: integer('failed_count').default(0).notNull(),
+    finishedAt: integer('finished_at', { mode: 'timestamp_ms' }),
+    id: text('id')
+      .$defaultFn(() => crypto.randomUUID())
+      .primaryKey(),
+    organizationId: text('organization_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    outcomeCounts: text('outcome_counts').notNull(),
+    rolesBlockedCount: integer('roles_blocked_count').default(0).notNull(),
+    rolesReadyCount: integer('roles_ready_count').default(0).notNull(),
+    startedAt: integer('started_at', { mode: 'timestamp_ms' }).notNull(),
+    status: text('status', { enum: ['failed', 'partial', 'running', 'skipped', 'succeeded'] }).notNull(),
+    triggerSource: text('trigger_source', { enum: ['manual', 'scheduled'] }).notNull(),
+    usersChangedCount: integer('users_changed_count').default(0).notNull(),
+  },
+  (table) => [
+    index('community_discord_sync_run_organizationId_startedAt_idx').on(table.organizationId, table.startedAt),
+    index('community_discord_sync_run_organizationId_status_startedAt_idx').on(
+      table.organizationId,
+      table.status,
+      table.startedAt,
+    ),
+  ],
+)
+
+export const communityMembershipSyncRun = sqliteTable(
+  'community_membership_sync_run',
+  {
+    addToOrganizationCount: integer('add_to_organization_count').default(0).notNull(),
+    addToTeamCount: integer('add_to_team_count').default(0).notNull(),
+    blockedAssetGroupIds: text('blocked_asset_group_ids'),
+    dependencyAssetGroupIds: text('dependency_asset_group_ids').notNull(),
+    dependencyFreshAtStart: integer('dependency_fresh_at_start', { mode: 'boolean' }).notNull(),
+    errorMessage: text('error_message'),
+    errorPayload: text('error_payload'),
+    finishedAt: integer('finished_at', { mode: 'timestamp_ms' }),
+    id: text('id')
+      .$defaultFn(() => crypto.randomUUID())
+      .primaryKey(),
+    organizationId: text('organization_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    qualifiedUserCount: integer('qualified_user_count').default(0).notNull(),
+    removeFromOrganizationCount: integer('remove_from_organization_count').default(0).notNull(),
+    removeFromTeamCount: integer('remove_from_team_count').default(0).notNull(),
+    startedAt: integer('started_at', { mode: 'timestamp_ms' }).notNull(),
+    status: text('status', { enum: ['failed', 'running', 'skipped', 'succeeded'] }).notNull(),
+    triggerSource: text('trigger_source', { enum: ['manual', 'scheduled'] }).notNull(),
+    usersChangedCount: integer('users_changed_count').default(0).notNull(),
+  },
+  (table) => [
+    index('community_membership_sync_run_organizationId_startedAt_idx').on(table.organizationId, table.startedAt),
+    index('community_membership_sync_run_organizationId_status_startedAt_idx').on(
+      table.organizationId,
+      table.status,
+      table.startedAt,
+    ),
+  ],
+)
+
 export const communityDiscordConnectionRelations = relations(communityDiscordConnection, ({ one }) => ({
   organization: one(organization, {
     fields: [communityDiscordConnection.organizationId],
+    references: [organization.id],
+  }),
+}))
+
+export const communityDiscordSyncRunRelations = relations(communityDiscordSyncRun, ({ one }) => ({
+  organization: one(organization, {
+    fields: [communityDiscordSyncRun.organizationId],
     references: [organization.id],
   }),
 }))
@@ -137,6 +215,13 @@ export const communityManagedMemberRelations = relations(communityManagedMember,
   user: one(user, {
     fields: [communityManagedMember.userId],
     references: [user.id],
+  }),
+}))
+
+export const communityMembershipSyncRunRelations = relations(communityMembershipSyncRun, ({ one }) => ({
+  organization: one(organization, {
+    fields: [communityMembershipSyncRun.organizationId],
+    references: [organization.id],
   }),
 }))
 

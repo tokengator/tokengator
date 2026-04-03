@@ -26,6 +26,13 @@ export function useAdminAssetGroupIndex() {
           queryClient.invalidateQueries({
             queryKey: orpc.adminAssetGroup.list.key(),
           }),
+          queryClient.invalidateQueries({
+            queryKey: orpc.adminAssetGroup.listIndexRuns.key({
+              input: {
+                assetGroupId: result.assetGroupId,
+              },
+            }),
+          }),
         ])
         toast.success(
           `Indexed ${result.total} assets (${result.inserted} new, ${result.updated} updated, ${result.deleted} removed).`,

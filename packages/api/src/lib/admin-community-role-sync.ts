@@ -1,5 +1,5 @@
-import { and, asc, eq, inArray, or } from 'drizzle-orm'
-import { db } from '@tokengator/db'
+import { and, asc, desc, eq, inArray, isNotNull, lte, or, sql } from 'drizzle-orm'
+import { db, type Database } from '@tokengator/db'
 import { asset, assetGroup } from '@tokengator/db/schema/asset'
 import {
   account,
@@ -13,19 +13,39 @@ import {
 } from '@tokengator/db/schema/auth'
 import {
   communityDiscordConnection,
+  communityDiscordSyncRun,
   communityManagedMember,
+  communityMembershipSyncRun,
   communityRole,
   communityRoleCondition,
 } from '@tokengator/db/schema/community-role'
 import {
   addDiscordGuildMemberRole,
-  getDiscordGuildMember,
   DiscordGuildMemberRoleMutationError,
+  getDiscordGuildMember,
   inspectDiscordGuildRoles,
   removeDiscordGuildMemberRole,
 } from '@tokengator/discord'
 import { env } from '@tokengator/env/api'
 import { normalizeAmountToBigInt } from '@tokengator/indexer'
+
+import { getAssetGroupIndexStatusSummaries, type AssetGroupIndexStatusSummary } from './admin-asset-group-index'
+import {
+  AUTOMATION_LOCK_TIMEOUT_MS,
+  getScheduledDiscordSyncIntervalMs,
+  getScheduledIndexIntervalMs,
+  getScheduledMembershipSyncIntervalMs,
+  getStaleAfterMinutes,
+  getStaleAfterMs,
+} from './automation-config'
+import {
+  acquireAutomationLock,
+  type AutomationTransaction,
+  AutomationLockConflictError,
+  releaseAutomationLock,
+} from './automation-lock'
+import { getRunLookupChunkSize, splitIntoChunks } from './sqlite'
+import { parseStoredJson, serializeJson } from './stored-json'
 
 type CommunityRoleRecord = {
   conditions: CommunityRoleConditionRecord[]
@@ -226,6 +246,79 @@ export type CommunityRoleDiscordSyncApply = Omit<CommunityRoleDiscordSyncPreview
   users: CommunityRoleDiscordSyncApplyUser[]
 }
 
+export type CommunityRoleSyncFreshnessStatus = 'fresh' | 'stale' | 'unknown'
+export type CommunityRoleSyncTriggerSource = 'manual' | 'scheduled'
+export type CommunityMembershipSyncRunStatus = 'failed' | 'running' | 'skipped' | 'succeeded'
+export type CommunityDiscordSyncRunStatus = 'failed' | 'partial' | 'running' | 'skipped' | 'succeeded'
+
+export type CommunityMembershipSyncRunRecord = {
+  addToOrganizationCount: number
+  addToTeamCount: number
+  blockedAssetGroupIds: string[]
+  dependencyAssetGroupIds: string[]
+  dependencyFreshAtStart: boolean
+  errorMessage: string | null
+  errorPayload: unknown | null
+  finishedAt: Date | null
+  id: string
+  organizationId: string
+  qualifiedUserCount: number
+  removeFromOrganizationCount: number
+  removeFromTeamCount: number
+  startedAt: Date
+  status: CommunityMembershipSyncRunStatus
+  triggerSource: CommunityRoleSyncTriggerSource
+  usersChangedCount: number
+}
+
+export type CommunityDiscordSyncRunRecord = {
+  appliedGrantCount: number
+  appliedRevokeCount: number
+  blockedAssetGroupIds: string[]
+  dependencyAssetGroupIds: string[]
+  dependencyFreshAtStart: boolean
+  errorMessage: string | null
+  errorPayload: unknown | null
+  failedCount: number
+  finishedAt: Date | null
+  id: string
+  organizationId: string
+  outcomeCounts: DiscordSyncCounts
+  rolesBlockedCount: number
+  rolesReadyCount: number
+  startedAt: Date
+  status: CommunityDiscordSyncRunStatus
+  triggerSource: CommunityRoleSyncTriggerSource
+  usersChangedCount: number
+}
+
+export type CommunitySyncStatusSummary<TRunRecord> = {
+  freshnessStatus: CommunityRoleSyncFreshnessStatus
+  isRunning: boolean
+  lastRun: TRunRecord | null
+  lastSuccessfulRun: TRunRecord | null
+  staleAfterMinutes: number
+}
+
+export type OrganizationSyncDependencyAssetGroup = {
+  address: string
+  enabled: boolean
+  id: string
+  indexingStatus: AssetGroupIndexStatusSummary
+  label: string
+  type: 'collection' | 'mint'
+}
+
+export type CommunityRoleSyncStatus = {
+  dependencyAssetGroups: OrganizationSyncDependencyAssetGroup[]
+  discordStatus: CommunitySyncStatusSummary<CommunityDiscordSyncRunRecord>
+  membershipStatus: CommunitySyncStatusSummary<CommunityMembershipSyncRunRecord>
+  organizationId: string
+}
+
+export type ScheduledCommunityDiscordSyncStatus = 'failed' | 'locked' | 'missing' | 'partial' | 'skipped' | 'succeeded'
+export type ScheduledCommunityMembershipSyncStatus = 'failed' | 'locked' | 'missing' | 'skipped' | 'succeeded'
+
 type LoadedQualificationState = {
   organizationId: string
   roles: CommunityRoleRecord[]
@@ -261,6 +354,23 @@ const blockingDiscordGuildRoleInspectionChecks = new Set([
   'guild_not_found',
   'guild_roles_fetch_failed',
 ])
+
+function buildCommunitySyncErrorPayload(error: unknown) {
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+      name: error.name,
+    }
+  }
+
+  return {
+    message: 'Community sync failed.',
+  }
+}
+
+function buildCommunitySyncLockKey(organizationId: string) {
+  return `community-sync:${organizationId}`
+}
 
 function normalizeWalletAddress(address: string) {
   return address.trim()
@@ -325,8 +435,9 @@ function incrementDiscordSyncCount(counts: DiscordSyncCounts, status: DiscordSyn
   counts[status] += 1
 }
 
-async function ensureOrganizationExists(organizationId: string) {
-  const [record] = await db
+async function ensureOrganizationExists(organizationId: string, database?: Database) {
+  const currentDatabase = database ?? db
+  const [record] = await currentDatabase
     .select({
       id: organization.id,
     })
@@ -337,8 +448,12 @@ async function ensureOrganizationExists(organizationId: string) {
   return record ?? null
 }
 
-export async function listCommunityRoleRecords(organizationId: string): Promise<CommunityRoleRecord[]> {
-  const roleRows = await db
+export async function listCommunityRoleRecords(
+  organizationId: string,
+  database?: Database,
+): Promise<CommunityRoleRecord[]> {
+  const currentDatabase = database ?? db
+  const roleRows = await currentDatabase
     .select({
       createdAt: communityRole.createdAt,
       discordRoleId: communityRole.discordRoleId,
@@ -364,7 +479,7 @@ export async function listCommunityRoleRecords(organizationId: string): Promise<
   const roleIds = roleRows.map((roleRecord) => roleRecord.id)
   const teamIds = roleRows.map((roleRecord) => roleRecord.teamId)
   const [conditionRows, teamMembershipRows] = await Promise.all([
-    db
+    currentDatabase
       .select({
         assetGroupAddress: assetGroup.address,
         assetGroupEnabled: assetGroup.enabled,
@@ -386,7 +501,7 @@ export async function listCommunityRoleRecords(organizationId: string): Promise<
         asc(assetGroup.address),
         asc(communityRoleCondition.id),
       ),
-    db
+    currentDatabase
       .select({
         teamId: teamMember.teamId,
       })
@@ -482,11 +597,13 @@ export function evaluateCommunityRoles(input: EvaluateCommunityRolesInput): Eval
 }
 
 async function loadCommunityRoleQualificationState(input: {
+  database?: Database
   organizationId: string
   relevantUserIds?: string[]
   roles?: CommunityRoleRecord[]
 }): Promise<LoadedQualificationState> {
-  const roles = input.roles ?? (await listCommunityRoleRecords(input.organizationId))
+  const currentDatabase = input.database ?? db
+  const roles = input.roles ?? (await listCommunityRoleRecords(input.organizationId, currentDatabase))
   const enabledRoleAssetGroupIds = [
     ...new Set(
       roles
@@ -497,7 +614,7 @@ async function loadCommunityRoleQualificationState(input: {
   const assetRows =
     enabledRoleAssetGroupIds.length === 0
       ? []
-      : await db
+      : await currentDatabase
           .select({
             amount: asset.amount,
             assetGroupId: asset.assetGroupId,
@@ -514,7 +631,7 @@ async function loadCommunityRoleQualificationState(input: {
   const walletRows =
     relevantAssetOwnerAddresses.length === 0 && relevantUserIds.length === 0
       ? []
-      : await db
+      : await currentDatabase
           .select({
             address: solanaWallet.address,
             name: user.name,
@@ -620,18 +737,19 @@ async function loadCommunityRoleQualificationState(input: {
   }
 }
 
-async function loadSyncState(organizationId: string): Promise<LoadedSyncState> {
-  const roles = await listCommunityRoleRecords(organizationId)
+async function loadSyncState(organizationId: string, database?: Database): Promise<LoadedSyncState> {
+  const currentDatabase = database ?? db
+  const roles = await listCommunityRoleRecords(organizationId, currentDatabase)
   const roleTeamIds = new Set(roles.map((roleRecord) => roleRecord.teamId))
   const [managedRows, memberRows, organizationTeamMembershipRows] = await Promise.all([
-    db
+    currentDatabase
       .select({
         userId: communityManagedMember.userId,
       })
       .from(communityManagedMember)
       .where(eq(communityManagedMember.organizationId, organizationId))
       .orderBy(asc(communityManagedMember.userId)),
-    db
+    currentDatabase
       .select({
         id: member.id,
         name: user.name,
@@ -643,7 +761,7 @@ async function loadSyncState(organizationId: string): Promise<LoadedSyncState> {
       .innerJoin(user, eq(member.userId, user.id))
       .where(eq(member.organizationId, organizationId))
       .orderBy(asc(user.name), asc(user.username), asc(user.id)),
-    db
+    currentDatabase
       .select({
         name: user.name,
         teamId: teamMember.teamId,
@@ -660,6 +778,7 @@ async function loadSyncState(organizationId: string): Promise<LoadedSyncState> {
     ...new Set([...memberRows, ...organizationTeamMembershipRows].map((currentMembership) => currentMembership.userId)),
   ].sort((left, right) => left.localeCompare(right))
   const qualificationState = await loadCommunityRoleQualificationState({
+    database: currentDatabase,
     organizationId,
     relevantUserIds: relevantOrganizationUserIds,
     roles,
@@ -942,8 +1061,10 @@ function buildPreviewFromSyncState(syncState: LoadedSyncState): CommunityRoleSyn
 
 async function loadCommunityDiscordConnectionRecord(
   organizationId: string,
+  database?: Database,
 ): Promise<StoredCommunityDiscordConnectionRecord | null> {
-  const [record] = await db
+  const currentDatabase = database ?? db
+  const [record] = await currentDatabase
     .select({
       guildId: communityDiscordConnection.guildId,
       guildName: communityDiscordConnection.guildName,
@@ -955,13 +1076,14 @@ async function loadCommunityDiscordConnectionRecord(
   return record ?? null
 }
 
-async function loadUserProfiles(userIds: string[]) {
+async function loadUserProfiles(userIds: string[], database?: Database) {
   if (userIds.length === 0) {
     return new Map<string, QualifiedUserState>()
   }
 
+  const currentDatabase = database ?? db
   const [userRows, walletRows] = await Promise.all([
-    db
+    currentDatabase
       .select({
         name: user.name,
         userId: user.id,
@@ -970,7 +1092,7 @@ async function loadUserProfiles(userIds: string[]) {
       .from(user)
       .where(inArray(user.id, userIds))
       .orderBy(asc(user.name), asc(user.username), asc(user.id)),
-    db
+    currentDatabase
       .select({
         address: solanaWallet.address,
         userId: solanaWallet.userId,
@@ -997,21 +1119,23 @@ async function loadUserProfiles(userIds: string[]) {
 }
 
 async function loadPotentialCommunityRoleDiscordSyncUserIds(input: {
+  database?: Database
   organizationId: string
   roles: CommunityRoleRecord[]
 }) {
+  const currentDatabase = input.database ?? db
   const roleTeamIds = [...new Set(input.roles.map((roleRecord) => roleRecord.teamId))].sort((left, right) =>
     left.localeCompare(right),
   )
   const [managedRows, memberRows, teamMemberRows] = await Promise.all([
-    db
+    currentDatabase
       .select({
         userId: communityManagedMember.userId,
       })
       .from(communityManagedMember)
       .where(eq(communityManagedMember.organizationId, input.organizationId))
       .orderBy(asc(communityManagedMember.userId)),
-    db
+    currentDatabase
       .select({
         userId: member.userId,
       })
@@ -1020,7 +1144,7 @@ async function loadPotentialCommunityRoleDiscordSyncUserIds(input: {
       .orderBy(asc(member.userId)),
     roleTeamIds.length === 0
       ? []
-      : db
+      : currentDatabase
           .select({
             userId: teamMember.userId,
           })
@@ -1034,14 +1158,15 @@ async function loadPotentialCommunityRoleDiscordSyncUserIds(input: {
   )
 }
 
-async function loadCanonicalDiscordAccountIdsByUserId(userIds: string[]) {
+async function loadCanonicalDiscordAccountIdsByUserId(userIds: string[], database?: Database) {
   const relevantUserIds = [...new Set(userIds)].sort((left, right) => left.localeCompare(right))
 
   if (relevantUserIds.length === 0) {
     return new Map<string, string>()
   }
 
-  const accountRows = await db
+  const currentDatabase = database ?? db
+  const accountRows = await currentDatabase
     .select({
       accountId: account.accountId,
       userId: account.userId,
@@ -1195,14 +1320,19 @@ function buildCommunityRoleDiscordSyncSummaries(input: {
   }
 }
 
-async function buildCommunityRoleDiscordSyncPreview(organizationId: string): Promise<CommunityRoleDiscordSyncPreview> {
-  const connectionRecord = await loadCommunityDiscordConnectionRecord(organizationId)
+async function buildCommunityRoleDiscordSyncPreview(
+  organizationId: string,
+  database?: Database,
+): Promise<CommunityRoleDiscordSyncPreview> {
+  const currentDatabase = database ?? db
+  const connectionRecord = await loadCommunityDiscordConnectionRecord(organizationId, currentDatabase)
 
   if (!connectionRecord) {
     throw new Error('Community Discord connection not found.')
   }
 
   const qualificationState = await loadCommunityRoleQualificationState({
+    database: currentDatabase,
     organizationId,
   })
   const inspection = await inspectDiscordGuildRoles(
@@ -1233,6 +1363,7 @@ async function buildCommunityRoleDiscordSyncPreview(organizationId: string): Pro
         ? [
             ...qualificationState.usersById.keys(),
             ...(await loadPotentialCommunityRoleDiscordSyncUserIds({
+              database: currentDatabase,
               organizationId,
               roles: qualificationState.roles,
             })),
@@ -1241,7 +1372,7 @@ async function buildCommunityRoleDiscordSyncPreview(organizationId: string): Pro
     ),
   ].sort((left, right) => left.localeCompare(right))
   const canonicalDiscordAccountIdByUserId = hasMappedDiscordRole
-    ? await loadCanonicalDiscordAccountIdsByUserId(candidateUserIds)
+    ? await loadCanonicalDiscordAccountIdsByUserId(candidateUserIds, currentDatabase)
     : new Map<string, string>()
   const usersById = new Map<string, QualifiedUserState>(
     [...qualificationState.usersById.entries()].map(([userId, currentUser]) => [
@@ -1255,7 +1386,7 @@ async function buildCommunityRoleDiscordSyncPreview(organizationId: string): Pro
     ]),
   )
   const missingProfileUserIds = candidateUserIds.filter((userId) => !usersById.has(userId))
-  const extraProfilesById = await loadUserProfiles(missingProfileUserIds)
+  const extraProfilesById = await loadUserProfiles(missingProfileUserIds, currentDatabase)
 
   for (const [userId, currentUser] of extraProfilesById.entries()) {
     usersById.set(userId, currentUser)
@@ -1396,6 +1527,454 @@ async function buildCommunityRoleDiscordSyncPreview(organizationId: string): Pro
   }
 }
 
+function buildCommunitySyncStatusSummary<TRunRecord extends { finishedAt: Date | null; status: string }>(input: {
+  dependencyAssetGroups: OrganizationSyncDependencyAssetGroup[]
+  intervalMs: number
+  lastRun: TRunRecord | null
+  lastSuccessfulRun: TRunRecord | null
+  now: Date
+}): CommunitySyncStatusSummary<TRunRecord> {
+  const lastSuccessfulRunIsStale =
+    !input.lastSuccessfulRun?.finishedAt ||
+    input.now.getTime() - input.lastSuccessfulRun.finishedAt.getTime() > getStaleAfterMs(input.intervalMs)
+  const hasStaleDependency = input.dependencyAssetGroups.some(
+    (assetGroupRecord) => assetGroupRecord.enabled && assetGroupRecord.indexingStatus.freshnessStatus !== 'fresh',
+  )
+
+  return {
+    freshnessStatus: !input.lastSuccessfulRun?.finishedAt
+      ? 'unknown'
+      : lastSuccessfulRunIsStale || hasStaleDependency
+        ? 'stale'
+        : 'fresh',
+    isRunning: input.lastRun?.status === 'running',
+    lastRun: input.lastRun,
+    lastSuccessfulRun: input.lastSuccessfulRun,
+    staleAfterMinutes: getStaleAfterMinutes(input.intervalMs),
+  }
+}
+
+function getDependencyAssetGroupRecords(roles: CommunityRoleRecord[]) {
+  return [
+    ...new Map(
+      roles
+        .filter((roleRecord) => roleRecord.enabled)
+        .flatMap((roleRecord) => roleRecord.conditions)
+        .map(
+          (condition) =>
+            [
+              condition.assetGroupId,
+              {
+                address: condition.assetGroupAddress,
+                enabled: condition.assetGroupEnabled,
+                id: condition.assetGroupId,
+                label: condition.assetGroupLabel,
+                type: condition.assetGroupType,
+              },
+            ] as const,
+        ),
+    ).values(),
+  ].sort(
+    (left, right) =>
+      left.label.localeCompare(right.label) ||
+      left.type.localeCompare(right.type) ||
+      left.address.localeCompare(right.address) ||
+      left.id.localeCompare(right.id),
+  )
+}
+
+async function getOrganizationSyncDependencies(input: {
+  database?: Database
+  now?: () => Date
+  organizationId: string
+  roles?: CommunityRoleRecord[]
+}) {
+  const roles = input.roles ?? (await listCommunityRoleRecords(input.organizationId, input.database))
+  const dependencyAssetGroups = getDependencyAssetGroupRecords(roles)
+  const indexingStatusByAssetGroupId = await getAssetGroupIndexStatusSummaries({
+    assetGroupIds: dependencyAssetGroups.map((assetGroupRecord) => assetGroupRecord.id),
+    database: input.database,
+    now: input.now,
+  })
+  const dependencyAssetGroupsWithStatus = dependencyAssetGroups.map((assetGroupRecord) => ({
+    ...assetGroupRecord,
+    indexingStatus: indexingStatusByAssetGroupId.get(assetGroupRecord.id) ?? {
+      freshnessStatus: 'unknown',
+      isRunning: false,
+      lastRun: null,
+      lastSuccessfulRun: null,
+      staleAfterMinutes: getStaleAfterMinutes(getScheduledIndexIntervalMs()),
+    },
+  }))
+  const blockedAssetGroupIds = dependencyAssetGroupsWithStatus
+    .filter(
+      (assetGroupRecord) => assetGroupRecord.enabled && assetGroupRecord.indexingStatus.freshnessStatus !== 'fresh',
+    )
+    .map((assetGroupRecord) => assetGroupRecord.id)
+
+  return {
+    blockedAssetGroupIds,
+    dependencyAssetGroupIds: dependencyAssetGroupsWithStatus.map((assetGroupRecord) => assetGroupRecord.id),
+    dependencyAssetGroups: dependencyAssetGroupsWithStatus,
+    dependencyFreshAtStart: blockedAssetGroupIds.length === 0,
+  }
+}
+
+function toCommunityDiscordSyncRunRecord(row: {
+  appliedGrantCount: number
+  appliedRevokeCount: number
+  blockedAssetGroupIds: string | null
+  dependencyAssetGroupIds: string
+  dependencyFreshAtStart: boolean
+  errorMessage: string | null
+  errorPayload: string | null
+  failedCount: number
+  finishedAt: Date | null
+  id: string
+  organizationId: string
+  outcomeCounts: string
+  rolesBlockedCount: number
+  rolesReadyCount: number
+  startedAt: Date
+  status: CommunityDiscordSyncRunStatus
+  triggerSource: CommunityRoleSyncTriggerSource
+  usersChangedCount: number
+}): CommunityDiscordSyncRunRecord {
+  return {
+    appliedGrantCount: row.appliedGrantCount,
+    appliedRevokeCount: row.appliedRevokeCount,
+    blockedAssetGroupIds: parseStoredJson<string[]>(row.blockedAssetGroupIds) ?? [],
+    dependencyAssetGroupIds: parseStoredJson<string[]>(row.dependencyAssetGroupIds) ?? [],
+    dependencyFreshAtStart: row.dependencyFreshAtStart,
+    errorMessage: row.errorMessage,
+    errorPayload: parseStoredJson(row.errorPayload),
+    failedCount: row.failedCount,
+    finishedAt: row.finishedAt,
+    id: row.id,
+    organizationId: row.organizationId,
+    outcomeCounts: parseStoredJson<DiscordSyncCounts>(row.outcomeCounts) ?? createDiscordSyncCounts(),
+    rolesBlockedCount: row.rolesBlockedCount,
+    rolesReadyCount: row.rolesReadyCount,
+    startedAt: row.startedAt,
+    status: row.status,
+    triggerSource: row.triggerSource,
+    usersChangedCount: row.usersChangedCount,
+  }
+}
+
+function toCommunityMembershipSyncRunRecord(row: {
+  addToOrganizationCount: number
+  addToTeamCount: number
+  blockedAssetGroupIds: string | null
+  dependencyAssetGroupIds: string
+  dependencyFreshAtStart: boolean
+  errorMessage: string | null
+  errorPayload: string | null
+  finishedAt: Date | null
+  id: string
+  organizationId: string
+  qualifiedUserCount: number
+  removeFromOrganizationCount: number
+  removeFromTeamCount: number
+  startedAt: Date
+  status: CommunityMembershipSyncRunStatus
+  triggerSource: CommunityRoleSyncTriggerSource
+  usersChangedCount: number
+}): CommunityMembershipSyncRunRecord {
+  return {
+    addToOrganizationCount: row.addToOrganizationCount,
+    addToTeamCount: row.addToTeamCount,
+    blockedAssetGroupIds: parseStoredJson<string[]>(row.blockedAssetGroupIds) ?? [],
+    dependencyAssetGroupIds: parseStoredJson<string[]>(row.dependencyAssetGroupIds) ?? [],
+    dependencyFreshAtStart: row.dependencyFreshAtStart,
+    errorMessage: row.errorMessage,
+    errorPayload: parseStoredJson(row.errorPayload),
+    finishedAt: row.finishedAt,
+    id: row.id,
+    organizationId: row.organizationId,
+    qualifiedUserCount: row.qualifiedUserCount,
+    removeFromOrganizationCount: row.removeFromOrganizationCount,
+    removeFromTeamCount: row.removeFromTeamCount,
+    startedAt: row.startedAt,
+    status: row.status,
+    triggerSource: row.triggerSource,
+    usersChangedCount: row.usersChangedCount,
+  }
+}
+
+async function getCommunityDiscordSyncRunRows(input: {
+  database?: Database
+  limitPerOrganization: number
+  organizationIds: string[]
+  statuses?: CommunityDiscordSyncRunStatus[]
+}) {
+  if (input.organizationIds.length === 0 || input.limitPerOrganization < 1) {
+    return []
+  }
+
+  const database = input.database ?? db
+  const rows = []
+
+  for (const organizationIdChunk of splitIntoChunks(
+    input.organizationIds,
+    getRunLookupChunkSize(input.statuses?.length ?? 0),
+  )) {
+    const filters = [inArray(communityDiscordSyncRun.organizationId, organizationIdChunk)]
+
+    if (input.statuses?.length) {
+      filters.push(inArray(communityDiscordSyncRun.status, input.statuses))
+    }
+
+    const rankedRuns = database
+      .select({
+        appliedGrantCount: communityDiscordSyncRun.appliedGrantCount,
+        appliedRevokeCount: communityDiscordSyncRun.appliedRevokeCount,
+        blockedAssetGroupIds: communityDiscordSyncRun.blockedAssetGroupIds,
+        dependencyAssetGroupIds: communityDiscordSyncRun.dependencyAssetGroupIds,
+        dependencyFreshAtStart: communityDiscordSyncRun.dependencyFreshAtStart,
+        errorMessage: communityDiscordSyncRun.errorMessage,
+        errorPayload: communityDiscordSyncRun.errorPayload,
+        failedCount: communityDiscordSyncRun.failedCount,
+        finishedAt: communityDiscordSyncRun.finishedAt,
+        id: communityDiscordSyncRun.id,
+        organizationId: communityDiscordSyncRun.organizationId,
+        outcomeCounts: communityDiscordSyncRun.outcomeCounts,
+        rolesBlockedCount: communityDiscordSyncRun.rolesBlockedCount,
+        rolesReadyCount: communityDiscordSyncRun.rolesReadyCount,
+        rowNumber:
+          sql<number>`row_number() over (partition by ${communityDiscordSyncRun.organizationId} order by ${communityDiscordSyncRun.startedAt} desc, ${communityDiscordSyncRun.id} desc)`.as(
+            'rowNumber',
+          ),
+        startedAt: communityDiscordSyncRun.startedAt,
+        status: communityDiscordSyncRun.status,
+        triggerSource: communityDiscordSyncRun.triggerSource,
+        usersChangedCount: communityDiscordSyncRun.usersChangedCount,
+      })
+      .from(communityDiscordSyncRun)
+      .where(and(...filters))
+      .as('rankedCommunityDiscordSyncRun')
+
+    rows.push(
+      ...(await database
+        .select({
+          appliedGrantCount: rankedRuns.appliedGrantCount,
+          appliedRevokeCount: rankedRuns.appliedRevokeCount,
+          blockedAssetGroupIds: rankedRuns.blockedAssetGroupIds,
+          dependencyAssetGroupIds: rankedRuns.dependencyAssetGroupIds,
+          dependencyFreshAtStart: rankedRuns.dependencyFreshAtStart,
+          errorMessage: rankedRuns.errorMessage,
+          errorPayload: rankedRuns.errorPayload,
+          failedCount: rankedRuns.failedCount,
+          finishedAt: rankedRuns.finishedAt,
+          id: rankedRuns.id,
+          organizationId: rankedRuns.organizationId,
+          outcomeCounts: rankedRuns.outcomeCounts,
+          rolesBlockedCount: rankedRuns.rolesBlockedCount,
+          rolesReadyCount: rankedRuns.rolesReadyCount,
+          startedAt: rankedRuns.startedAt,
+          status: rankedRuns.status,
+          triggerSource: rankedRuns.triggerSource,
+          usersChangedCount: rankedRuns.usersChangedCount,
+        })
+        .from(rankedRuns)
+        .where(lte(rankedRuns.rowNumber, input.limitPerOrganization))
+        .orderBy(asc(rankedRuns.organizationId), desc(rankedRuns.startedAt), desc(rankedRuns.id))),
+    )
+  }
+
+  return rows
+}
+
+async function getCommunityMembershipSyncRunRows(input: {
+  database?: Database
+  limitPerOrganization: number
+  organizationIds: string[]
+  statuses?: CommunityMembershipSyncRunStatus[]
+}) {
+  if (input.organizationIds.length === 0 || input.limitPerOrganization < 1) {
+    return []
+  }
+
+  const database = input.database ?? db
+  const rows = []
+
+  for (const organizationIdChunk of splitIntoChunks(
+    input.organizationIds,
+    getRunLookupChunkSize(input.statuses?.length ?? 0),
+  )) {
+    const filters = [inArray(communityMembershipSyncRun.organizationId, organizationIdChunk)]
+
+    if (input.statuses?.length) {
+      filters.push(inArray(communityMembershipSyncRun.status, input.statuses))
+    }
+
+    const rankedRuns = database
+      .select({
+        addToOrganizationCount: communityMembershipSyncRun.addToOrganizationCount,
+        addToTeamCount: communityMembershipSyncRun.addToTeamCount,
+        blockedAssetGroupIds: communityMembershipSyncRun.blockedAssetGroupIds,
+        dependencyAssetGroupIds: communityMembershipSyncRun.dependencyAssetGroupIds,
+        dependencyFreshAtStart: communityMembershipSyncRun.dependencyFreshAtStart,
+        errorMessage: communityMembershipSyncRun.errorMessage,
+        errorPayload: communityMembershipSyncRun.errorPayload,
+        finishedAt: communityMembershipSyncRun.finishedAt,
+        id: communityMembershipSyncRun.id,
+        organizationId: communityMembershipSyncRun.organizationId,
+        qualifiedUserCount: communityMembershipSyncRun.qualifiedUserCount,
+        removeFromOrganizationCount: communityMembershipSyncRun.removeFromOrganizationCount,
+        removeFromTeamCount: communityMembershipSyncRun.removeFromTeamCount,
+        rowNumber:
+          sql<number>`row_number() over (partition by ${communityMembershipSyncRun.organizationId} order by ${communityMembershipSyncRun.startedAt} desc, ${communityMembershipSyncRun.id} desc)`.as(
+            'rowNumber',
+          ),
+        startedAt: communityMembershipSyncRun.startedAt,
+        status: communityMembershipSyncRun.status,
+        triggerSource: communityMembershipSyncRun.triggerSource,
+        usersChangedCount: communityMembershipSyncRun.usersChangedCount,
+      })
+      .from(communityMembershipSyncRun)
+      .where(and(...filters))
+      .as('rankedCommunityMembershipSyncRun')
+
+    rows.push(
+      ...(await database
+        .select({
+          addToOrganizationCount: rankedRuns.addToOrganizationCount,
+          addToTeamCount: rankedRuns.addToTeamCount,
+          blockedAssetGroupIds: rankedRuns.blockedAssetGroupIds,
+          dependencyAssetGroupIds: rankedRuns.dependencyAssetGroupIds,
+          dependencyFreshAtStart: rankedRuns.dependencyFreshAtStart,
+          errorMessage: rankedRuns.errorMessage,
+          errorPayload: rankedRuns.errorPayload,
+          finishedAt: rankedRuns.finishedAt,
+          id: rankedRuns.id,
+          organizationId: rankedRuns.organizationId,
+          qualifiedUserCount: rankedRuns.qualifiedUserCount,
+          removeFromOrganizationCount: rankedRuns.removeFromOrganizationCount,
+          removeFromTeamCount: rankedRuns.removeFromTeamCount,
+          startedAt: rankedRuns.startedAt,
+          status: rankedRuns.status,
+          triggerSource: rankedRuns.triggerSource,
+          usersChangedCount: rankedRuns.usersChangedCount,
+        })
+        .from(rankedRuns)
+        .where(lte(rankedRuns.rowNumber, input.limitPerOrganization))
+        .orderBy(asc(rankedRuns.organizationId), desc(rankedRuns.startedAt), desc(rankedRuns.id))),
+    )
+  }
+
+  return rows
+}
+
+async function finalizeCommunityDiscordSyncRun(input: {
+  appliedGrantCount: number
+  appliedRevokeCount: number
+  blockedAssetGroupIds: string[]
+  database?: Database
+  errorMessage: string | null
+  errorPayload: unknown | null
+  failedCount: number
+  finishedAt: Date
+  outcomeCounts: DiscordSyncCounts
+  rolesBlockedCount: number
+  rolesReadyCount: number
+  runId: string
+  status: CommunityDiscordSyncRunStatus
+  usersChangedCount: number
+}) {
+  const database = input.database ?? db
+
+  await database
+    .update(communityDiscordSyncRun)
+    .set({
+      appliedGrantCount: input.appliedGrantCount,
+      appliedRevokeCount: input.appliedRevokeCount,
+      blockedAssetGroupIds: serializeJson(input.blockedAssetGroupIds),
+      errorMessage: input.errorMessage,
+      errorPayload: serializeJson(input.errorPayload),
+      failedCount: input.failedCount,
+      finishedAt: input.finishedAt,
+      outcomeCounts: JSON.stringify(input.outcomeCounts),
+      rolesBlockedCount: input.rolesBlockedCount,
+      rolesReadyCount: input.rolesReadyCount,
+      status: input.status,
+      usersChangedCount: input.usersChangedCount,
+    })
+    .where(and(eq(communityDiscordSyncRun.id, input.runId), eq(communityDiscordSyncRun.status, 'running')))
+}
+
+async function finalizeCommunityMembershipSyncRun(input: {
+  addToOrganizationCount: number
+  addToTeamCount: number
+  blockedAssetGroupIds: string[]
+  database?: Database
+  errorMessage: string | null
+  errorPayload: unknown | null
+  finishedAt: Date
+  qualifiedUserCount: number
+  removeFromOrganizationCount: number
+  removeFromTeamCount: number
+  runId: string
+  status: CommunityMembershipSyncRunStatus
+  usersChangedCount: number
+}) {
+  const database = input.database ?? db
+
+  await database
+    .update(communityMembershipSyncRun)
+    .set({
+      addToOrganizationCount: input.addToOrganizationCount,
+      addToTeamCount: input.addToTeamCount,
+      blockedAssetGroupIds: serializeJson(input.blockedAssetGroupIds),
+      errorMessage: input.errorMessage,
+      errorPayload: serializeJson(input.errorPayload),
+      finishedAt: input.finishedAt,
+      qualifiedUserCount: input.qualifiedUserCount,
+      removeFromOrganizationCount: input.removeFromOrganizationCount,
+      removeFromTeamCount: input.removeFromTeamCount,
+      status: input.status,
+      usersChangedCount: input.usersChangedCount,
+    })
+    .where(and(eq(communityMembershipSyncRun.id, input.runId), eq(communityMembershipSyncRun.status, 'running')))
+}
+
+async function markCommunitySyncRunFailedForExpiredLock(input: {
+  currentRunId: string
+  previousRunId: string
+  stolenAt: Date
+  transaction: AutomationTransaction
+}) {
+  if (input.currentRunId === input.previousRunId) {
+    return
+  }
+
+  const errorMessage = 'Community sync lock expired before the run completed.'
+  const errorPayload = JSON.stringify({
+    reason: 'lock_expired',
+  })
+
+  await input.transaction
+    .update(communityMembershipSyncRun)
+    .set({
+      errorMessage,
+      errorPayload,
+      finishedAt: input.stolenAt,
+      status: 'failed',
+    })
+    .where(
+      and(eq(communityMembershipSyncRun.id, input.previousRunId), eq(communityMembershipSyncRun.status, 'running')),
+    )
+  await input.transaction
+    .update(communityDiscordSyncRun)
+    .set({
+      errorMessage,
+      errorPayload,
+      finishedAt: input.stolenAt,
+      status: 'failed',
+    })
+    .where(and(eq(communityDiscordSyncRun.id, input.previousRunId), eq(communityDiscordSyncRun.status, 'running')))
+}
+
 export async function previewCommunityRoleSync(organizationId: string) {
   const existingOrganization = await ensureOrganizationExists(organizationId)
 
@@ -1417,7 +1996,7 @@ export async function previewCommunityRoleDiscordSync(organizationId: string) {
 }
 
 async function clearActiveOrganizationSessions(input: {
-  database?: Pick<typeof db, 'update'>
+  database?: Pick<Database, 'update'>
   organizationId: string
   userId: string
 }) {
@@ -1432,11 +2011,7 @@ async function clearActiveOrganizationSessions(input: {
     .where(and(eq(session.userId, input.userId), eq(session.activeOrganizationId, input.organizationId)))
 }
 
-async function clearActiveTeamSessions(input: {
-  database?: Pick<typeof db, 'update'>
-  teamId: string
-  userId: string
-}) {
+async function clearActiveTeamSessions(input: { database?: Pick<Database, 'update'>; teamId: string; userId: string }) {
   const database = input.database ?? db
 
   await database
@@ -1448,7 +2023,7 @@ async function clearActiveTeamSessions(input: {
 }
 
 async function clearActiveTeamSessionsByIds(input: {
-  database?: Pick<typeof db, 'update'>
+  database?: Pick<Database, 'update'>
   teamIds: string[]
   userId: string
 }) {
@@ -1466,28 +2041,59 @@ async function clearActiveTeamSessionsByIds(input: {
     .where(and(eq(session.userId, input.userId), inArray(session.activeTeamId, input.teamIds)))
 }
 
-export async function applyCommunityRoleSync(organizationId: string) {
-  const preview = await previewCommunityRoleSync(organizationId)
+function getCommunityDiscordSyncApplyStatus(
+  apply: CommunityRoleDiscordSyncApply,
+): Exclude<CommunityDiscordSyncRunStatus, 'failed' | 'running' | 'skipped'> {
+  return apply.summary.failedCount > 0 || apply.summary.rolesBlockedCount > 0 ? 'partial' : 'succeeded'
+}
 
-  if (!preview) {
-    return null
+function getEmptyCommunityDiscordSyncApplySummary(): CommunityRoleDiscordSyncApply['summary'] {
+  return {
+    appliedGrantCount: 0,
+    appliedRevokeCount: 0,
+    counts: createDiscordSyncCounts(),
+    failedCount: 0,
+    rolesBlockedCount: 0,
+    rolesReadyCount: 0,
+    usersChangedCount: 0,
   }
+}
 
-  await db.transaction(async (transaction) => {
-    for (const currentUser of preview.users) {
+function getEmptyCommunityRoleSyncSummary(): CommunityRoleSyncPreview['summary'] {
+  return {
+    addToOrganizationCount: 0,
+    addToTeamCount: 0,
+    qualifiedUserCount: 0,
+    removeFromOrganizationCount: 0,
+    removeFromTeamCount: 0,
+    usersChangedCount: 0,
+  }
+}
+
+async function executeCommunityRoleSyncPreview(input: {
+  database?: Database
+  organizationId: string
+  preview: CommunityRoleSyncPreview
+}) {
+  const database = input.database ?? db
+
+  await database.transaction(async (transaction) => {
+    for (const currentUser of input.preview.users) {
       if (currentUser.addToOrganization) {
+        const now = new Date()
+
         await transaction.insert(member).values({
-          createdAt: new Date(),
+          createdAt: now,
           id: crypto.randomUUID(),
-          organizationId,
+          organizationId: input.organizationId,
           role: 'member',
           userId: currentUser.userId,
         })
         await transaction.insert(communityManagedMember).values({
-          createdAt: new Date(),
+          createdAt: now,
           id: crypto.randomUUID(),
-          organizationId,
-          updatedAt: new Date(),
+          organizationId: input.organizationId,
+          updatedAt: now,
           userId: currentUser.userId,
         })
       }
@@ -1519,39 +2125,35 @@ export async function applyCommunityRoleSync(organizationId: string) {
 
       await transaction
         .delete(member)
-        .where(and(eq(member.organizationId, organizationId), eq(member.userId, currentUser.userId)))
+        .where(and(eq(member.organizationId, input.organizationId), eq(member.userId, currentUser.userId)))
       await transaction
         .delete(communityManagedMember)
         .where(
           and(
-            eq(communityManagedMember.organizationId, organizationId),
+            eq(communityManagedMember.organizationId, input.organizationId),
             eq(communityManagedMember.userId, currentUser.userId),
           ),
         )
       await clearActiveOrganizationSessions({
         database: transaction,
-        organizationId,
+        organizationId: input.organizationId,
         userId: currentUser.userId,
       })
     }
   })
 
-  return preview
+  return input.preview
 }
 
-export async function applyCommunityRoleDiscordSync(organizationId: string) {
-  const preview = await previewCommunityRoleDiscordSync(organizationId)
-
-  if (!preview) {
-    return null
-  }
-
+async function executeCommunityRoleDiscordSyncPreview(input: {
+  preview: CommunityRoleDiscordSyncPreview
+}): Promise<CommunityRoleDiscordSyncApply> {
   let appliedGrantCount = 0
   let appliedRevokeCount = 0
   let failedCount = 0
   const users: CommunityRoleDiscordSyncApplyUser[] = []
 
-  for (const currentUser of preview.users) {
+  for (const currentUser of input.preview.users) {
     const outcomes: CommunityRoleDiscordSyncApplyOutcome[] = []
 
     for (const outcome of currentUser.outcomes) {
@@ -1578,7 +2180,7 @@ export async function applyCommunityRoleDiscordSync(organizationId: string) {
               env,
             },
             {
-              guildId: preview.connection.guildId,
+              guildId: input.preview.connection.guildId,
               reason: `community-role:${outcome.communityRoleId}`,
               roleId: outcome.discordRoleId,
               userId: currentUser.discordAccountId,
@@ -1591,7 +2193,7 @@ export async function applyCommunityRoleDiscordSync(organizationId: string) {
               env,
             },
             {
-              guildId: preview.connection.guildId,
+              guildId: input.preview.connection.guildId,
               reason: `community-role:${outcome.communityRoleId}`,
               roleId: outcome.discordRoleId,
               userId: currentUser.discordAccountId,
@@ -1638,7 +2240,7 @@ export async function applyCommunityRoleDiscordSync(organizationId: string) {
   }
 
   const mappingStateByRoleId = new Map(
-    preview.roles.map((role) => [
+    input.preview.roles.map((role) => [
       role.communityRoleId,
       {
         checks: [...role.mappingChecks],
@@ -1648,9 +2250,9 @@ export async function applyCommunityRoleDiscordSync(organizationId: string) {
     ]),
   )
   const qualifiedUserCountByRoleId = new Map(
-    preview.roles.map((role) => [role.communityRoleId, role.qualifiedUserCount]),
+    input.preview.roles.map((role) => [role.communityRoleId, role.qualifiedUserCount]),
   )
-  const summarizedRoles = preview.roles.map((role) => ({
+  const summarizedRoles = input.preview.roles.map((role) => ({
     discordRoleId: role.discordRoleId,
     enabled: role.enabled,
     id: role.communityRoleId,
@@ -1664,7 +2266,7 @@ export async function applyCommunityRoleDiscordSync(organizationId: string) {
   })
 
   return {
-    ...preview,
+    ...input.preview,
     roles,
     summary: {
       ...summary,
@@ -1673,7 +2275,669 @@ export async function applyCommunityRoleDiscordSync(organizationId: string) {
       failedCount,
     },
     users,
-  } satisfies CommunityRoleDiscordSyncApply
+  }
+}
+
+async function runCommunityMembershipSync(input: {
+  database?: Database
+  now?: () => Date
+  organizationId: string
+  skipIfDependenciesNotFresh: boolean
+  skipIfLocked: boolean
+  triggerSource: CommunityRoleSyncTriggerSource
+}) {
+  const database = input.database ?? db
+  const now = input.now ?? (() => new Date())
+  const existingOrganization = await ensureOrganizationExists(input.organizationId, database)
+
+  if (!existingOrganization) {
+    return {
+      preview: null,
+      status: 'missing' as const,
+    }
+  }
+
+  const roles = await listCommunityRoleRecords(input.organizationId, database)
+  const dependencies = await getOrganizationSyncDependencies({
+    database,
+    now: input.now,
+    organizationId: input.organizationId,
+    roles,
+  })
+  const runId = crypto.randomUUID()
+  const startedAt = now()
+  const lockKey = buildCommunitySyncLockKey(input.organizationId)
+  const expiresAt = new Date(startedAt.getTime() + AUTOMATION_LOCK_TIMEOUT_MS)
+  const lock = await acquireAutomationLock({
+    database,
+    expiresAt,
+    key: lockKey,
+    onStaleLockStolen: markCommunitySyncRunFailedForExpiredLock,
+    runId,
+    startedAt,
+  })
+
+  if (!lock.acquired) {
+    if (input.skipIfLocked) {
+      return {
+        preview: null,
+        status: 'locked' as const,
+      }
+    }
+
+    throw new AutomationLockConflictError(lockKey)
+  }
+
+  let preview: CommunityRoleSyncPreview | null = null
+  let runInserted = false
+
+  try {
+    await database.insert(communityMembershipSyncRun).values({
+      addToOrganizationCount: 0,
+      addToTeamCount: 0,
+      blockedAssetGroupIds: serializeJson(dependencies.blockedAssetGroupIds),
+      dependencyAssetGroupIds: JSON.stringify(dependencies.dependencyAssetGroupIds),
+      dependencyFreshAtStart: dependencies.dependencyFreshAtStart,
+      errorMessage: null,
+      errorPayload: null,
+      finishedAt: null,
+      id: runId,
+      organizationId: input.organizationId,
+      qualifiedUserCount: 0,
+      removeFromOrganizationCount: 0,
+      removeFromTeamCount: 0,
+      startedAt,
+      status: 'running',
+      triggerSource: input.triggerSource,
+      usersChangedCount: 0,
+    })
+    runInserted = true
+
+    if (input.skipIfDependenciesNotFresh && !dependencies.dependencyFreshAtStart) {
+      await finalizeCommunityMembershipSyncRun({
+        addToOrganizationCount: 0,
+        addToTeamCount: 0,
+        blockedAssetGroupIds: dependencies.blockedAssetGroupIds,
+        database,
+        errorMessage: 'Scheduled membership sync skipped because required asset groups are stale.',
+        errorPayload: {
+          reason: 'dependency_stale',
+        },
+        finishedAt: now(),
+        qualifiedUserCount: 0,
+        removeFromOrganizationCount: 0,
+        removeFromTeamCount: 0,
+        runId,
+        status: 'skipped',
+        usersChangedCount: 0,
+      })
+
+      return {
+        preview: null,
+        status: 'skipped' as const,
+      }
+    }
+
+    preview = buildPreviewFromSyncState(await loadSyncState(input.organizationId, database))
+    await executeCommunityRoleSyncPreview({
+      database,
+      organizationId: input.organizationId,
+      preview,
+    })
+    await finalizeCommunityMembershipSyncRun({
+      addToOrganizationCount: preview.summary.addToOrganizationCount,
+      addToTeamCount: preview.summary.addToTeamCount,
+      blockedAssetGroupIds: dependencies.blockedAssetGroupIds,
+      database,
+      errorMessage: null,
+      errorPayload: null,
+      finishedAt: now(),
+      qualifiedUserCount: preview.summary.qualifiedUserCount,
+      removeFromOrganizationCount: preview.summary.removeFromOrganizationCount,
+      removeFromTeamCount: preview.summary.removeFromTeamCount,
+      runId,
+      status: 'succeeded',
+      usersChangedCount: preview.summary.usersChangedCount,
+    })
+
+    return {
+      preview,
+      status: 'succeeded' as const,
+    }
+  } catch (error) {
+    const summary = preview?.summary ?? getEmptyCommunityRoleSyncSummary()
+
+    if (runInserted) {
+      await finalizeCommunityMembershipSyncRun({
+        addToOrganizationCount: summary.addToOrganizationCount,
+        addToTeamCount: summary.addToTeamCount,
+        blockedAssetGroupIds: dependencies.blockedAssetGroupIds,
+        database,
+        errorMessage: error instanceof Error ? error.message : 'Community membership sync failed.',
+        errorPayload: buildCommunitySyncErrorPayload(error),
+        finishedAt: now(),
+        qualifiedUserCount: summary.qualifiedUserCount,
+        removeFromOrganizationCount: summary.removeFromOrganizationCount,
+        removeFromTeamCount: summary.removeFromTeamCount,
+        runId,
+        status: 'failed',
+        usersChangedCount: summary.usersChangedCount,
+      })
+    }
+
+    throw error
+  } finally {
+    await releaseAutomationLock({
+      database,
+      key: lockKey,
+      runId,
+    })
+  }
+}
+
+async function runCommunityDiscordSync(input: {
+  database?: Database
+  now?: () => Date
+  organizationId: string
+  skipIfDependenciesNotFresh: boolean
+  skipIfLocked: boolean
+  skipReason?: 'membership_run_failed'
+  triggerSource: CommunityRoleSyncTriggerSource
+}) {
+  const database = input.database ?? db
+  const now = input.now ?? (() => new Date())
+  const existingOrganization = await ensureOrganizationExists(input.organizationId, database)
+
+  if (!existingOrganization) {
+    return {
+      result: null,
+      status: 'missing' as const,
+    }
+  }
+
+  const roles = await listCommunityRoleRecords(input.organizationId, database)
+  const dependencies = await getOrganizationSyncDependencies({
+    database,
+    now: input.now,
+    organizationId: input.organizationId,
+    roles,
+  })
+  const runId = crypto.randomUUID()
+  const startedAt = now()
+  const lockKey = buildCommunitySyncLockKey(input.organizationId)
+  const expiresAt = new Date(startedAt.getTime() + AUTOMATION_LOCK_TIMEOUT_MS)
+  const lock = await acquireAutomationLock({
+    database,
+    expiresAt,
+    key: lockKey,
+    onStaleLockStolen: markCommunitySyncRunFailedForExpiredLock,
+    runId,
+    startedAt,
+  })
+
+  if (!lock.acquired) {
+    if (input.skipIfLocked) {
+      return {
+        result: null,
+        status: 'locked' as const,
+      }
+    }
+
+    throw new AutomationLockConflictError(lockKey)
+  }
+
+  let result: CommunityRoleDiscordSyncApply | null = null
+  let runInserted = false
+
+  try {
+    await database.insert(communityDiscordSyncRun).values({
+      appliedGrantCount: 0,
+      appliedRevokeCount: 0,
+      blockedAssetGroupIds: serializeJson(dependencies.blockedAssetGroupIds),
+      dependencyAssetGroupIds: JSON.stringify(dependencies.dependencyAssetGroupIds),
+      dependencyFreshAtStart: dependencies.dependencyFreshAtStart,
+      errorMessage: null,
+      errorPayload: null,
+      failedCount: 0,
+      finishedAt: null,
+      id: runId,
+      organizationId: input.organizationId,
+      outcomeCounts: JSON.stringify(createDiscordSyncCounts()),
+      rolesBlockedCount: 0,
+      rolesReadyCount: 0,
+      startedAt,
+      status: 'running',
+      triggerSource: input.triggerSource,
+      usersChangedCount: 0,
+    })
+    runInserted = true
+
+    if (input.skipReason === 'membership_run_failed') {
+      await finalizeCommunityDiscordSyncRun({
+        appliedGrantCount: 0,
+        appliedRevokeCount: 0,
+        blockedAssetGroupIds: dependencies.blockedAssetGroupIds,
+        database,
+        errorMessage: 'Scheduled Discord sync skipped because membership sync failed in the same pass.',
+        errorPayload: {
+          reason: 'membership_run_failed',
+        },
+        failedCount: 0,
+        finishedAt: now(),
+        outcomeCounts: createDiscordSyncCounts(),
+        rolesBlockedCount: 0,
+        rolesReadyCount: 0,
+        runId,
+        status: 'skipped',
+        usersChangedCount: 0,
+      })
+
+      return {
+        result: null,
+        status: 'skipped' as const,
+      }
+    }
+
+    if (input.skipIfDependenciesNotFresh && !dependencies.dependencyFreshAtStart) {
+      await finalizeCommunityDiscordSyncRun({
+        appliedGrantCount: 0,
+        appliedRevokeCount: 0,
+        blockedAssetGroupIds: dependencies.blockedAssetGroupIds,
+        database,
+        errorMessage: 'Scheduled Discord sync skipped because required asset groups are stale.',
+        errorPayload: {
+          reason: 'dependency_stale',
+        },
+        failedCount: 0,
+        finishedAt: now(),
+        outcomeCounts: createDiscordSyncCounts(),
+        rolesBlockedCount: 0,
+        rolesReadyCount: 0,
+        runId,
+        status: 'skipped',
+        usersChangedCount: 0,
+      })
+
+      return {
+        result: null,
+        status: 'skipped' as const,
+      }
+    }
+
+    result = await executeCommunityRoleDiscordSyncPreview({
+      preview: await buildCommunityRoleDiscordSyncPreview(input.organizationId, database),
+    })
+    const status = getCommunityDiscordSyncApplyStatus(result)
+
+    await finalizeCommunityDiscordSyncRun({
+      appliedGrantCount: result.summary.appliedGrantCount,
+      appliedRevokeCount: result.summary.appliedRevokeCount,
+      blockedAssetGroupIds: dependencies.blockedAssetGroupIds,
+      database,
+      errorMessage: null,
+      errorPayload: null,
+      failedCount: result.summary.failedCount,
+      finishedAt: now(),
+      outcomeCounts: result.summary.counts,
+      rolesBlockedCount: result.summary.rolesBlockedCount,
+      rolesReadyCount: result.summary.rolesReadyCount,
+      runId,
+      status,
+      usersChangedCount: result.summary.usersChangedCount,
+    })
+
+    return {
+      result,
+      status,
+    }
+  } catch (error) {
+    const summary = result?.summary ?? getEmptyCommunityDiscordSyncApplySummary()
+
+    if (runInserted) {
+      await finalizeCommunityDiscordSyncRun({
+        appliedGrantCount: summary.appliedGrantCount,
+        appliedRevokeCount: summary.appliedRevokeCount,
+        blockedAssetGroupIds: dependencies.blockedAssetGroupIds,
+        database,
+        errorMessage: error instanceof Error ? error.message : 'Community Discord sync failed.',
+        errorPayload: buildCommunitySyncErrorPayload(error),
+        failedCount: summary.failedCount,
+        finishedAt: now(),
+        outcomeCounts: summary.counts,
+        rolesBlockedCount: summary.rolesBlockedCount,
+        rolesReadyCount: summary.rolesReadyCount,
+        runId,
+        status: 'failed',
+        usersChangedCount: summary.usersChangedCount,
+      })
+    }
+
+    throw error
+  } finally {
+    await releaseAutomationLock({
+      database,
+      key: lockKey,
+      runId,
+    })
+  }
+}
+
+export async function applyCommunityRoleSync(organizationId: string) {
+  const result = await runCommunityMembershipSync({
+    organizationId,
+    skipIfDependenciesNotFresh: false,
+    skipIfLocked: false,
+    triggerSource: 'manual',
+  })
+
+  return result.preview
+}
+
+export async function applyCommunityRoleDiscordSync(organizationId: string) {
+  const result = await runCommunityDiscordSync({
+    organizationId,
+    skipIfDependenciesNotFresh: false,
+    skipIfLocked: false,
+    triggerSource: 'manual',
+  })
+
+  return result.result
+}
+
+export async function getCommunityRoleSyncStatus(input: {
+  database?: Database
+  now?: () => Date
+  organizationId: string
+}) {
+  const database = input.database ?? db
+  const currentNow = input.now?.() ?? new Date()
+  const existingOrganization = await ensureOrganizationExists(input.organizationId, database)
+
+  if (!existingOrganization) {
+    return null
+  }
+
+  const roles = await listCommunityRoleRecords(input.organizationId, database)
+  const dependencies = await getOrganizationSyncDependencies({
+    database,
+    now: input.now,
+    organizationId: input.organizationId,
+    roles,
+  })
+  const [
+    communityDiscordSyncRuns,
+    successfulCommunityDiscordSyncRuns,
+    communityMembershipSyncRuns,
+    successfulCommunityMembershipSyncRuns,
+  ] = await Promise.all([
+    getCommunityDiscordSyncRunRows({
+      database,
+      limitPerOrganization: 1,
+      organizationIds: [input.organizationId],
+    }),
+    getCommunityDiscordSyncRunRows({
+      database,
+      limitPerOrganization: 1,
+      organizationIds: [input.organizationId],
+      statuses: ['succeeded'],
+    }),
+    getCommunityMembershipSyncRunRows({
+      database,
+      limitPerOrganization: 1,
+      organizationIds: [input.organizationId],
+    }),
+    getCommunityMembershipSyncRunRows({
+      database,
+      limitPerOrganization: 1,
+      organizationIds: [input.organizationId],
+      statuses: ['succeeded'],
+    }),
+  ])
+  const discordStatus = buildCommunitySyncStatusSummary({
+    dependencyAssetGroups: dependencies.dependencyAssetGroups,
+    intervalMs: getScheduledDiscordSyncIntervalMs(),
+    lastRun: communityDiscordSyncRuns[0] ? toCommunityDiscordSyncRunRecord(communityDiscordSyncRuns[0]) : null,
+    lastSuccessfulRun: successfulCommunityDiscordSyncRuns[0]
+      ? toCommunityDiscordSyncRunRecord(successfulCommunityDiscordSyncRuns[0])
+      : null,
+    now: currentNow,
+  })
+  const membershipStatus = buildCommunitySyncStatusSummary({
+    dependencyAssetGroups: dependencies.dependencyAssetGroups,
+    intervalMs: getScheduledMembershipSyncIntervalMs(),
+    lastRun: communityMembershipSyncRuns[0] ? toCommunityMembershipSyncRunRecord(communityMembershipSyncRuns[0]) : null,
+    lastSuccessfulRun: successfulCommunityMembershipSyncRuns[0]
+      ? toCommunityMembershipSyncRunRecord(successfulCommunityMembershipSyncRuns[0])
+      : null,
+    now: currentNow,
+  })
+
+  return {
+    dependencyAssetGroups: dependencies.dependencyAssetGroups,
+    discordStatus,
+    membershipStatus,
+    organizationId: input.organizationId,
+  } satisfies CommunityRoleSyncStatus
+}
+
+export async function listCommunityDiscordSyncRuns(input: {
+  database?: Database
+  limit: number
+  organizationId: string
+}) {
+  return (
+    await getCommunityDiscordSyncRunRows({
+      database: input.database,
+      limitPerOrganization: input.limit,
+      organizationIds: [input.organizationId],
+    })
+  ).map(toCommunityDiscordSyncRunRecord)
+}
+
+export async function listCommunityMembershipSyncRuns(input: {
+  database?: Database
+  limit: number
+  organizationId: string
+}) {
+  return (
+    await getCommunityMembershipSyncRunRows({
+      database: input.database,
+      limitPerOrganization: input.limit,
+      organizationIds: [input.organizationId],
+    })
+  ).map(toCommunityMembershipSyncRunRecord)
+}
+
+export async function listOrganizationsDueForScheduledCommunityDiscordSync(input?: {
+  database?: Database
+  now?: () => Date
+}) {
+  const database = input?.database ?? db
+  const currentNow = input?.now?.() ?? new Date()
+  const eligibleOrganizations = await database
+    .select({
+      name: organization.name,
+      organizationId: communityRole.organizationId,
+    })
+    .from(communityRole)
+    .innerJoin(communityDiscordConnection, eq(communityDiscordConnection.organizationId, communityRole.organizationId))
+    .innerJoin(organization, eq(organization.id, communityRole.organizationId))
+    .where(and(eq(communityRole.enabled, true), isNotNull(communityRole.discordRoleId)))
+    .groupBy(organization.name, communityRole.organizationId)
+    .orderBy(asc(organization.name), asc(communityRole.organizationId))
+
+  if (eligibleOrganizations.length === 0) {
+    return []
+  }
+
+  const lastRunByOrganizationId = new Map<string, CommunityDiscordSyncRunRecord>()
+
+  for (const row of await getCommunityDiscordSyncRunRows({
+    database,
+    limitPerOrganization: 1,
+    organizationIds: eligibleOrganizations.map((record) => record.organizationId),
+  })) {
+    if (!lastRunByOrganizationId.has(row.organizationId)) {
+      lastRunByOrganizationId.set(row.organizationId, toCommunityDiscordSyncRunRecord(row))
+    }
+  }
+
+  return eligibleOrganizations
+    .filter((record) => {
+      const lastRun = lastRunByOrganizationId.get(record.organizationId)
+
+      if (!lastRun) {
+        return true
+      }
+
+      return currentNow.getTime() - lastRun.startedAt.getTime() >= getScheduledDiscordSyncIntervalMs()
+    })
+    .map((record) => record.organizationId)
+}
+
+export async function listOrganizationsDueForScheduledCommunityMembershipSync(input?: {
+  database?: Database
+  now?: () => Date
+}) {
+  const database = input?.database ?? db
+  const currentNow = input?.now?.() ?? new Date()
+  const eligibleOrganizations = await database
+    .select({
+      name: organization.name,
+      organizationId: communityRole.organizationId,
+    })
+    .from(communityRole)
+    .innerJoin(organization, eq(organization.id, communityRole.organizationId))
+    .where(eq(communityRole.enabled, true))
+    .groupBy(organization.name, communityRole.organizationId)
+    .orderBy(asc(organization.name), asc(communityRole.organizationId))
+
+  if (eligibleOrganizations.length === 0) {
+    return []
+  }
+
+  const lastRunByOrganizationId = new Map<string, CommunityMembershipSyncRunRecord>()
+
+  for (const row of await getCommunityMembershipSyncRunRows({
+    database,
+    limitPerOrganization: 1,
+    organizationIds: eligibleOrganizations.map((record) => record.organizationId),
+  })) {
+    if (!lastRunByOrganizationId.has(row.organizationId)) {
+      lastRunByOrganizationId.set(row.organizationId, toCommunityMembershipSyncRunRecord(row))
+    }
+  }
+
+  return eligibleOrganizations
+    .filter((record) => {
+      const lastRun = lastRunByOrganizationId.get(record.organizationId)
+
+      if (!lastRun) {
+        return true
+      }
+
+      return currentNow.getTime() - lastRun.startedAt.getTime() >= getScheduledMembershipSyncIntervalMs()
+    })
+    .map((record) => record.organizationId)
+}
+
+export async function runScheduledCommunityRoleDiscordSync(input: {
+  database?: Database
+  now?: () => Date
+  organizationId: string
+  skipReason?: 'membership_run_failed'
+}) {
+  try {
+    const database = input.database ?? db
+    const existingOrganization = await ensureOrganizationExists(input.organizationId, database)
+
+    if (!existingOrganization) {
+      return {
+        organizationId: input.organizationId,
+        status: 'missing' as const,
+      }
+    }
+
+    const [connectionRecord, roles] = await Promise.all([
+      loadCommunityDiscordConnectionRecord(input.organizationId, database),
+      listCommunityRoleRecords(input.organizationId, database),
+    ])
+
+    if (!connectionRecord || !roles.some((roleRecord) => roleRecord.enabled && roleRecord.discordRoleId)) {
+      return {
+        organizationId: input.organizationId,
+        status: 'missing' as const,
+      }
+    }
+
+    const result = await runCommunityDiscordSync({
+      database: input.database,
+      now: input.now,
+      organizationId: input.organizationId,
+      skipIfDependenciesNotFresh: true,
+      skipIfLocked: true,
+      skipReason: input.skipReason,
+      triggerSource: 'scheduled',
+    })
+
+    return {
+      organizationId: input.organizationId,
+      status: result.status,
+    }
+  } catch (error) {
+    return {
+      errorMessage: error instanceof Error ? error.message : 'Community Discord sync failed.',
+      organizationId: input.organizationId,
+      status: 'failed' as const,
+    }
+  }
+}
+
+export async function runScheduledCommunityRoleSync(input: {
+  database?: Database
+  now?: () => Date
+  organizationId: string
+}) {
+  try {
+    const database = input.database ?? db
+    const existingOrganization = await ensureOrganizationExists(input.organizationId, database)
+
+    if (!existingOrganization) {
+      return {
+        organizationId: input.organizationId,
+        status: 'missing' as const,
+      }
+    }
+
+    const roles = await listCommunityRoleRecords(input.organizationId, database)
+
+    if (!roles.some((roleRecord) => roleRecord.enabled)) {
+      return {
+        organizationId: input.organizationId,
+        status: 'missing' as const,
+      }
+    }
+
+    const result = await runCommunityMembershipSync({
+      database: input.database,
+      now: input.now,
+      organizationId: input.organizationId,
+      skipIfDependenciesNotFresh: true,
+      skipIfLocked: true,
+      triggerSource: 'scheduled',
+    })
+
+    return {
+      organizationId: input.organizationId,
+      status: result.status,
+    }
+  } catch (error) {
+    return {
+      errorMessage: error instanceof Error ? error.message : 'Community membership sync failed.',
+      organizationId: input.organizationId,
+      status: 'failed' as const,
+    }
+  }
 }
 
 export async function listCommunityManagedMemberUserIds(input: { organizationIds: string[]; userIds?: string[] }) {
@@ -1775,7 +3039,7 @@ export async function upsertCommunityRoleConditions(input: {
     minimumAmount: string
   }>
   communityRoleId: string
-  database?: Pick<typeof db, 'delete' | 'insert'>
+  database?: Pick<Database, 'delete' | 'insert'>
 }) {
   const database = input.database ?? db
 

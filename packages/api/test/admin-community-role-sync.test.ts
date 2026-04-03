@@ -7,12 +7,20 @@ import { pathToFileURL } from 'node:url'
 
 type AssetSchema = typeof import('@tokengator/db/schema/asset')
 type AuthSchema = typeof import('@tokengator/db/schema/auth')
+type AutomationSchema = typeof import('@tokengator/db/schema/automation')
 type CommunityRoleSchema = typeof import('@tokengator/db/schema/community-role')
 type DatabaseClient = (typeof import('@tokengator/db'))['db']
 type ApplyCommunityRoleSync = (typeof import('../src/lib/admin-community-role-sync'))['applyCommunityRoleSync']
 type EvaluateCommunityRoles = (typeof import('../src/lib/admin-community-role-sync'))['evaluateCommunityRoles']
+type GetCommunityRoleSyncStatus = (typeof import('../src/lib/admin-community-role-sync'))['getCommunityRoleSyncStatus']
+type ListCommunityMembershipSyncRuns =
+  (typeof import('../src/lib/admin-community-role-sync'))['listCommunityMembershipSyncRuns']
+type ListOrganizationsDueForScheduledCommunityMembershipSync =
+  (typeof import('../src/lib/admin-community-role-sync'))['listOrganizationsDueForScheduledCommunityMembershipSync']
 type PreviewCommunityRoleSync = (typeof import('../src/lib/admin-community-role-sync'))['previewCommunityRoleSync']
 type RemoveCommunityRoleById = (typeof import('../src/lib/admin-community-role-sync'))['removeCommunityRoleById']
+type RunScheduledCommunityRoleSync =
+  (typeof import('../src/lib/admin-community-role-sync'))['runScheduledCommunityRoleSync']
 
 const DB_PACKAGE_DIR = resolve(import.meta.dir, '..', '..', 'db')
 const TEST_DATABASE_DIR = resolve(tmpdir(), 'tokengator-api-tests')
@@ -21,11 +29,16 @@ const TEST_DATABASE_URL = pathToFileURL(resolve(TEST_DATABASE_DIR, 'test.sqlite'
 let applyCommunityRoleSync: ApplyCommunityRoleSync
 let assetSchema: AssetSchema
 let authSchema: AuthSchema
+let automationSchema: AutomationSchema
 let communityRoleSchema: CommunityRoleSchema
 let database: DatabaseClient
 let evaluateCommunityRoles: EvaluateCommunityRoles
+let getCommunityRoleSyncStatus: GetCommunityRoleSyncStatus
+let listCommunityMembershipSyncRuns: ListCommunityMembershipSyncRuns
+let listOrganizationsDueForScheduledCommunityMembershipSync: ListOrganizationsDueForScheduledCommunityMembershipSync
 let previewCommunityRoleSync: PreviewCommunityRoleSync
 let removeCommunityRoleById: RemoveCommunityRoleById
+let runScheduledCommunityRoleSync: RunScheduledCommunityRoleSync
 function decodeOutput(buffer: Uint8Array | undefined) {
   return buffer ? Buffer.from(buffer).toString('utf8').trim() : ''
 }
@@ -46,6 +59,42 @@ function syncDatabase(databaseUrl: string) {
   if (result.exitCode !== 0) {
     throw new Error(`Failed to sync the test database.\n${decodeOutput(result.stdout)}\n${decodeOutput(result.stderr)}`)
   }
+}
+
+function createInsertFailureDatabase(failingTable: unknown) {
+  return new Proxy(database, {
+    get(target, property, receiver) {
+      if (property === 'insert') {
+        return (table: unknown) => {
+          if (table === failingTable) {
+            throw new Error('Run insert failed.')
+          }
+
+          return target.insert(table as never)
+        }
+      }
+
+      const value = Reflect.get(target, property, receiver)
+
+      return typeof value === 'function' ? value.bind(target) : value
+    },
+  })
+}
+
+function createSelectFailureDatabase(message: string) {
+  return new Proxy(database, {
+    get(target, property, receiver) {
+      if (property === 'select') {
+        return () => {
+          throw new Error(message)
+        }
+      }
+
+      const value = Reflect.get(target, property, receiver)
+
+      return typeof value === 'function' ? value.bind(target) : value
+    },
+  })
 }
 
 async function insertAsset(input: {
@@ -267,12 +316,22 @@ beforeAll(async () => {
   ;({ db: database } = await import('@tokengator/db'))
   assetSchema = await import('@tokengator/db/schema/asset')
   authSchema = await import('@tokengator/db/schema/auth')
+  automationSchema = await import('@tokengator/db/schema/automation')
   communityRoleSchema = await import('@tokengator/db/schema/community-role')
-  ;({ applyCommunityRoleSync, evaluateCommunityRoles, previewCommunityRoleSync, removeCommunityRoleById } =
-    await import('../src/lib/admin-community-role-sync'))
+  ;({
+    applyCommunityRoleSync,
+    evaluateCommunityRoles,
+    getCommunityRoleSyncStatus,
+    listCommunityMembershipSyncRuns,
+    listOrganizationsDueForScheduledCommunityMembershipSync,
+    previewCommunityRoleSync,
+    removeCommunityRoleById,
+    runScheduledCommunityRoleSync,
+  } = await import('../src/lib/admin-community-role-sync'))
 }, 15_000)
 
 beforeEach(async () => {
+  await database.delete(automationSchema.automationLock).where(sql`1 = 1`)
   await database.delete(authSchema.session).where(sql`1 = 1`)
   await database.delete(authSchema.teamMember).where(sql`1 = 1`)
   await database.delete(communityRoleSchema.communityRoleCondition).where(sql`1 = 1`)
@@ -577,6 +636,82 @@ describe('evaluateCommunityRoles', () => {
 })
 
 describe('community role sync', () => {
+  test('returns failed when scheduled membership preflight queries throw', async () => {
+    const originalSelect = database.select.bind(database)
+
+    try {
+      Object.assign(database, {
+        select() {
+          throw new Error('Membership preflight failed.')
+        },
+      })
+
+      await expect(
+        runScheduledCommunityRoleSync({
+          organizationId: 'org-preflight-failure',
+        }),
+      ).resolves.toEqual({
+        errorMessage: 'Membership preflight failed.',
+        organizationId: 'org-preflight-failure',
+        status: 'failed',
+      })
+    } finally {
+      Object.assign(database, {
+        select: originalSelect,
+      })
+    }
+  })
+
+  test('releases the shared sync lock when the membership run insert fails', async () => {
+    const organizationId = 'org-lock-release'
+
+    await insertOrganization({
+      id: organizationId,
+      name: 'Lock Release Org',
+      slug: 'lock-release-org',
+    })
+    await insertTeam({
+      id: 'team-lock-release',
+      name: 'Lock Release Team',
+      organizationId,
+    })
+    await insertCommunityRole({
+      enabled: true,
+      id: 'role-lock-release',
+      matchMode: 'any',
+      name: 'Lock Release Role',
+      organizationId,
+      slug: 'lock-release-role',
+      teamId: 'team-lock-release',
+    })
+
+    await expect(
+      runScheduledCommunityRoleSync({
+        database: createInsertFailureDatabase(communityRoleSchema.communityMembershipSyncRun) as never,
+        organizationId,
+      }),
+    ).resolves.toEqual({
+      errorMessage: 'Run insert failed.',
+      organizationId,
+      status: 'failed',
+    })
+
+    expect(await database.select().from(automationSchema.automationLock)).toHaveLength(0)
+  })
+
+  test('uses the injected database for scheduled membership preflight reads', async () => {
+    await expect(
+      runScheduledCommunityRoleSync({
+        database: createSelectFailureDatabase('Injected membership preflight failed.') as never,
+        organizationId: 'org-injected-preflight-failure',
+      }),
+    ).resolves.toEqual({
+      errorMessage: 'Injected membership preflight failed.',
+      organizationId: 'org-injected-preflight-failure',
+      status: 'failed',
+    })
+  })
+
   test('deleting a community role removes its Better Auth team and clears active team sessions', async () => {
     const organizationId = 'org-delete'
     const roleId = 'role-delete'
@@ -1067,6 +1202,42 @@ describe('community role sync', () => {
         token: 'dave-session',
       },
     ])
+    await expect(
+      listCommunityMembershipSyncRuns({
+        limit: 5,
+        organizationId,
+      }),
+    ).resolves.toMatchObject([
+      {
+        addToOrganizationCount: 1,
+        addToTeamCount: 3,
+        dependencyAssetGroupIds: [collectionGroupId, mintGroupId],
+        errorMessage: null,
+        qualifiedUserCount: 2,
+        removeFromOrganizationCount: 1,
+        removeFromTeamCount: 2,
+        status: 'succeeded',
+        triggerSource: 'manual',
+        usersChangedCount: 4,
+      },
+    ])
+    await expect(
+      getCommunityRoleSyncStatus({
+        organizationId,
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        membershipStatus: expect.objectContaining({
+          freshnessStatus: 'stale',
+          lastRun: expect.objectContaining({
+            status: 'succeeded',
+          }),
+          lastSuccessfulRun: expect.objectContaining({
+            status: 'succeeded',
+          }),
+        }),
+      }),
+    )
   })
 
   test('matches Solana wallets case-sensitively when assigning gated roles', async () => {
@@ -1177,5 +1348,122 @@ describe('community role sync', () => {
         userId: lowerUserId,
       },
     ])
+  })
+
+  test('skips scheduled membership sync when dependency asset groups are stale or unknown', async () => {
+    const organizationId = 'org-scheduled-membership-skip'
+    const assetGroupId = 'group-scheduled-membership-skip'
+    const roleId = 'role-scheduled-membership-skip'
+    const teamId = 'team-scheduled-membership-skip'
+
+    await insertOrganization({
+      id: organizationId,
+      name: 'Scheduled Membership Skip',
+      slug: 'scheduled-membership-skip',
+    })
+    await insertTeam({
+      id: teamId,
+      name: 'Collectors',
+      organizationId,
+    })
+    await insertCommunityRole({
+      enabled: true,
+      id: roleId,
+      matchMode: 'any',
+      name: 'Collectors',
+      organizationId,
+      slug: 'collectors',
+      teamId,
+    })
+    await insertAssetGroup({
+      address: 'collection-scheduled-membership-skip',
+      enabled: true,
+      id: assetGroupId,
+      label: 'Scheduled Membership Collection',
+      type: 'collection',
+    })
+    await insertCommunityRoleCondition({
+      assetGroupId,
+      communityRoleId: roleId,
+      minimumAmount: '1',
+    })
+
+    await expect(
+      runScheduledCommunityRoleSync({
+        organizationId,
+      }),
+    ).resolves.toEqual({
+      organizationId,
+      status: 'skipped',
+    })
+    await expect(
+      listCommunityMembershipSyncRuns({
+        limit: 5,
+        organizationId,
+      }),
+    ).resolves.toMatchObject([
+      {
+        blockedAssetGroupIds: [assetGroupId],
+        dependencyAssetGroupIds: [assetGroupId],
+        dependencyFreshAtStart: false,
+        errorMessage: 'Scheduled membership sync skipped because required asset groups are stale.',
+        status: 'skipped',
+        triggerSource: 'scheduled',
+      },
+    ])
+  })
+
+  test('chunks large organization ID sets when selecting due scheduled membership sync', async () => {
+    const now = new Date('2026-04-02T12:00:00.000Z')
+    const organizations = Array.from({ length: 901 }, (_, index) => {
+      const suffix = String(index).padStart(4, '0')
+
+      return {
+        createdAt: now,
+        id: `org-membership-${suffix}`,
+        logo: null,
+        metadata: null,
+        name: `Membership Org ${suffix}`,
+        slug: `membership-org-${suffix}`,
+      }
+    })
+    const teams = organizations.map((record, index) => {
+      const suffix = String(index).padStart(4, '0')
+
+      return {
+        createdAt: now,
+        id: `team-membership-${suffix}`,
+        name: `Collectors ${suffix}`,
+        organizationId: record.id,
+        updatedAt: now,
+      }
+    })
+    const roles = organizations.map((record, index) => {
+      const suffix = String(index).padStart(4, '0')
+
+      return {
+        createdAt: now,
+        enabled: true,
+        id: `role-membership-${suffix}`,
+        matchMode: 'any' as const,
+        name: `Collectors ${suffix}`,
+        organizationId: record.id,
+        slug: `collectors-${suffix}`,
+        teamId: `team-membership-${suffix}`,
+        updatedAt: now,
+      }
+    })
+
+    await database.insert(authSchema.organization).values(organizations)
+    await database.insert(authSchema.team).values(teams)
+    await database.insert(communityRoleSchema.communityRole).values(roles)
+
+    const dueOrganizationIds = await listOrganizationsDueForScheduledCommunityMembershipSync({
+      now: () => new Date('2026-04-02T12:05:00.000Z'),
+    })
+
+    expect(dueOrganizationIds).toHaveLength(901)
+    expect(dueOrganizationIds[0]).toBe('org-membership-0000')
+    expect(dueOrganizationIds.at(-1)).toBe('org-membership-0900')
   })
 })

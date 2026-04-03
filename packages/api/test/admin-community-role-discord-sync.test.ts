@@ -7,9 +7,17 @@ import { pathToFileURL } from 'node:url'
 
 type AssetSchema = typeof import('@tokengator/db/schema/asset')
 type AuthSchema = typeof import('@tokengator/db/schema/auth')
+type AutomationSchema = typeof import('@tokengator/db/schema/automation')
 type CommunityRoleSchema = typeof import('@tokengator/db/schema/community-role')
 type DatabaseClient = (typeof import('@tokengator/db'))['db']
 type AdminCommunityRoleRouter = typeof import('../src/routers/admin-community-role').adminCommunityRoleRouter
+type GetCommunityRoleSyncStatus = (typeof import('../src/lib/admin-community-role-sync'))['getCommunityRoleSyncStatus']
+type ListCommunityDiscordSyncRuns =
+  (typeof import('../src/lib/admin-community-role-sync'))['listCommunityDiscordSyncRuns']
+type ListOrganizationsDueForScheduledCommunityDiscordSync =
+  (typeof import('../src/lib/admin-community-role-sync'))['listOrganizationsDueForScheduledCommunityDiscordSync']
+type RunScheduledCommunityRoleDiscordSync =
+  (typeof import('../src/lib/admin-community-role-sync'))['runScheduledCommunityRoleDiscordSync']
 
 const DB_PACKAGE_DIR = resolve(import.meta.dir, '..', '..', 'db')
 const TEST_DATABASE_DIR = resolve(tmpdir(), 'tokengator-api-tests')
@@ -18,8 +26,10 @@ const TEST_DATABASE_URL = pathToFileURL(resolve(TEST_DATABASE_DIR, 'community-ro
 let adminCommunityRoleRouter: AdminCommunityRoleRouter
 let assetSchema: AssetSchema
 let authSchema: AuthSchema
+let automationSchema: AutomationSchema
 let communityRoleSchema: CommunityRoleSchema
 let database: DatabaseClient
+let getCommunityRoleSyncStatus: GetCommunityRoleSyncStatus
 let guildMembersByDiscordUserId = new Map<string, { discordUserId: string; roleIds: string[] }>()
 let guildRoles: Array<{
   assignable: boolean
@@ -42,8 +52,11 @@ let guildRoles: Array<{
 ]
 let inspectionChecks: string[] = []
 let inspectionStatus: 'connected' | 'needs_attention' = 'connected'
+let listCommunityDiscordSyncRuns: ListCommunityDiscordSyncRuns
+let listOrganizationsDueForScheduledCommunityDiscordSync: ListOrganizationsDueForScheduledCommunityDiscordSync
 let memberLookupFailures = new Map<string, unknown>()
 let mutationFailures = new Map<string, unknown>()
+let runScheduledCommunityRoleDiscordSync: RunScheduledCommunityRoleDiscordSync
 
 function createAdminCallContext(): any {
   return {
@@ -104,6 +117,22 @@ function getMutationKey(action: 'grant' | 'revoke', userId: string, roleId: stri
   return `${action}:${userId}:${roleId}`
 }
 
+function createSelectFailureDatabase(message: string) {
+  return new Proxy(database, {
+    get(target, property, receiver) {
+      if (property === 'select') {
+        return () => {
+          throw new Error(message)
+        }
+      }
+
+      const value = Reflect.get(target, property, receiver)
+
+      return typeof value === 'function' ? value.bind(target) : value
+    },
+  })
+}
+
 function resetDiscordMockState() {
   guildMembersByDiscordUserId = new Map()
   guildRoles = [
@@ -139,6 +168,26 @@ function syncDatabase(databaseUrl: string) {
   if (result.exitCode !== 0) {
     throw new Error(`Failed to sync the test database.\n${decodeOutput(result.stdout)}\n${decodeOutput(result.stderr)}`)
   }
+}
+
+function createInsertFailureDatabase(failingTable: unknown) {
+  return new Proxy(database, {
+    get(target, property, receiver) {
+      if (property === 'insert') {
+        return (table: unknown) => {
+          if (table === failingTable) {
+            throw new Error('Run insert failed.')
+          }
+
+          return target.insert(table as never)
+        }
+      }
+
+      const value = Reflect.get(target, property, receiver)
+
+      return typeof value === 'function' ? value.bind(target) : value
+    },
+  })
 }
 
 async function insertAccount(input: {
@@ -502,7 +551,14 @@ beforeAll(async () => {
   ;({ db: database } = await import('@tokengator/db'))
   assetSchema = await import('@tokengator/db/schema/asset')
   authSchema = await import('@tokengator/db/schema/auth')
+  automationSchema = await import('@tokengator/db/schema/automation')
   communityRoleSchema = await import('@tokengator/db/schema/community-role')
+  ;({
+    getCommunityRoleSyncStatus,
+    listCommunityDiscordSyncRuns,
+    listOrganizationsDueForScheduledCommunityDiscordSync,
+    runScheduledCommunityRoleDiscordSync,
+  } = await import('../src/lib/admin-community-role-sync'))
   ;({ adminCommunityRoleRouter } = await import('../src/routers/admin-community-role'))
 }, 15_000)
 
@@ -510,6 +566,7 @@ beforeEach(async () => {
   resetDiscordMockState()
 
   await database.delete(authSchema.account).where(sql`1 = 1`)
+  await database.delete(automationSchema.automationLock).where(sql`1 = 1`)
   await database.delete(communityRoleSchema.communityDiscordConnection).where(sql`1 = 1`)
   await database.delete(communityRoleSchema.communityManagedMember).where(sql`1 = 1`)
   await database.delete(communityRoleSchema.communityRoleCondition).where(sql`1 = 1`)
@@ -523,6 +580,85 @@ beforeEach(async () => {
 })
 
 describe('admin community role Discord sync', () => {
+  test('returns failed when scheduled Discord preflight queries throw', async () => {
+    const originalSelect = database.select.bind(database)
+
+    try {
+      Object.assign(database, {
+        select() {
+          throw new Error('Discord preflight failed.')
+        },
+      })
+
+      await expect(
+        runScheduledCommunityRoleDiscordSync({
+          organizationId: 'org-discord-preflight-failure',
+        }),
+      ).resolves.toEqual({
+        errorMessage: 'Discord preflight failed.',
+        organizationId: 'org-discord-preflight-failure',
+        status: 'failed',
+      })
+    } finally {
+      Object.assign(database, {
+        select: originalSelect,
+      })
+    }
+  })
+
+  test('releases the shared sync lock when the Discord run insert fails', async () => {
+    const organizationId = 'org-discord-lock-release'
+
+    await insertOrganization({
+      id: organizationId,
+      name: 'Discord Lock Release Org',
+      slug: 'discord-lock-release-org',
+    })
+    await insertCommunityDiscordConnection({
+      guildId: '123456789012345678',
+      organizationId,
+    })
+    await insertTeam({
+      id: 'team-discord-lock-release',
+      name: 'Discord Lock Release Team',
+      organizationId,
+    })
+    await insertCommunityRole({
+      discordRoleId: 'discord-role-lock-release',
+      id: 'role-discord-lock-release',
+      name: 'Discord Lock Release Role',
+      organizationId,
+      slug: 'discord-lock-release-role',
+      teamId: 'team-discord-lock-release',
+    })
+
+    await expect(
+      runScheduledCommunityRoleDiscordSync({
+        database: createInsertFailureDatabase(communityRoleSchema.communityDiscordSyncRun) as never,
+        organizationId,
+      }),
+    ).resolves.toEqual({
+      errorMessage: 'Run insert failed.',
+      organizationId,
+      status: 'failed',
+    })
+
+    expect(await database.select().from(automationSchema.automationLock)).toHaveLength(0)
+  })
+
+  test('uses the injected database for scheduled Discord preflight reads', async () => {
+    await expect(
+      runScheduledCommunityRoleDiscordSync({
+        database: createSelectFailureDatabase('Injected Discord preflight failed.') as never,
+        organizationId: 'org-injected-discord-preflight-failure',
+      }),
+    ).resolves.toEqual({
+      errorMessage: 'Injected Discord preflight failed.',
+      organizationId: 'org-injected-discord-preflight-failure',
+      status: 'failed',
+    })
+  })
+
   test('rejects missing organizations and missing Discord connections', async () => {
     await expect(
       adminCommunityRoleRouter.previewDiscordRoleSync.callable(createAdminCallContext())({
@@ -1336,6 +1472,44 @@ describe('admin community role Discord sync', () => {
     expect(secondApply.summary.counts.will_grant).toBe(0)
     expect(secondApply.summary.counts.will_revoke).toBe(0)
     expect(secondApply.summary.counts.already_correct).toBe(1)
+    await expect(
+      listCommunityDiscordSyncRuns({
+        limit: 5,
+        organizationId,
+      }),
+    ).resolves.toMatchObject([
+      {
+        appliedGrantCount: 0,
+        appliedRevokeCount: 0,
+        failedCount: 0,
+        status: 'succeeded',
+        triggerSource: 'manual',
+      },
+      {
+        appliedGrantCount: 1,
+        appliedRevokeCount: 1,
+        failedCount: 0,
+        status: 'succeeded',
+        triggerSource: 'manual',
+      },
+    ])
+    await expect(
+      getCommunityRoleSyncStatus({
+        organizationId,
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        discordStatus: expect.objectContaining({
+          freshnessStatus: 'stale',
+          lastRun: expect.objectContaining({
+            status: 'succeeded',
+          }),
+          lastSuccessfulRun: expect.objectContaining({
+            status: 'succeeded',
+          }),
+        }),
+      }),
+    )
   })
 
   test('applies canonical Discord account selection when duplicate Discord identities exist unexpectedly', async () => {
@@ -1644,5 +1818,71 @@ describe('admin community role Discord sync', () => {
         },
       ],
     })
+  })
+
+  test('chunks large organization ID sets when selecting due scheduled Discord sync', async () => {
+    const now = new Date('2026-04-02T12:00:00.000Z')
+    const organizations = Array.from({ length: 901 }, (_, index) => {
+      const suffix = String(index).padStart(4, '0')
+
+      return {
+        createdAt: now,
+        id: `org-discord-${suffix}`,
+        logo: null,
+        metadata: null,
+        name: `Discord Org ${suffix}`,
+        slug: `discord-org-${suffix}`,
+      }
+    })
+    const teams = organizations.map((record, index) => {
+      const suffix = String(index).padStart(4, '0')
+
+      return {
+        createdAt: now,
+        id: `team-discord-${suffix}`,
+        name: `Discord Collectors ${suffix}`,
+        organizationId: record.id,
+        updatedAt: now,
+      }
+    })
+    const roles = organizations.map((record, index) => {
+      const suffix = String(index).padStart(4, '0')
+
+      return {
+        createdAt: now,
+        discordRoleId: `discord-role-${suffix}`,
+        enabled: true,
+        id: `role-discord-${suffix}`,
+        matchMode: 'any' as const,
+        name: `Discord Collectors ${suffix}`,
+        organizationId: record.id,
+        slug: `discord-collectors-${suffix}`,
+        teamId: `team-discord-${suffix}`,
+        updatedAt: now,
+      }
+    })
+    const connections = organizations.map((record) => ({
+      createdAt: now,
+      guildId: `guild-${record.id}`,
+      guildName: null,
+      id: crypto.randomUUID(),
+      lastCheckedAt: null,
+      organizationId: record.id,
+      status: 'connected' as const,
+      updatedAt: now,
+    }))
+
+    await database.insert(authSchema.organization).values(organizations)
+    await database.insert(authSchema.team).values(teams)
+    await database.insert(communityRoleSchema.communityRole).values(roles)
+    await database.insert(communityRoleSchema.communityDiscordConnection).values(connections)
+
+    const dueOrganizationIds = await listOrganizationsDueForScheduledCommunityDiscordSync({
+      now: () => new Date('2026-04-02T12:01:00.000Z'),
+    })
+
+    expect(dueOrganizationIds).toHaveLength(901)
+    expect(dueOrganizationIds[0]).toBe('org-discord-0000')
+    expect(dueOrganizationIds.at(-1)).toBe('org-discord-0900')
   })
 })

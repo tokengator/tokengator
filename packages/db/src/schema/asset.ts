@@ -29,6 +29,38 @@ export const assetGroup = sqliteTable(
   ],
 )
 
+export const assetGroupIndexRun = sqliteTable(
+  'asset_group_index_run',
+  {
+    assetGroupId: text('asset_group_id')
+      .notNull()
+      .references(() => assetGroup.id, { onDelete: 'cascade' }),
+    deletedCount: integer('deleted_count').default(0).notNull(),
+    errorMessage: text('error_message'),
+    errorPayload: text('error_payload'),
+    finishedAt: integer('finished_at', { mode: 'timestamp_ms' }),
+    id: text('id')
+      .$defaultFn(() => crypto.randomUUID())
+      .primaryKey(),
+    insertedCount: integer('inserted_count').default(0).notNull(),
+    pagesProcessed: integer('pages_processed').default(0).notNull(),
+    resolverKind: text('resolver_kind', { enum: ['helius-collection-assets', 'helius-token-accounts'] }).notNull(),
+    startedAt: integer('started_at', { mode: 'timestamp_ms' }).notNull(),
+    status: text('status', { enum: ['failed', 'running', 'skipped', 'succeeded'] }).notNull(),
+    totalCount: integer('total_count').default(0).notNull(),
+    triggerSource: text('trigger_source', { enum: ['manual', 'scheduled'] }).notNull(),
+    updatedCount: integer('updated_count').default(0).notNull(),
+  },
+  (table) => [
+    index('asset_group_index_run_assetGroupId_startedAt_idx').on(table.assetGroupId, table.startedAt),
+    index('asset_group_index_run_assetGroupId_status_startedAt_idx').on(
+      table.assetGroupId,
+      table.status,
+      table.startedAt,
+    ),
+  ],
+)
+
 export const asset = sqliteTable(
   'asset',
   {
@@ -72,11 +104,19 @@ export const asset = sqliteTable(
 
 export const assetGroupRelations = relations(assetGroup, ({ many }) => ({
   assets: many(asset),
+  indexRuns: many(assetGroupIndexRun),
 }))
 
 export const assetRelations = relations(asset, ({ one }) => ({
   assetGroup: one(assetGroup, {
     fields: [asset.assetGroupId],
+    references: [assetGroup.id],
+  }),
+}))
+
+export const assetGroupIndexRunRelations = relations(assetGroupIndexRun, ({ one }) => ({
+  assetGroup: one(assetGroup, {
+    fields: [assetGroupIndexRun.assetGroupId],
     references: [assetGroup.id],
   }),
 }))

@@ -1,7 +1,12 @@
+import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@tokengator/ui/components/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 
+import { formatTimestamp, getFreshnessClassName } from '@/utils/admin-automation'
+import { orpc } from '@/utils/orpc'
 import { useAdminAssetDelete } from '../data-access/use-admin-asset-delete'
+import { useAdminAssetGroupGetQuery } from '../data-access/use-admin-asset-group-get-query'
 import { useAdminAssetGroupIndex } from '../data-access/use-admin-asset-group-index'
 import { useAdminAssetListQuery } from '../data-access/use-admin-asset-list-query'
 import { type AdminAssetFiltersValues, AdminAssetUiFilters } from '../ui/admin-asset-ui-filters'
@@ -38,6 +43,7 @@ interface AdminAssetFeatureGroupAssetsProps {
 
 export function AdminAssetFeatureGroupAssets(props: AdminAssetFeatureGroupAssetsProps) {
   const { assetGroupId, search } = props
+  const assetGroup = useAdminAssetGroupGetQuery(assetGroupId)
   const assets = useAdminAssetListQuery({
     address: search.address?.trim() || undefined,
     assetGroupId,
@@ -48,12 +54,57 @@ export function AdminAssetFeatureGroupAssets(props: AdminAssetFeatureGroupAssets
   })
   const deleteAsset = useAdminAssetDelete()
   const indexAssetGroup = useAdminAssetGroupIndex()
+  const indexRuns = useQuery(
+    orpc.adminAssetGroup.listIndexRuns.queryOptions({
+      enabled: Boolean(assetGroupId),
+      input: {
+        assetGroupId,
+        limit: 5,
+      },
+    }),
+  )
   const navigate = useNavigate()
   const shownCount = assets.data?.assets.length ?? 0
   const total = assets.data?.total ?? 0
+  const indexingStatus = assetGroup.data?.indexingStatus ?? null
 
   return (
     <div className="space-y-4">
+      {indexingStatus ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Index Status</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-4">
+            <div className="rounded-lg border p-3 text-sm">
+              <div className="text-muted-foreground">Freshness</div>
+              <div className="mt-1">
+                <span className={getFreshnessClassName(indexingStatus.freshnessStatus)}>
+                  {indexingStatus.freshnessStatus}
+                </span>
+              </div>
+              <div className="text-muted-foreground mt-2">Stale after {indexingStatus.staleAfterMinutes} minutes</div>
+            </div>
+            <div className="rounded-lg border p-3 text-sm">
+              <div className="text-muted-foreground">Last Success</div>
+              <div>{formatTimestamp(indexingStatus.lastSuccessfulRun?.finishedAt ?? null)}</div>
+            </div>
+            <div className="rounded-lg border p-3 text-sm">
+              <div className="text-muted-foreground">Last Run</div>
+              <div>{indexingStatus.lastRun?.status ?? 'Never'}</div>
+              <div className="text-muted-foreground">{formatTimestamp(indexingStatus.lastRun?.startedAt ?? null)}</div>
+            </div>
+            <div className="rounded-lg border p-3 text-sm">
+              <div className="text-muted-foreground">Execution</div>
+              <div>{indexingStatus.isRunning ? 'Running now' : 'Idle'}</div>
+              {indexingStatus.lastRun?.status === 'failed' && indexingStatus.lastRun.errorMessage ? (
+                <div className="text-destructive mt-2 text-xs">{indexingStatus.lastRun.errorMessage}</div>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <div className="flex justify-end">
         <Button
           disabled={indexAssetGroup.isPending}
@@ -108,7 +159,49 @@ export function AdminAssetFeatureGroupAssets(props: AdminAssetFeatureGroupAssets
 
       {assets.error ? <div className="text-destructive text-sm">{assets.error.message}</div> : null}
       {indexAssetGroup.error ? <div className="text-destructive text-sm">{indexAssetGroup.error.message}</div> : null}
+      {indexRuns.error ? <div className="text-destructive text-sm">{indexRuns.error.message}</div> : null}
       {assets.isPending ? <div className="text-muted-foreground text-sm">Loading assets...</div> : null}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Recent Index Runs</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {!indexRuns.data?.indexRuns.length ? (
+            <p className="text-muted-foreground text-sm">No index runs yet.</p>
+          ) : (
+            indexRuns.data.indexRuns.map((run) => (
+              <div className="grid gap-2 rounded-lg border p-3 text-sm md:grid-cols-5" key={run.id}>
+                <div>
+                  <div className="text-muted-foreground">Status</div>
+                  <div>{run.status}</div>
+                  <div className="text-muted-foreground text-xs">{run.triggerSource}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Started</div>
+                  <div>{formatTimestamp(run.startedAt)}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Finished</div>
+                  <div>{formatTimestamp(run.finishedAt)}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Counts</div>
+                  <div>{`pages ${run.pagesProcessed} · total ${run.totalCount}`}</div>
+                  <div className="text-muted-foreground text-xs">
+                    {`+${run.insertedCount} / ~${run.updatedCount} / -${run.deletedCount}`}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Resolver</div>
+                  <div>{run.resolverKind}</div>
+                  {run.errorMessage ? <div className="text-destructive mt-1 text-xs">{run.errorMessage}</div> : null}
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
 
       <AdminAssetUiTable
         assets={assets.data?.assets ?? []}

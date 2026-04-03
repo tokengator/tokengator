@@ -18,6 +18,7 @@ import {
 import { Input } from '@tokengator/ui/components/input'
 import { Label } from '@tokengator/ui/components/label'
 
+import { formatTimestamp, getFreshnessClassName } from '@/utils/admin-automation'
 import { orpc } from '@/utils/orpc'
 
 import { getAdminOrganizationQueryOptions } from './route'
@@ -62,6 +63,9 @@ type DiscordGuildRolesResult = Awaited<ReturnType<typeof orpc.adminCommunityRole
 type DiscordRoleSyncResult =
   | Awaited<ReturnType<typeof orpc.adminCommunityRole.applyDiscordRoleSync.call>>
   | Awaited<ReturnType<typeof orpc.adminCommunityRole.previewDiscordRoleSync.call>>
+type CommunityRoleSyncRunsResult = Awaited<ReturnType<typeof orpc.adminCommunityRole.listRuns.call>>
+type CommunityDiscordSyncRunsResult = Extract<CommunityRoleSyncRunsResult, { kind: 'discord' }>
+type CommunityMembershipSyncRunsResult = Extract<CommunityRoleSyncRunsResult, { kind: 'membership' }>
 
 const discordCheckLabels: Record<string, string> = {
   already_correct: 'Discord role is already correct.',
@@ -109,11 +113,23 @@ function formatDiscordCheck(
 }
 
 function formatLastCheckedAt(value: Date | string | null) {
-  if (!value) {
-    return 'Never'
+  return formatTimestamp(value)
+}
+
+function getSyncRunStatusClassName(status: string) {
+  if (status === 'succeeded') {
+    return 'border border-emerald-600/30 bg-emerald-600/10 px-2 py-1 text-xs font-medium text-emerald-700'
   }
 
-  return new Date(value).toLocaleString()
+  if (status === 'partial') {
+    return 'border border-amber-600/30 bg-amber-600/10 px-2 py-1 text-xs font-medium text-amber-700'
+  }
+
+  if (status === 'failed') {
+    return 'border border-red-600/30 bg-red-600/10 px-2 py-1 text-xs font-medium text-red-700'
+  }
+
+  return 'border px-2 py-1 text-xs font-medium'
 }
 
 function getDiscordMappingStatusClassName(status: 'needs_attention' | 'not_mapped' | 'ready') {
@@ -516,6 +532,16 @@ function RouteComponent() {
   const [syncResult, setSyncResult] = useState<Awaited<
     ReturnType<typeof orpc.adminCommunityRole.previewSync.call>
   > | null>(null)
+  const invalidateCommunitySyncQueries = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: orpc.adminCommunityRole.getSyncStatus.key(),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: orpc.adminCommunityRole.listRuns.key(),
+      }),
+    ])
+  }
   const organization = useQuery(getAdminOrganizationQueryOptions(organizationId))
   const assetGroups = useQuery(
     orpc.adminAssetGroup.list.queryOptions({
@@ -531,8 +557,33 @@ function RouteComponent() {
       },
     }),
   )
+  const communityDiscordRuns = useQuery(
+    orpc.adminCommunityRole.listRuns.queryOptions({
+      input: {
+        kind: 'discord',
+        limit: 5,
+        organizationId,
+      },
+    }),
+  )
   const discordGuildRoles = useQuery(
     orpc.adminCommunityRole.listDiscordGuildRoles.queryOptions({
+      input: {
+        organizationId,
+      },
+    }),
+  )
+  const communityMembershipRuns = useQuery(
+    orpc.adminCommunityRole.listRuns.queryOptions({
+      input: {
+        kind: 'membership',
+        limit: 5,
+        organizationId,
+      },
+    }),
+  )
+  const communitySyncStatus = useQuery(
+    orpc.adminCommunityRole.getSyncStatus.queryOptions({
       input: {
         organizationId,
       },
@@ -544,13 +595,16 @@ function RouteComponent() {
         toast.error(error.message)
       },
       onSuccess: async () => {
-        await queryClient.invalidateQueries({
-          queryKey: orpc.adminCommunityRole.list.key({
-            input: {
-              organizationId,
-            },
+        await Promise.all([
+          invalidateCommunitySyncQueries(),
+          queryClient.invalidateQueries({
+            queryKey: orpc.adminCommunityRole.list.key({
+              input: {
+                organizationId,
+              },
+            }),
           }),
-        })
+        ])
         setCreateDialogOpen(false)
         setDiscordSyncResult(null)
         setSyncResult(null)
@@ -564,23 +618,26 @@ function RouteComponent() {
         toast.error(error.message)
       },
       onSuccess: async () => {
-        await queryClient.invalidateQueries({
-          queryKey: orpc.adminCommunityRole.list.key({
-            input: {
-              organizationId,
-            },
+        await Promise.all([
+          invalidateCommunitySyncQueries(),
+          queryClient.invalidateQueries({
+            queryKey: orpc.adminCommunityRole.list.key({
+              input: {
+                organizationId,
+              },
+            }),
           }),
-        })
-        await queryClient.invalidateQueries({
-          queryKey: orpc.adminOrganization.get.key({
-            input: {
-              organizationId,
-            },
+          queryClient.invalidateQueries({
+            queryKey: orpc.adminOrganization.get.key({
+              input: {
+                organizationId,
+              },
+            }),
           }),
-        })
-        await queryClient.invalidateQueries({
-          queryKey: orpc.organization.listMine.key(),
-        })
+          queryClient.invalidateQueries({
+            queryKey: orpc.organization.listMine.key(),
+          }),
+        ])
         setDeletePendingRole(null)
         setDiscordSyncResult(null)
         setSyncResult(null)
@@ -615,8 +672,9 @@ function RouteComponent() {
       onError: (error) => {
         toast.error(error.message)
       },
-      onSuccess: (result) => {
+      onSuccess: async (result) => {
         setDiscordSyncResult(result)
+        await invalidateCommunitySyncQueries()
         toast.success('Discord role reconcile applied.')
       },
     }),
@@ -629,6 +687,7 @@ function RouteComponent() {
       onSuccess: async (result) => {
         setSyncResult(result)
         await Promise.all([
+          invalidateCommunitySyncQueries(),
           queryClient.invalidateQueries({
             queryKey: orpc.adminCommunityRole.list.key({
               input: {
@@ -657,13 +716,16 @@ function RouteComponent() {
         toast.error(error.message)
       },
       onSuccess: async () => {
-        await queryClient.invalidateQueries({
-          queryKey: orpc.adminCommunityRole.list.key({
-            input: {
-              organizationId,
-            },
+        await Promise.all([
+          invalidateCommunitySyncQueries(),
+          queryClient.invalidateQueries({
+            queryKey: orpc.adminCommunityRole.list.key({
+              input: {
+                organizationId,
+              },
+            }),
           }),
-        })
+        ])
         setEditingRoleId(null)
         setDiscordSyncResult(null)
         setSyncResult(null)
@@ -678,6 +740,7 @@ function RouteComponent() {
       },
       onSuccess: async (result, variables) => {
         await Promise.all([
+          invalidateCommunitySyncQueries(),
           queryClient.invalidateQueries({
             queryKey: orpc.adminCommunityRole.list.key({
               input: {
@@ -746,6 +809,11 @@ function RouteComponent() {
     : 0
   const discordSyncFailedCount =
     discordSyncResult && 'failedCount' in discordSyncResult.summary ? discordSyncResult.summary.failedCount : 0
+  const dependencyAssetGroups = communitySyncStatus.data?.dependencyAssetGroups ?? []
+  const discordStatus = communitySyncStatus.data?.discordStatus ?? null
+  const membershipStatus = communitySyncStatus.data?.membershipStatus ?? null
+  const recentDiscordRuns = (communityDiscordRuns.data?.runs ?? []) as CommunityDiscordSyncRunsResult['runs']
+  const recentMembershipRuns = (communityMembershipRuns.data?.runs ?? []) as CommunityMembershipSyncRunsResult['runs']
 
   if (!organization.data) {
     return null
@@ -832,6 +900,152 @@ function RouteComponent() {
               </div>
             </>
           ) : null}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Automation Health</CardTitle>
+          <CardDescription>
+            Scheduled freshness, dependency status, and recent failures for membership and Discord reconcile.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {communitySyncStatus.error ? (
+            <div className="text-destructive text-sm">{communitySyncStatus.error.message}</div>
+          ) : null}
+          {communityMembershipRuns.error ? (
+            <div className="text-destructive text-sm">{communityMembershipRuns.error.message}</div>
+          ) : null}
+          {communityDiscordRuns.error ? (
+            <div className="text-destructive text-sm">{communityDiscordRuns.error.message}</div>
+          ) : null}
+          {communitySyncStatus.isPending ? (
+            <div className="text-muted-foreground text-sm">Loading sync health...</div>
+          ) : null}
+
+          {membershipStatus && discordStatus ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-2 rounded-lg border p-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="font-medium">Membership</div>
+                  <span className={getFreshnessClassName(membershipStatus.freshnessStatus)}>
+                    {membershipStatus.freshnessStatus}
+                  </span>
+                </div>
+                <div>Last success: {formatTimestamp(membershipStatus.lastSuccessfulRun?.finishedAt ?? null)}</div>
+                <div>Last run: {membershipStatus.lastRun?.status ?? 'Never'}</div>
+                <div className="text-muted-foreground">
+                  {formatTimestamp(membershipStatus.lastRun?.startedAt ?? null)}
+                </div>
+                <div>State: {membershipStatus.isRunning ? 'running' : 'idle'}</div>
+                <div className="text-muted-foreground">Stale after {membershipStatus.staleAfterMinutes} minutes</div>
+                {membershipStatus.lastRun?.errorMessage ? (
+                  <div className="text-destructive text-xs">{membershipStatus.lastRun.errorMessage}</div>
+                ) : null}
+              </div>
+              <div className="grid gap-2 rounded-lg border p-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="font-medium">Discord</div>
+                  <span className={getFreshnessClassName(discordStatus.freshnessStatus)}>
+                    {discordStatus.freshnessStatus}
+                  </span>
+                </div>
+                <div>Last success: {formatTimestamp(discordStatus.lastSuccessfulRun?.finishedAt ?? null)}</div>
+                <div>Last run: {discordStatus.lastRun?.status ?? 'Never'}</div>
+                <div className="text-muted-foreground">{formatTimestamp(discordStatus.lastRun?.startedAt ?? null)}</div>
+                <div>State: {discordStatus.isRunning ? 'running' : 'idle'}</div>
+                <div className="text-muted-foreground">Stale after {discordStatus.staleAfterMinutes} minutes</div>
+                {discordStatus.lastRun?.errorMessage ? (
+                  <div className="text-destructive text-xs">{discordStatus.lastRun.errorMessage}</div>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="grid gap-2 rounded-lg border p-3 text-sm">
+            <div className="font-medium">Dependency Asset Groups</div>
+            {!dependencyAssetGroups.length ? (
+              <p className="text-muted-foreground text-sm">No indexed asset-group dependencies yet.</p>
+            ) : (
+              <div className="grid gap-2 md:grid-cols-2">
+                {dependencyAssetGroups.map((assetGroup) => (
+                  <div className="rounded-lg border p-3" key={assetGroup.id}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="font-medium">{assetGroup.label}</div>
+                      <span className={getFreshnessClassName(assetGroup.indexingStatus.freshnessStatus)}>
+                        {assetGroup.indexingStatus.freshnessStatus}
+                      </span>
+                    </div>
+                    <div className="text-muted-foreground">
+                      {assetGroup.type} · {assetGroup.address}
+                    </div>
+                    <div className="text-muted-foreground">
+                      Last success: {formatTimestamp(assetGroup.indexingStatus.lastSuccessfulRun?.finishedAt ?? null)}
+                    </div>
+                    {!assetGroup.enabled ? (
+                      <div className="text-muted-foreground text-xs">Disabled asset group</div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-2 rounded-lg border p-3 text-sm">
+              <div className="font-medium">Recent Membership Runs</div>
+              {!recentMembershipRuns.length ? (
+                <p className="text-muted-foreground text-sm">No membership runs yet.</p>
+              ) : (
+                recentMembershipRuns.map((run) => (
+                  <div className="rounded-lg border p-3" key={run.id}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={getSyncRunStatusClassName(run.status)}>{run.status}</span>
+                      <span className="text-muted-foreground text-xs">{run.triggerSource}</span>
+                    </div>
+                    <div className="mt-2">Started: {formatTimestamp(run.startedAt)}</div>
+                    <div className="text-muted-foreground">Finished: {formatTimestamp(run.finishedAt)}</div>
+                    <div className="text-muted-foreground">
+                      {`Qualified ${run.qualifiedUserCount} · Changed ${run.usersChangedCount}`}
+                    </div>
+                    <div className="text-muted-foreground">
+                      {`Org +${run.addToOrganizationCount} / -${run.removeFromOrganizationCount} · Teams +${run.addToTeamCount} / -${run.removeFromTeamCount}`}
+                    </div>
+                    {run.errorMessage ? <div className="text-destructive mt-2 text-xs">{run.errorMessage}</div> : null}
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="grid gap-2 rounded-lg border p-3 text-sm">
+              <div className="font-medium">Recent Discord Runs</div>
+              {!recentDiscordRuns.length ? (
+                <p className="text-muted-foreground text-sm">No Discord runs yet.</p>
+              ) : (
+                recentDiscordRuns.map((run) => (
+                  <div className="rounded-lg border p-3" key={run.id}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={getSyncRunStatusClassName(run.status)}>{run.status}</span>
+                      <span className="text-muted-foreground text-xs">{run.triggerSource}</span>
+                    </div>
+                    <div className="mt-2">Started: {formatTimestamp(run.startedAt)}</div>
+                    <div className="text-muted-foreground">Finished: {formatTimestamp(run.finishedAt)}</div>
+                    {'appliedGrantCount' in run ? (
+                      <>
+                        <div className="text-muted-foreground">
+                          {`Grants ${run.appliedGrantCount} · Revokes ${run.appliedRevokeCount} · Failed ${run.failedCount}`}
+                        </div>
+                        <div className="text-muted-foreground">
+                          {`Roles ready ${run.rolesReadyCount} · blocked ${run.rolesBlockedCount} · users changed ${run.usersChangedCount}`}
+                        </div>
+                      </>
+                    ) : null}
+                    {run.errorMessage ? <div className="text-destructive mt-2 text-xs">{run.errorMessage}</div> : null}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </CardContent>
       </Card>
 

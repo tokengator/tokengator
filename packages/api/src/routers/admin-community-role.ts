@@ -19,12 +19,16 @@ import { getCommunityDiscordConnectionByOrganizationId } from '../lib/admin-comm
 import {
   applyCommunityRoleDiscordSync,
   applyCommunityRoleSync,
+  getCommunityRoleSyncStatus,
+  listCommunityDiscordSyncRuns,
+  listCommunityMembershipSyncRuns,
   listCommunityRoleRecords,
   previewCommunityRoleDiscordSync,
   previewCommunityRoleSync,
   removeCommunityRoleById,
   upsertCommunityRoleConditions,
 } from '../lib/admin-community-role-sync'
+import { AutomationLockConflictError } from '../lib/automation-lock'
 
 const positiveIntegerSchema = z.string().regex(/^[1-9]\d*$/, 'Amount must be a positive integer.')
 
@@ -389,6 +393,12 @@ export const adminCommunityRoleRouter = {
       try {
         return await applyCommunityRoleDiscordSync(input.organizationId)
       } catch (error) {
+        if (error instanceof AutomationLockConflictError) {
+          throw new ORPCError('CONFLICT', {
+            message: 'A community membership or Discord sync is already running for this organization.',
+          })
+        }
+
         rethrowDiscordRoleSyncError(error)
       }
     }),
@@ -400,15 +410,25 @@ export const adminCommunityRoleRouter = {
       }),
     )
     .handler(async ({ input }) => {
-      const result = await applyCommunityRoleSync(input.organizationId)
+      try {
+        const result = await applyCommunityRoleSync(input.organizationId)
 
-      if (!result) {
-        throw new ORPCError('NOT_FOUND', {
-          message: 'Organization not found.',
-        })
+        if (!result) {
+          throw new ORPCError('NOT_FOUND', {
+            message: 'Organization not found.',
+          })
+        }
+
+        return result
+      } catch (error) {
+        if (error instanceof AutomationLockConflictError) {
+          throw new ORPCError('CONFLICT', {
+            message: 'A community membership or Discord sync is already running for this organization.',
+          })
+        }
+
+        throw error
       }
-
-      return result
     }),
 
   create: adminProcedure
@@ -497,6 +517,26 @@ export const adminCommunityRoleRouter = {
       }
     }),
 
+  getSyncStatus: adminProcedure
+    .input(
+      z.object({
+        organizationId: z.string().min(1),
+      }),
+    )
+    .handler(async ({ input }) => {
+      const syncStatus = await getCommunityRoleSyncStatus({
+        organizationId: input.organizationId,
+      })
+
+      if (!syncStatus) {
+        throw new ORPCError('NOT_FOUND', {
+          message: 'Organization not found.',
+        })
+      }
+
+      return syncStatus
+    }),
+
   list: adminProcedure
     .input(
       z.object({
@@ -533,6 +573,42 @@ export const adminCommunityRoleRouter = {
       }
 
       return await getCommunityDiscordGuildRoles(input.organizationId)
+    }),
+
+  listRuns: adminProcedure
+    .input(
+      z.object({
+        kind: z.enum(['discord', 'membership']),
+        limit: z.number().int().max(50).min(1).optional(),
+        organizationId: z.string().min(1),
+      }),
+    )
+    .handler(async ({ input }) => {
+      const existingOrganization = await ensureOrganizationExists(input.organizationId)
+
+      if (!existingOrganization) {
+        throw new ORPCError('NOT_FOUND', {
+          message: 'Organization not found.',
+        })
+      }
+
+      const limit = input.limit ?? 10
+
+      return input.kind === 'discord'
+        ? {
+            kind: input.kind,
+            runs: await listCommunityDiscordSyncRuns({
+              limit,
+              organizationId: input.organizationId,
+            }),
+          }
+        : {
+            kind: input.kind,
+            runs: await listCommunityMembershipSyncRuns({
+              limit,
+              organizationId: input.organizationId,
+            }),
+          }
     }),
 
   previewDiscordRoleSync: adminProcedure

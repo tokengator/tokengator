@@ -6,7 +6,13 @@ import { assetGroup } from '@tokengator/db/schema/asset'
 import { env } from '@tokengator/env/api'
 
 import { adminProcedure } from '../index'
-import { AssetGroupIndexConfigError, indexAssetGroup } from '../lib/admin-asset-group-index'
+import {
+  AssetGroupIndexConfigError,
+  getAssetGroupIndexStatusSummaries,
+  indexAssetGroup,
+  listAssetGroupIndexRuns,
+} from '../lib/admin-asset-group-index'
+import { AutomationLockConflictError } from '../lib/automation-lock'
 
 const assetGroupTypeSchema = z.enum(['collection', 'mint'])
 
@@ -57,6 +63,26 @@ async function getAssetGroupRecordById(assetGroupId: string) {
     .limit(1)
 
   return record ?? null
+}
+
+async function getAssetGroupWithIndexingStatus(assetGroupId: string) {
+  const record = await getAssetGroupRecordById(assetGroupId)
+
+  if (!record) {
+    return null
+  }
+
+  const indexingStatus =
+    (
+      await getAssetGroupIndexStatusSummaries({
+        assetGroupIds: [assetGroupId],
+      })
+    ).get(assetGroupId) ?? null
+
+  return {
+    ...record,
+    indexingStatus,
+  }
 }
 
 export const adminAssetGroupRouter = {
@@ -123,7 +149,7 @@ export const adminAssetGroupRouter = {
       }),
     )
     .handler(async ({ input }) => {
-      const existingAssetGroup = await getAssetGroupRecordById(input.assetGroupId)
+      const existingAssetGroup = await getAssetGroupWithIndexingStatus(input.assetGroupId)
 
       if (!existingAssetGroup) {
         throw new ORPCError('NOT_FOUND', {
@@ -165,6 +191,12 @@ export const adminAssetGroupRouter = {
         if (error instanceof AssetGroupIndexConfigError) {
           throw new ORPCError('BAD_REQUEST', {
             message: error.message,
+          })
+        }
+
+        if (error instanceof AutomationLockConflictError) {
+          throw new ORPCError('CONFLICT', {
+            message: 'Asset indexing is already running for this asset group.',
           })
         }
 
@@ -224,13 +256,44 @@ export const adminAssetGroupRouter = {
           })
           .from(assetGroup)
 
+    const indexingStatusByAssetGroupId = await getAssetGroupIndexStatusSummaries({
+      assetGroupIds: assetGroups.map((currentAssetGroup) => currentAssetGroup.id),
+    })
+
     return {
-      assetGroups,
+      assetGroups: assetGroups.map((currentAssetGroup) => ({
+        ...currentAssetGroup,
+        indexingStatus: indexingStatusByAssetGroupId.get(currentAssetGroup.id) ?? null,
+      })),
       limit,
       offset,
       total: totalResult?.count ?? 0,
     }
   }),
+
+  listIndexRuns: adminProcedure
+    .input(
+      z.object({
+        assetGroupId: z.string().min(1),
+        limit: z.number().int().max(50).min(1).optional(),
+      }),
+    )
+    .handler(async ({ input }) => {
+      const existingAssetGroup = await getAssetGroupRecordById(input.assetGroupId)
+
+      if (!existingAssetGroup) {
+        throw new ORPCError('NOT_FOUND', {
+          message: 'Asset group not found.',
+        })
+      }
+
+      return {
+        indexRuns: await listAssetGroupIndexRuns({
+          assetGroupId: input.assetGroupId,
+          limit: input.limit ?? 10,
+        }),
+      }
+    }),
 
   update: adminProcedure
     .input(

@@ -245,4 +245,69 @@ describe('communityRole schema', () => {
         .execute(),
     ).rejects.toThrow()
   })
+
+  test('cascades membership and Discord sync runs when the organization is deleted', async () => {
+    const organizationId = crypto.randomUUID()
+
+    await insertOrganization({
+      id: organizationId,
+      name: 'Cascade Org',
+      slug: 'cascade-org',
+    })
+    await database.insert(communityRoleSchema.communityMembershipSyncRun).values({
+      dependencyAssetGroupIds: JSON.stringify(['asset-group-1']),
+      dependencyFreshAtStart: false,
+      errorMessage: null,
+      errorPayload: null,
+      finishedAt: new Date('2026-04-02T12:05:00.000Z'),
+      id: 'membership-run-1',
+      organizationId,
+      startedAt: new Date('2026-04-02T12:00:00.000Z'),
+      status: 'succeeded',
+      triggerSource: 'manual',
+    })
+    await database.insert(communityRoleSchema.communityDiscordSyncRun).values({
+      dependencyAssetGroupIds: JSON.stringify(['asset-group-1']),
+      dependencyFreshAtStart: false,
+      errorMessage: null,
+      errorPayload: null,
+      finishedAt: new Date('2026-04-02T12:10:00.000Z'),
+      id: 'discord-run-1',
+      organizationId,
+      outcomeCounts: JSON.stringify({
+        already_correct: 0,
+        discord_role_missing: 0,
+        linked_but_not_in_guild: 0,
+        mapping_missing: 0,
+        mapping_not_assignable: 0,
+        no_discord_account_linked: 0,
+        will_grant: 0,
+        will_revoke: 0,
+      }),
+      startedAt: new Date('2026-04-02T12:05:00.000Z'),
+      status: 'succeeded',
+      triggerSource: 'manual',
+    })
+
+    await database.delete(authSchema.organization).where(eq(authSchema.organization.id, organizationId))
+
+    await expect(
+      database
+        .select({
+          id: communityRoleSchema.communityMembershipSyncRun.id,
+        })
+        .from(communityRoleSchema.communityMembershipSyncRun)
+        .where(eq(communityRoleSchema.communityMembershipSyncRun.organizationId, organizationId))
+        .execute(),
+    ).resolves.toEqual([])
+    await expect(
+      database
+        .select({
+          id: communityRoleSchema.communityDiscordSyncRun.id,
+        })
+        .from(communityRoleSchema.communityDiscordSyncRun)
+        .where(eq(communityRoleSchema.communityDiscordSyncRun.organizationId, organizationId))
+        .execute(),
+    ).resolves.toEqual([])
+  })
 })

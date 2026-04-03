@@ -1,9 +1,25 @@
 import type { ReactNode } from 'react'
 
+import { formatTimestamp, getFreshnessClassName } from '@/utils/admin-automation'
+
 interface AdminAssetGroupUiTableAssetGroup {
   address: string
   enabled: boolean
   id: string
+  indexingStatus: {
+    freshnessStatus: 'fresh' | 'stale' | 'unknown'
+    isRunning: boolean
+    lastRun: {
+      errorMessage: string | null
+      finishedAt: Date | string | null
+      startedAt: Date | string
+      status: 'failed' | 'running' | 'skipped' | 'succeeded'
+    } | null
+    lastSuccessfulRun: {
+      finishedAt: Date | string | null
+    } | null
+    staleAfterMinutes: number
+  } | null
   label: string
   type: 'collection' | 'mint'
 }
@@ -34,6 +50,7 @@ export function AdminAssetGroupUiTable(props: AdminAssetGroupUiTableProps) {
             <th className="border-b px-3 py-2 font-medium">Label</th>
             <th className="border-b px-3 py-2 font-medium">Type</th>
             <th className="border-b px-3 py-2 font-medium">Address</th>
+            <th className="border-b px-3 py-2 font-medium">Index Health</th>
             <th className="border-b px-3 py-2 font-medium">Status</th>
             <th className="border-b px-3 py-2 text-right font-medium">Actions</th>
           </tr>
@@ -46,6 +63,32 @@ export function AdminAssetGroupUiTable(props: AdminAssetGroupUiTableProps) {
               </td>
               <td className="border-b px-3 py-2">{assetGroup.type}</td>
               <td className="border-b px-3 py-2 font-mono text-xs">{assetGroup.address}</td>
+              <td className="border-b px-3 py-2">
+                {assetGroup.indexingStatus ? (
+                  <div className="flex flex-col gap-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={getFreshnessClassName(assetGroup.indexingStatus.freshnessStatus)}>
+                        {assetGroup.indexingStatus.freshnessStatus}
+                      </span>
+                      {assetGroup.indexingStatus.isRunning ? (
+                        <span className="text-muted-foreground text-xs">running</span>
+                      ) : null}
+                    </div>
+                    <div className="text-muted-foreground text-xs">
+                      Last success: {formatTimestamp(assetGroup.indexingStatus.lastSuccessfulRun?.finishedAt ?? null)}
+                    </div>
+                    <div className="text-muted-foreground text-xs">
+                      Stale after: {assetGroup.indexingStatus.staleAfterMinutes}m
+                    </div>
+                    {assetGroup.indexingStatus.lastRun?.status === 'failed' &&
+                    assetGroup.indexingStatus.lastRun.errorMessage ? (
+                      <div className="text-destructive text-xs">{assetGroup.indexingStatus.lastRun.errorMessage}</div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <span className={getFreshnessClassName('unknown')}>unknown</span>
+                )}
+              </td>
               <td className="border-b px-3 py-2">{assetGroup.enabled ? 'enabled' : 'disabled'}</td>
               <td className="border-b px-3 py-2 text-right">{renderActions(assetGroup)}</td>
             </tr>

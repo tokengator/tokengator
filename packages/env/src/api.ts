@@ -35,6 +35,7 @@ const envBooleanSchema = createEnvBooleanSchema(true)
 const envBooleanDisabledSchema = createEnvBooleanSchema(false)
 
 const heliusClusterSchema = z.enum(['devnet', 'mainnet'])
+const positiveIntegerSchema = z.coerce.number().int().positive()
 const solanaClusterSchema = z.enum(['devnet', 'localnet', 'mainnet', 'testnet'])
 
 export const env = createEnv({
@@ -57,6 +58,10 @@ export const env = createEnv({
     HELIUS_CLUSTER: heliusClusterSchema,
     INDEXER_DEBUG: envBooleanDisabledSchema,
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+    SCHEDULED_DISCORD_SYNC_INTERVAL_MINUTES: positiveIntegerSchema.default(1),
+    SCHEDULED_INDEX_INTERVAL_MINUTES: positiveIntegerSchema.default(30),
+    SCHEDULED_MEMBERSHIP_SYNC_INTERVAL_MINUTES: positiveIntegerSchema.default(5),
+    SCHEDULER_POLL_SECONDS: positiveIntegerSchema.default(60),
     SOLANA_ADMIN_ADDRESSES: solanaAdminAddressesSchema,
     SOLANA_CLUSTER: solanaClusterSchema,
     SOLANA_ENDPOINT_PUBLIC: z.url(),

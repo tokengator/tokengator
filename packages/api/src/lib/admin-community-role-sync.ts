@@ -1,8 +1,30 @@
 import { and, asc, eq, inArray, or } from 'drizzle-orm'
 import { db } from '@tokengator/db'
 import { asset, assetGroup } from '@tokengator/db/schema/asset'
-import { member, organization, session, solanaWallet, team, teamMember, user } from '@tokengator/db/schema/auth'
-import { communityManagedMember, communityRole, communityRoleCondition } from '@tokengator/db/schema/community-role'
+import {
+  account,
+  member,
+  organization,
+  session,
+  solanaWallet,
+  team,
+  teamMember,
+  user,
+} from '@tokengator/db/schema/auth'
+import {
+  communityDiscordConnection,
+  communityManagedMember,
+  communityRole,
+  communityRoleCondition,
+} from '@tokengator/db/schema/community-role'
+import {
+  addDiscordGuildMemberRole,
+  getDiscordGuildMember,
+  DiscordGuildMemberRoleMutationError,
+  inspectDiscordGuildRoles,
+  removeDiscordGuildMemberRole,
+} from '@tokengator/discord'
+import { env } from '@tokengator/env/api'
 import { normalizeAmountToBigInt } from '@tokengator/indexer'
 
 type CommunityRoleRecord = {
@@ -48,18 +70,21 @@ type CurrentOrganizationMember = {
   username: string | null
 }
 
-type CurrentUserState = {
-  currentMemberId: string | null
-  currentOrganizationRole: string | null
-  currentRoleIds: string[]
-  currentTeamIds: string[]
-  managedMembership: boolean
+type QualifiedUserState = {
   name: string
   nextRoleIds: string[]
   nextTeamIds: string[]
   userId: string
   username: string | null
   wallets: string[]
+}
+
+type CurrentUserState = QualifiedUserState & {
+  currentMemberId: string | null
+  currentOrganizationRole: string | null
+  currentRoleIds: string[]
+  currentTeamIds: string[]
+  managedMembership: boolean
 }
 
 type EvaluateCommunityRolesInput = {
@@ -115,6 +140,98 @@ export type CommunityRoleSyncPreview = {
   users: CommunityRoleSyncChangeUser[]
 }
 
+export type DiscordSyncOutcomeStatus =
+  | 'already_correct'
+  | 'discord_role_missing'
+  | 'linked_but_not_in_guild'
+  | 'mapping_missing'
+  | 'mapping_not_assignable'
+  | 'no_discord_account_linked'
+  | 'will_grant'
+  | 'will_revoke'
+
+export type DiscordSyncApplyOutcomeStatus = DiscordSyncOutcomeStatus | 'discord_api_failure'
+
+export type DiscordSyncCounts = Record<DiscordSyncOutcomeStatus, number>
+
+export type CommunityRoleDiscordSyncOutcome = {
+  checks: string[]
+  communityRoleId: string
+  communityRoleName: string
+  current: boolean | null
+  desired: boolean
+  discordRoleId: string | null
+  discordRoleName: string | null
+  status: DiscordSyncOutcomeStatus
+}
+
+export type CommunityRoleDiscordSyncApplyOutcome = Omit<CommunityRoleDiscordSyncOutcome, 'status'> & {
+  attemptedAction: 'grant' | 'revoke' | null
+  errorMessage: string | null
+  execution: 'applied' | 'failed' | 'noop' | 'skipped'
+  status: DiscordSyncApplyOutcomeStatus
+}
+
+export type CommunityRoleDiscordSyncUser = {
+  discordAccountId: string | null
+  guildMemberPresent: boolean | null
+  name: string
+  outcomes: CommunityRoleDiscordSyncOutcome[]
+  userId: string
+  username: string | null
+  wallets: string[]
+}
+
+export type CommunityRoleDiscordSyncApplyUser = Omit<CommunityRoleDiscordSyncUser, 'outcomes'> & {
+  outcomes: CommunityRoleDiscordSyncApplyOutcome[]
+}
+
+export type CommunityRoleDiscordSyncRoleSummary = {
+  communityRoleId: string
+  communityRoleName: string
+  counts: DiscordSyncCounts
+  discordRoleId: string | null
+  discordRoleName: string | null
+  enabled: boolean
+  mappingChecks: string[]
+  mappingStatus: 'discord_role_missing' | 'mapping_missing' | 'mapping_not_assignable' | 'ready'
+  qualifiedUserCount: number
+}
+
+export type CommunityRoleDiscordSyncPreview = {
+  connection: {
+    checks: string[]
+    guildId: string
+    guildName: string | null
+    lastCheckedAt: Date
+    status: 'connected' | 'needs_attention'
+  }
+  organizationId: string
+  roles: CommunityRoleDiscordSyncRoleSummary[]
+  summary: {
+    counts: DiscordSyncCounts
+    rolesBlockedCount: number
+    rolesReadyCount: number
+    usersChangedCount: number
+  }
+  users: CommunityRoleDiscordSyncUser[]
+}
+
+export type CommunityRoleDiscordSyncApply = Omit<CommunityRoleDiscordSyncPreview, 'summary' | 'users'> & {
+  summary: CommunityRoleDiscordSyncPreview['summary'] & {
+    appliedGrantCount: number
+    appliedRevokeCount: number
+    failedCount: number
+  }
+  users: CommunityRoleDiscordSyncApplyUser[]
+}
+
+type LoadedQualificationState = {
+  organizationId: string
+  roles: CommunityRoleRecord[]
+  usersById: Map<string, QualifiedUserState>
+}
+
 type LoadedSyncState = {
   currentMembersByUserId: Map<string, CurrentOrganizationMember>
   currentTeamIdsByUserId: Map<string, Set<string>>
@@ -125,8 +242,56 @@ type LoadedSyncState = {
   usersById: Map<string, CurrentUserState>
 }
 
+type DiscordRoleMappingState = {
+  checks: string[]
+  discordRoleName: string | null
+  status: 'discord_role_missing' | 'mapping_missing' | 'mapping_not_assignable' | 'ready'
+}
+
+type StoredCommunityDiscordConnectionRecord = {
+  guildId: string
+  guildName: string | null
+}
+
+const blockingDiscordGuildRoleInspectionChecks = new Set([
+  'bot_identity_lookup_failed',
+  'bot_not_in_guild',
+  'bot_token_missing',
+  'guild_fetch_failed',
+  'guild_not_found',
+  'guild_roles_fetch_failed',
+])
+
 function normalizeWalletAddress(address: string) {
   return address.trim()
+}
+
+function createDiscordSyncCounts(): DiscordSyncCounts {
+  return {
+    already_correct: 0,
+    discord_role_missing: 0,
+    linked_but_not_in_guild: 0,
+    mapping_missing: 0,
+    mapping_not_assignable: 0,
+    no_discord_account_linked: 0,
+    will_grant: 0,
+    will_revoke: 0,
+  }
+}
+
+function createQualifiedUserState(input: {
+  name: string
+  userId: string
+  username: string | null
+}): QualifiedUserState {
+  return {
+    name: input.name,
+    nextRoleIds: [],
+    nextTeamIds: [],
+    userId: input.userId,
+    username: input.username,
+    wallets: [],
+  }
 }
 
 function toCommunityRoleRef(role: CommunityRoleRecord): CommunityRoleRef {
@@ -154,6 +319,10 @@ function sortRoleIds(roleIds: string[], rolesById: Map<string, CommunityRoleReco
       left.localeCompare(right)
     )
   })
+}
+
+function incrementDiscordSyncCount(counts: DiscordSyncCounts, status: DiscordSyncOutcomeStatus) {
+  counts[status] += 1
 }
 
 async function ensureOrganizationExists(organizationId: string) {
@@ -312,9 +481,12 @@ export function evaluateCommunityRoles(input: EvaluateCommunityRolesInput): Eval
   }
 }
 
-async function loadSyncState(organizationId: string): Promise<LoadedSyncState> {
-  const roles = await listCommunityRoleRecords(organizationId)
-  const roleTeamIds = new Set(roles.map((roleRecord) => roleRecord.teamId))
+async function loadCommunityRoleQualificationState(input: {
+  organizationId: string
+  relevantUserIds?: string[]
+  roles?: CommunityRoleRecord[]
+}): Promise<LoadedQualificationState> {
+  const roles = input.roles ?? (await listCommunityRoleRecords(input.organizationId))
   const enabledRoleAssetGroupIds = [
     ...new Set(
       roles
@@ -322,10 +494,10 @@ async function loadSyncState(organizationId: string): Promise<LoadedSyncState> {
         .map((condition) => condition.assetGroupId),
     ),
   ]
-  const [assetRows, managedRows, memberRows, organizationTeamMembershipRows] = await Promise.all([
+  const assetRows =
     enabledRoleAssetGroupIds.length === 0
-      ? Promise.resolve([])
-      : db
+      ? []
+      : await db
           .select({
             amount: asset.amount,
             assetGroupId: asset.assetGroupId,
@@ -334,7 +506,124 @@ async function loadSyncState(organizationId: string): Promise<LoadedSyncState> {
           })
           .from(asset)
           .where(inArray(asset.assetGroupId, enabledRoleAssetGroupIds))
-          .orderBy(asc(asset.assetGroupId), asc(asset.owner), asc(asset.id)),
+          .orderBy(asc(asset.assetGroupId), asc(asset.owner), asc(asset.id))
+  const relevantAssetOwnerAddresses = [
+    ...new Set(assetRows.map((assetRow) => normalizeWalletAddress(assetRow.owner))),
+  ].sort((left, right) => left.localeCompare(right))
+  const relevantUserIds = [...new Set(input.relevantUserIds ?? [])].sort((left, right) => left.localeCompare(right))
+  const walletRows =
+    relevantAssetOwnerAddresses.length === 0 && relevantUserIds.length === 0
+      ? []
+      : await db
+          .select({
+            address: solanaWallet.address,
+            name: user.name,
+            userId: user.id,
+            username: user.username,
+          })
+          .from(solanaWallet)
+          .innerJoin(user, eq(solanaWallet.userId, user.id))
+          .where(
+            relevantAssetOwnerAddresses.length === 0
+              ? inArray(solanaWallet.userId, relevantUserIds)
+              : relevantUserIds.length === 0
+                ? inArray(solanaWallet.address, relevantAssetOwnerAddresses)
+                : or(
+                    inArray(solanaWallet.address, relevantAssetOwnerAddresses),
+                    inArray(solanaWallet.userId, relevantUserIds),
+                  ),
+          )
+          .orderBy(asc(user.name), asc(user.username), asc(user.id), asc(solanaWallet.address))
+  const conditionByAssetGroupId = new Map(
+    roles
+      .flatMap((roleRecord) => roleRecord.conditions)
+      .map((condition) => [condition.assetGroupId, condition] as const),
+  )
+  const rolesById = new Map(roles.map((roleRecord) => [roleRecord.id, roleRecord] as const))
+  const usersById = new Map<string, QualifiedUserState>()
+  const walletOwnerByAddress = new Map<string, string>()
+  const walletAmountsByAssetGroupId = new Map<string, Map<string, bigint>>()
+
+  function getOrCreateUserState(inputUser: { name: string; userId: string; username: string | null }) {
+    const existingUser = usersById.get(inputUser.userId)
+
+    if (existingUser) {
+      return existingUser
+    }
+
+    const createdUser = createQualifiedUserState(inputUser)
+    usersById.set(inputUser.userId, createdUser)
+
+    return createdUser
+  }
+
+  for (const walletRow of walletRows) {
+    const normalizedAddress = normalizeWalletAddress(walletRow.address)
+
+    walletOwnerByAddress.set(normalizedAddress, walletRow.userId)
+
+    const userState = getOrCreateUserState({
+      name: walletRow.name,
+      userId: walletRow.userId,
+      username: walletRow.username,
+    })
+
+    userState.wallets.push(walletRow.address)
+  }
+
+  for (const assetRow of assetRows) {
+    const ownerUserId = walletOwnerByAddress.get(assetRow.owner)
+    const amount = normalizeAmountToBigInt(assetRow.amount)
+
+    if (!ownerUserId || amount === null || amount <= 0n) {
+      continue
+    }
+
+    const currentRoleCondition = conditionByAssetGroupId.get(assetRow.assetGroupId)
+
+    if (!currentRoleCondition) {
+      continue
+    }
+
+    const amountByUserId = walletAmountsByAssetGroupId.get(assetRow.assetGroupId) ?? new Map<string, bigint>()
+    const existingAmount = amountByUserId.get(ownerUserId) ?? 0n
+    const nextAmount =
+      currentRoleCondition.assetGroupType === 'collection' ? existingAmount + 1n : existingAmount + amount
+
+    amountByUserId.set(ownerUserId, nextAmount)
+    walletAmountsByAssetGroupId.set(assetRow.assetGroupId, amountByUserId)
+  }
+
+  const evaluation = evaluateCommunityRoles({
+    roles,
+    users: [...usersById.values()].map((currentUser) => ({
+      id: currentUser.userId,
+      name: currentUser.name,
+      username: currentUser.username,
+      wallets: currentUser.wallets,
+    })),
+    walletAmountsByAssetGroupId,
+  })
+
+  for (const currentUser of usersById.values()) {
+    currentUser.nextRoleIds = evaluation.matchedRoleIdsByUserId.get(currentUser.userId) ?? []
+    currentUser.nextTeamIds = currentUser.nextRoleIds
+      .map((roleId) => rolesById.get(roleId)?.teamId)
+      .filter((teamId): teamId is string => Boolean(teamId))
+      .sort((left, right) => left.localeCompare(right))
+  }
+
+  return {
+    organizationId: input.organizationId,
+    roles,
+    usersById,
+  }
+}
+
+async function loadSyncState(organizationId: string): Promise<LoadedSyncState> {
+  const roles = await listCommunityRoleRecords(organizationId)
+  const roleTeamIds = new Set(roles.map((roleRecord) => roleRecord.teamId))
+  const [managedRows, memberRows, organizationTeamMembershipRows] = await Promise.all([
     db
       .select({
         userId: communityManagedMember.userId,
@@ -367,71 +656,53 @@ async function loadSyncState(organizationId: string): Promise<LoadedSyncState> {
       .where(eq(team.organizationId, organizationId))
       .orderBy(asc(user.name), asc(user.username), asc(user.id), asc(team.id)),
   ])
-  const relevantAssetOwnerAddresses = [
-    ...new Set(assetRows.map((assetRow) => normalizeWalletAddress(assetRow.owner))),
-  ].sort((left, right) => left.localeCompare(right))
   const relevantOrganizationUserIds = [
     ...new Set([...memberRows, ...organizationTeamMembershipRows].map((currentMembership) => currentMembership.userId)),
   ].sort((left, right) => left.localeCompare(right))
-  const walletRows =
-    relevantAssetOwnerAddresses.length === 0 && relevantOrganizationUserIds.length === 0
-      ? []
-      : await db
-          .select({
-            address: solanaWallet.address,
-            name: user.name,
-            userId: user.id,
-            username: user.username,
-          })
-          .from(solanaWallet)
-          .innerJoin(user, eq(solanaWallet.userId, user.id))
-          .where(
-            relevantAssetOwnerAddresses.length === 0
-              ? inArray(solanaWallet.userId, relevantOrganizationUserIds)
-              : relevantOrganizationUserIds.length === 0
-                ? inArray(solanaWallet.address, relevantAssetOwnerAddresses)
-                : or(
-                    inArray(solanaWallet.address, relevantAssetOwnerAddresses),
-                    inArray(solanaWallet.userId, relevantOrganizationUserIds),
-                  ),
-          )
-          .orderBy(asc(user.name), asc(user.username), asc(user.id), asc(solanaWallet.address))
+  const qualificationState = await loadCommunityRoleQualificationState({
+    organizationId,
+    relevantUserIds: relevantOrganizationUserIds,
+    roles,
+  })
   const currentMembersByUserId = new Map<string, CurrentOrganizationMember>()
   const currentTeamIdsByUserId = new Map<string, Set<string>>()
-  const conditionByAssetGroupId = new Map(
-    roles
-      .flatMap((roleRecord) => roleRecord.conditions)
-      .map((condition) => [condition.assetGroupId, condition] as const),
-  )
   const managedUserIds = new Set(managedRows.map((managedRow) => managedRow.userId))
   const organizationTeamIdsByUserId = new Map<string, Set<string>>()
   const rolesById = new Map(roles.map((roleRecord) => [roleRecord.id, roleRecord] as const))
-  const usersById = new Map<string, CurrentUserState>()
-  const walletOwnerByAddress = new Map<string, string>()
-  const walletAmountsByAssetGroupId = new Map<string, Map<string, bigint>>()
+  const usersById = new Map<string, CurrentUserState>(
+    [...qualificationState.usersById.entries()].map(([userId, currentUser]) => [
+      userId,
+      {
+        ...currentUser,
+        currentMemberId: null,
+        currentOrganizationRole: null,
+        currentRoleIds: [],
+        currentTeamIds: [],
+        managedMembership: false,
+        nextRoleIds: [...currentUser.nextRoleIds],
+        nextTeamIds: [...currentUser.nextTeamIds],
+        wallets: [...currentUser.wallets],
+      },
+    ]),
+  )
 
-  function getOrCreateUserState(input: { name: string; userId: string; username: string | null }) {
-    const existingUser = usersById.get(input.userId)
+  function getOrCreateUserState(inputUser: { name: string; userId: string; username: string | null }) {
+    const existingUser = usersById.get(inputUser.userId)
 
     if (existingUser) {
       return existingUser
     }
 
     const createdUser: CurrentUserState = {
+      ...createQualifiedUserState(inputUser),
       currentMemberId: null,
       currentOrganizationRole: null,
       currentRoleIds: [],
       currentTeamIds: [],
       managedMembership: false,
-      name: input.name,
-      nextRoleIds: [],
-      nextTeamIds: [],
-      userId: input.userId,
-      username: input.username,
-      wallets: [],
     }
 
-    usersById.set(input.userId, createdUser)
+    usersById.set(inputUser.userId, createdUser)
 
     return createdUser
   }
@@ -447,20 +718,6 @@ async function loadSyncState(organizationId: string): Promise<LoadedSyncState> {
 
     userState.currentMemberId = currentMember.id
     userState.currentOrganizationRole = currentMember.role
-  }
-
-  for (const walletRow of walletRows) {
-    const normalizedAddress = normalizeWalletAddress(walletRow.address)
-
-    walletOwnerByAddress.set(normalizedAddress, walletRow.userId)
-
-    const userState = getOrCreateUserState({
-      name: walletRow.name,
-      userId: walletRow.userId,
-      username: walletRow.username,
-    })
-
-    userState.wallets.push(walletRow.address)
   }
 
   for (const organizationTeamMembership of organizationTeamMembershipRows) {
@@ -508,47 +765,8 @@ async function loadSyncState(organizationId: string): Promise<LoadedSyncState> {
     existingUser.managedMembership = true
   }
 
-  for (const assetRow of assetRows) {
-    const ownerUserId = walletOwnerByAddress.get(assetRow.owner)
-    const amount = normalizeAmountToBigInt(assetRow.amount)
-
-    if (!ownerUserId || amount === null || amount <= 0n) {
-      continue
-    }
-
-    const currentRoleCondition = conditionByAssetGroupId.get(assetRow.assetGroupId)
-
-    if (!currentRoleCondition) {
-      continue
-    }
-
-    const amountByUserId = walletAmountsByAssetGroupId.get(assetRow.assetGroupId) ?? new Map<string, bigint>()
-    const existingAmount = amountByUserId.get(ownerUserId) ?? 0n
-    const nextAmount =
-      currentRoleCondition.assetGroupType === 'collection' ? existingAmount + 1n : existingAmount + amount
-
-    amountByUserId.set(ownerUserId, nextAmount)
-    walletAmountsByAssetGroupId.set(assetRow.assetGroupId, amountByUserId)
-  }
-
-  const evaluation = evaluateCommunityRoles({
-    roles,
-    users: [...usersById.values()].map((currentUser) => ({
-      id: currentUser.userId,
-      name: currentUser.name,
-      username: currentUser.username,
-      wallets: currentUser.wallets,
-    })),
-    walletAmountsByAssetGroupId,
-  })
-
   for (const currentUser of usersById.values()) {
     sortRoleIds(currentUser.currentRoleIds, rolesById)
-    currentUser.nextRoleIds = evaluation.matchedRoleIdsByUserId.get(currentUser.userId) ?? []
-    currentUser.nextTeamIds = currentUser.nextRoleIds
-      .map((roleId) => rolesById.get(roleId)?.teamId)
-      .filter((teamId): teamId is string => Boolean(teamId))
-      .sort((left, right) => left.localeCompare(right))
     currentUser.currentTeamIds = [...(currentTeamIdsByUserId.get(currentUser.userId) ?? new Set<string>())].sort(
       (left, right) => left.localeCompare(right),
     )
@@ -722,6 +940,462 @@ function buildPreviewFromSyncState(syncState: LoadedSyncState): CommunityRoleSyn
   }
 }
 
+async function loadCommunityDiscordConnectionRecord(
+  organizationId: string,
+): Promise<StoredCommunityDiscordConnectionRecord | null> {
+  const [record] = await db
+    .select({
+      guildId: communityDiscordConnection.guildId,
+      guildName: communityDiscordConnection.guildName,
+    })
+    .from(communityDiscordConnection)
+    .where(eq(communityDiscordConnection.organizationId, organizationId))
+    .limit(1)
+
+  return record ?? null
+}
+
+async function loadUserProfiles(userIds: string[]) {
+  if (userIds.length === 0) {
+    return new Map<string, QualifiedUserState>()
+  }
+
+  const [userRows, walletRows] = await Promise.all([
+    db
+      .select({
+        name: user.name,
+        userId: user.id,
+        username: user.username,
+      })
+      .from(user)
+      .where(inArray(user.id, userIds))
+      .orderBy(asc(user.name), asc(user.username), asc(user.id)),
+    db
+      .select({
+        address: solanaWallet.address,
+        userId: solanaWallet.userId,
+      })
+      .from(solanaWallet)
+      .where(inArray(solanaWallet.userId, userIds))
+      .orderBy(asc(solanaWallet.userId), asc(solanaWallet.address)),
+  ])
+  const usersById = new Map(
+    userRows.map((currentUser) => [currentUser.userId, createQualifiedUserState(currentUser)] as const),
+  )
+
+  for (const walletRow of walletRows) {
+    const currentUser = usersById.get(walletRow.userId)
+
+    if (!currentUser) {
+      continue
+    }
+
+    currentUser.wallets.push(walletRow.address)
+  }
+
+  return usersById
+}
+
+async function loadPotentialCommunityRoleDiscordSyncUserIds(input: {
+  organizationId: string
+  roles: CommunityRoleRecord[]
+}) {
+  const roleTeamIds = [...new Set(input.roles.map((roleRecord) => roleRecord.teamId))].sort((left, right) =>
+    left.localeCompare(right),
+  )
+  const [managedRows, memberRows, teamMemberRows] = await Promise.all([
+    db
+      .select({
+        userId: communityManagedMember.userId,
+      })
+      .from(communityManagedMember)
+      .where(eq(communityManagedMember.organizationId, input.organizationId))
+      .orderBy(asc(communityManagedMember.userId)),
+    db
+      .select({
+        userId: member.userId,
+      })
+      .from(member)
+      .where(eq(member.organizationId, input.organizationId))
+      .orderBy(asc(member.userId)),
+    roleTeamIds.length === 0
+      ? []
+      : db
+          .select({
+            userId: teamMember.userId,
+          })
+          .from(teamMember)
+          .where(inArray(teamMember.teamId, roleTeamIds))
+          .orderBy(asc(teamMember.userId)),
+  ])
+
+  return [...new Set([...managedRows, ...memberRows, ...teamMemberRows].map((currentUser) => currentUser.userId))].sort(
+    (left, right) => left.localeCompare(right),
+  )
+}
+
+async function loadCanonicalDiscordAccountIdsByUserId(userIds: string[]) {
+  const relevantUserIds = [...new Set(userIds)].sort((left, right) => left.localeCompare(right))
+
+  if (relevantUserIds.length === 0) {
+    return new Map<string, string>()
+  }
+
+  const accountRows = await db
+    .select({
+      accountId: account.accountId,
+      userId: account.userId,
+    })
+    .from(account)
+    .where(and(eq(account.providerId, 'discord'), inArray(account.userId, relevantUserIds)))
+    .orderBy(asc(account.createdAt), asc(account.id))
+  const canonicalDiscordAccountIdByUserId = new Map<string, string>()
+
+  for (const accountRow of accountRows) {
+    if (!canonicalDiscordAccountIdByUserId.has(accountRow.userId)) {
+      canonicalDiscordAccountIdByUserId.set(accountRow.userId, accountRow.accountId)
+    }
+  }
+
+  return canonicalDiscordAccountIdByUserId
+}
+
+async function loadDiscordGuildMembersByDiscordUserId(guildId: string, discordUserIds: string[]) {
+  const guildMembersByDiscordUserId = new Map<string, { discordUserId: string; roleIds: string[] }>()
+
+  for (const discordUserId of [...new Set(discordUserIds)].sort((left, right) => left.localeCompare(right))) {
+    const guildMember = await getDiscordGuildMember(
+      {
+        env,
+      },
+      {
+        guildId,
+        userId: discordUserId,
+      },
+    )
+
+    if (guildMember) {
+      guildMembersByDiscordUserId.set(guildMember.discordUserId, guildMember)
+    }
+  }
+
+  return guildMembersByDiscordUserId
+}
+
+function createDiscordRoleMappingState(input: {
+  connectionChecks: string[]
+  guildRole: {
+    assignable: boolean
+    checks: string[]
+    name: string
+  } | null
+  hasGuildRoleCatalog: boolean
+  role: CommunityRoleRecord
+}): DiscordRoleMappingState {
+  if (!input.role.discordRoleId) {
+    return {
+      checks: ['mapping_missing'],
+      discordRoleName: null,
+      status: 'mapping_missing',
+    }
+  }
+
+  const checks = [
+    ...new Set(
+      [...(input.guildRole?.checks ?? []), ...input.connectionChecks].sort((left, right) => left.localeCompare(right)),
+    ),
+  ]
+
+  if (!input.guildRole) {
+    return {
+      checks: [
+        ...new Set([...(input.hasGuildRoleCatalog ? ['discord_role_missing'] : ['mapping_not_assignable']), ...checks]),
+      ].sort((left, right) => left.localeCompare(right)),
+      discordRoleName: null,
+      status: input.hasGuildRoleCatalog ? 'discord_role_missing' : 'mapping_not_assignable',
+    }
+  }
+
+  if (input.guildRole.assignable && checks.length === 0) {
+    return {
+      checks: [],
+      discordRoleName: input.guildRole.name,
+      status: 'ready',
+    }
+  }
+
+  return {
+    checks: [...new Set(['mapping_not_assignable', ...checks])].sort((left, right) => left.localeCompare(right)),
+    discordRoleName: input.guildRole.name,
+    status: 'mapping_not_assignable',
+  }
+}
+
+function buildCommunityRoleDiscordSyncSummaries(input: {
+  mappingStateByRoleId: Map<string, DiscordRoleMappingState>
+  qualifiedUserCountByRoleId: Map<string, number>
+  roles: Array<{
+    discordRoleId?: string | null
+    enabled: boolean
+    id: string
+    name: string
+  }>
+  users: Array<{
+    outcomes: Array<{
+      communityRoleId: string
+      status: DiscordSyncApplyOutcomeStatus
+    }>
+  }>
+}) {
+  const roleSummaries = input.roles.map((roleRecord) => {
+    const mappingState = input.mappingStateByRoleId.get(roleRecord.id)
+
+    return {
+      communityRoleId: roleRecord.id,
+      communityRoleName: roleRecord.name,
+      counts: createDiscordSyncCounts(),
+      discordRoleId: roleRecord.discordRoleId ?? null,
+      discordRoleName: mappingState?.discordRoleName ?? null,
+      enabled: roleRecord.enabled,
+      mappingChecks: [...(mappingState?.checks ?? [])],
+      mappingStatus: mappingState?.status ?? 'mapping_missing',
+      qualifiedUserCount: input.qualifiedUserCountByRoleId.get(roleRecord.id) ?? 0,
+    } satisfies CommunityRoleDiscordSyncRoleSummary
+  })
+  const roleSummaryById = new Map(
+    roleSummaries.map((roleSummary) => [roleSummary.communityRoleId, roleSummary] as const),
+  )
+  const summaryCounts = createDiscordSyncCounts()
+
+  for (const currentUser of input.users) {
+    for (const outcome of currentUser.outcomes) {
+      if (outcome.status === 'discord_api_failure') {
+        continue
+      }
+
+      incrementDiscordSyncCount(summaryCounts, outcome.status)
+      const roleSummary = roleSummaryById.get(outcome.communityRoleId)
+
+      if (roleSummary) {
+        incrementDiscordSyncCount(roleSummary.counts, outcome.status)
+      }
+    }
+  }
+
+  return {
+    roles: roleSummaries,
+    summary: {
+      counts: summaryCounts,
+      rolesBlockedCount: roleSummaries.filter((roleSummary) => roleSummary.mappingStatus !== 'ready').length,
+      rolesReadyCount: roleSummaries.filter((roleSummary) => roleSummary.mappingStatus === 'ready').length,
+      usersChangedCount: input.users.filter((currentUser) =>
+        currentUser.outcomes.some((outcome) => outcome.status === 'will_grant' || outcome.status === 'will_revoke'),
+      ).length,
+    },
+  }
+}
+
+async function buildCommunityRoleDiscordSyncPreview(organizationId: string): Promise<CommunityRoleDiscordSyncPreview> {
+  const connectionRecord = await loadCommunityDiscordConnectionRecord(organizationId)
+
+  if (!connectionRecord) {
+    throw new Error('Community Discord connection not found.')
+  }
+
+  const qualificationState = await loadCommunityRoleQualificationState({
+    organizationId,
+  })
+  const inspection = await inspectDiscordGuildRoles(
+    {
+      env,
+    },
+    {
+      guildId: connectionRecord.guildId,
+    },
+  )
+  const connection = {
+    checks: inspection.diagnostics.checks,
+    guildId: connectionRecord.guildId,
+    guildName: inspection.guildName ?? connectionRecord.guildName,
+    lastCheckedAt: inspection.lastCheckedAt,
+    status: inspection.status,
+  } satisfies CommunityRoleDiscordSyncPreview['connection']
+  const guildRolesById = new Map(inspection.roles.map((guildRole) => [guildRole.id, guildRole] as const))
+  const communityRoleIdByDiscordRoleId = new Map(
+    qualificationState.roles
+      .filter((roleRecord) => roleRecord.discordRoleId)
+      .map((roleRecord) => [roleRecord.discordRoleId as string, roleRecord.id] as const),
+  )
+  const hasMappedDiscordRole = qualificationState.roles.some((roleRecord) => roleRecord.discordRoleId)
+  const candidateUserIds = [
+    ...new Set(
+      hasMappedDiscordRole
+        ? [
+            ...qualificationState.usersById.keys(),
+            ...(await loadPotentialCommunityRoleDiscordSyncUserIds({
+              organizationId,
+              roles: qualificationState.roles,
+            })),
+          ]
+        : [...qualificationState.usersById.keys()],
+    ),
+  ].sort((left, right) => left.localeCompare(right))
+  const canonicalDiscordAccountIdByUserId = hasMappedDiscordRole
+    ? await loadCanonicalDiscordAccountIdsByUserId(candidateUserIds)
+    : new Map<string, string>()
+  const usersById = new Map<string, QualifiedUserState>(
+    [...qualificationState.usersById.entries()].map(([userId, currentUser]) => [
+      userId,
+      {
+        ...currentUser,
+        nextRoleIds: [...currentUser.nextRoleIds],
+        nextTeamIds: [...currentUser.nextTeamIds],
+        wallets: [...currentUser.wallets],
+      },
+    ]),
+  )
+  const missingProfileUserIds = candidateUserIds.filter((userId) => !usersById.has(userId))
+  const extraProfilesById = await loadUserProfiles(missingProfileUserIds)
+
+  for (const [userId, currentUser] of extraProfilesById.entries()) {
+    usersById.set(userId, currentUser)
+  }
+
+  const guildMembersByDiscordUserId = connection.checks.some((check) =>
+    blockingDiscordGuildRoleInspectionChecks.has(check),
+  )
+    ? new Map<string, { discordUserId: string; roleIds: string[] }>()
+    : await loadDiscordGuildMembersByDiscordUserId(
+        connectionRecord.guildId,
+        candidateUserIds
+          .map((userId) => canonicalDiscordAccountIdByUserId.get(userId) ?? null)
+          .filter((discordAccountId): discordAccountId is string => Boolean(discordAccountId)),
+      )
+
+  const qualifiedUserCountByRoleId = new Map<string, number>()
+
+  for (const currentUser of qualificationState.usersById.values()) {
+    for (const roleId of currentUser.nextRoleIds) {
+      qualifiedUserCountByRoleId.set(roleId, (qualifiedUserCountByRoleId.get(roleId) ?? 0) + 1)
+    }
+  }
+
+  const mappingStateByRoleId = new Map(
+    qualificationState.roles.map((roleRecord) => [
+      roleRecord.id,
+      createDiscordRoleMappingState({
+        connectionChecks: connection.checks,
+        guildRole: roleRecord.discordRoleId ? (guildRolesById.get(roleRecord.discordRoleId) ?? null) : null,
+        hasGuildRoleCatalog: inspection.roles.length > 0,
+        role: roleRecord,
+      }),
+    ]),
+  )
+  const rolesById = new Map(qualificationState.roles.map((roleRecord) => [roleRecord.id, roleRecord] as const))
+  const users: CommunityRoleDiscordSyncUser[] = []
+
+  for (const currentUser of [...usersById.values()]
+    .filter((candidateUser) => candidateUserIds.includes(candidateUser.userId))
+    .sort(
+      (left, right) =>
+        left.name.localeCompare(right.name) ||
+        (left.username ?? '').localeCompare(right.username ?? '') ||
+        left.userId.localeCompare(right.userId),
+    )) {
+    const discordAccountId = canonicalDiscordAccountIdByUserId.get(currentUser.userId) ?? null
+    const guildMember = discordAccountId ? (guildMembersByDiscordUserId.get(discordAccountId) ?? null) : null
+    const currentRoleIds =
+      guildMember === null
+        ? []
+        : guildMember.roleIds
+            .map((roleId) => communityRoleIdByDiscordRoleId.get(roleId) ?? null)
+            .filter((roleId): roleId is string => Boolean(roleId))
+    const relevantRoleIds = [...new Set([...currentRoleIds, ...currentUser.nextRoleIds])]
+
+    if (relevantRoleIds.length === 0) {
+      continue
+    }
+
+    sortRoleIds(relevantRoleIds, rolesById)
+
+    const outcomes = relevantRoleIds.map((roleId) => {
+      const roleRecord = rolesById.get(roleId)
+
+      if (!roleRecord) {
+        return null
+      }
+
+      const mappingState = mappingStateByRoleId.get(roleId)
+      const desired = currentUser.nextRoleIds.includes(roleId) && roleRecord.enabled
+      const current =
+        roleRecord.discordRoleId && guildMember ? guildMember.roleIds.includes(roleRecord.discordRoleId) : null
+      const status: DiscordSyncOutcomeStatus =
+        mappingState?.status === 'mapping_missing'
+          ? 'mapping_missing'
+          : mappingState?.status === 'discord_role_missing'
+            ? 'discord_role_missing'
+            : mappingState?.status === 'mapping_not_assignable'
+              ? 'mapping_not_assignable'
+              : discordAccountId === null
+                ? 'no_discord_account_linked'
+                : guildMember === null
+                  ? 'linked_but_not_in_guild'
+                  : current && !desired
+                    ? 'will_revoke'
+                    : !current && desired
+                      ? 'will_grant'
+                      : 'already_correct'
+
+      return {
+        checks:
+          status === 'mapping_missing'
+            ? ['mapping_missing']
+            : status === 'discord_role_missing'
+              ? [...(mappingState?.checks ?? ['discord_role_missing'])]
+              : status === 'mapping_not_assignable'
+                ? [...(mappingState?.checks ?? ['mapping_not_assignable'])]
+                : status === 'no_discord_account_linked'
+                  ? ['no_discord_account_linked']
+                  : status === 'linked_but_not_in_guild'
+                    ? ['linked_but_not_in_guild']
+                    : [],
+        communityRoleId: roleRecord.id,
+        communityRoleName: roleRecord.name,
+        current,
+        desired,
+        discordRoleId: roleRecord.discordRoleId ?? null,
+        discordRoleName: mappingState?.discordRoleName ?? null,
+        status,
+      } satisfies CommunityRoleDiscordSyncOutcome
+    })
+
+    users.push({
+      discordAccountId,
+      guildMemberPresent: discordAccountId === null ? null : guildMember !== null,
+      name: currentUser.name,
+      outcomes: outcomes.filter((outcome): outcome is CommunityRoleDiscordSyncOutcome => Boolean(outcome)),
+      userId: currentUser.userId,
+      username: currentUser.username,
+      wallets: [...currentUser.wallets],
+    })
+  }
+
+  const { roles, summary } = buildCommunityRoleDiscordSyncSummaries({
+    mappingStateByRoleId,
+    qualifiedUserCountByRoleId,
+    roles: qualificationState.roles,
+    users,
+  })
+
+  return {
+    connection,
+    organizationId,
+    roles,
+    summary,
+    users,
+  }
+}
+
 export async function previewCommunityRoleSync(organizationId: string) {
   const existingOrganization = await ensureOrganizationExists(organizationId)
 
@@ -730,6 +1404,16 @@ export async function previewCommunityRoleSync(organizationId: string) {
   }
 
   return buildPreviewFromSyncState(await loadSyncState(organizationId))
+}
+
+export async function previewCommunityRoleDiscordSync(organizationId: string) {
+  const existingOrganization = await ensureOrganizationExists(organizationId)
+
+  if (!existingOrganization) {
+    return null
+  }
+
+  return await buildCommunityRoleDiscordSyncPreview(organizationId)
 }
 
 async function clearActiveOrganizationSessions(input: {
@@ -853,6 +1537,143 @@ export async function applyCommunityRoleSync(organizationId: string) {
   })
 
   return preview
+}
+
+export async function applyCommunityRoleDiscordSync(organizationId: string) {
+  const preview = await previewCommunityRoleDiscordSync(organizationId)
+
+  if (!preview) {
+    return null
+  }
+
+  let appliedGrantCount = 0
+  let appliedRevokeCount = 0
+  let failedCount = 0
+  const users: CommunityRoleDiscordSyncApplyUser[] = []
+
+  for (const currentUser of preview.users) {
+    const outcomes: CommunityRoleDiscordSyncApplyOutcome[] = []
+
+    for (const outcome of currentUser.outcomes) {
+      if (
+        (outcome.status !== 'will_grant' && outcome.status !== 'will_revoke') ||
+        !currentUser.discordAccountId ||
+        !outcome.discordRoleId
+      ) {
+        outcomes.push({
+          ...outcome,
+          attemptedAction: null,
+          errorMessage: null,
+          execution: 'noop',
+          status: outcome.status,
+        })
+
+        continue
+      }
+
+      try {
+        if (outcome.status === 'will_grant') {
+          await addDiscordGuildMemberRole(
+            {
+              env,
+            },
+            {
+              guildId: preview.connection.guildId,
+              reason: `community-role:${outcome.communityRoleId}`,
+              roleId: outcome.discordRoleId,
+              userId: currentUser.discordAccountId,
+            },
+          )
+          appliedGrantCount += 1
+        } else {
+          await removeDiscordGuildMemberRole(
+            {
+              env,
+            },
+            {
+              guildId: preview.connection.guildId,
+              reason: `community-role:${outcome.communityRoleId}`,
+              roleId: outcome.discordRoleId,
+              userId: currentUser.discordAccountId,
+            },
+          )
+          appliedRevokeCount += 1
+        }
+
+        outcomes.push({
+          ...outcome,
+          attemptedAction: outcome.status === 'will_grant' ? 'grant' : 'revoke',
+          errorMessage: null,
+          execution: 'applied',
+          status: outcome.status,
+        })
+      } catch (error) {
+        if (error instanceof DiscordGuildMemberRoleMutationError && error.code === 'guild_member_not_found') {
+          outcomes.push({
+            ...outcome,
+            attemptedAction: outcome.status === 'will_grant' ? 'grant' : 'revoke',
+            errorMessage: null,
+            execution: 'skipped',
+            status: 'linked_but_not_in_guild',
+          })
+
+          continue
+        }
+
+        failedCount += 1
+        outcomes.push({
+          ...outcome,
+          attemptedAction: outcome.status === 'will_grant' ? 'grant' : 'revoke',
+          errorMessage: error instanceof Error ? error.message : 'Discord request failed.',
+          execution: 'failed',
+          status: 'discord_api_failure',
+        })
+      }
+    }
+
+    users.push({
+      ...currentUser,
+      outcomes,
+    })
+  }
+
+  const mappingStateByRoleId = new Map(
+    preview.roles.map((role) => [
+      role.communityRoleId,
+      {
+        checks: [...role.mappingChecks],
+        discordRoleName: role.discordRoleName,
+        status: role.mappingStatus,
+      },
+    ]),
+  )
+  const qualifiedUserCountByRoleId = new Map(
+    preview.roles.map((role) => [role.communityRoleId, role.qualifiedUserCount]),
+  )
+  const summarizedRoles = preview.roles.map((role) => ({
+    discordRoleId: role.discordRoleId,
+    enabled: role.enabled,
+    id: role.communityRoleId,
+    name: role.communityRoleName,
+  }))
+  const { roles, summary } = buildCommunityRoleDiscordSyncSummaries({
+    mappingStateByRoleId,
+    qualifiedUserCountByRoleId,
+    roles: summarizedRoles,
+    users,
+  })
+
+  return {
+    ...preview,
+    roles,
+    summary: {
+      ...summary,
+      appliedGrantCount,
+      appliedRevokeCount,
+      failedCount,
+    },
+    users,
+  } satisfies CommunityRoleDiscordSyncApply
 }
 
 export async function listCommunityManagedMemberUserIds(input: { organizationIds: string[]; userIds?: string[] }) {

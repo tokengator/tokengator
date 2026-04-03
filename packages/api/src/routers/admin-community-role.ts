@@ -5,6 +5,7 @@ import { db } from '@tokengator/db'
 import { assetGroup } from '@tokengator/db/schema/asset'
 import { organization, team, teamMember } from '@tokengator/db/schema/auth'
 import { communityRole, communityRoleCondition } from '@tokengator/db/schema/community-role'
+import { DiscordGuildMemberLookupError } from '@tokengator/discord'
 import {
   inspectDiscordGuildRoles,
   type DiscordGuildRoleInspectionCheck,
@@ -16,8 +17,10 @@ import { env } from '@tokengator/env/api'
 import { adminProcedure } from '../index'
 import { getCommunityDiscordConnectionByOrganizationId } from '../lib/admin-community-discord-connection'
 import {
+  applyCommunityRoleDiscordSync,
   applyCommunityRoleSync,
   listCommunityRoleRecords,
+  previewCommunityRoleDiscordSync,
   previewCommunityRoleSync,
   removeCommunityRoleById,
   upsertCommunityRoleConditions,
@@ -79,6 +82,28 @@ type CommunityDiscordGuildRolesResult = {
 type CommunityRoleDiscordMappingStatus = {
   checks: string[]
   status: 'needs_attention' | 'not_mapped' | 'ready'
+}
+
+function rethrowDiscordRoleSyncError(error: unknown): never {
+  if (!(error instanceof DiscordGuildMemberLookupError)) {
+    throw error
+  }
+
+  if (error.code === 'forbidden') {
+    throw new ORPCError('BAD_REQUEST', {
+      message: `TokenGator could not load Discord member state for this server: ${error.message}.`,
+    })
+  }
+
+  if (error.code === 'rate_limited') {
+    throw new ORPCError('INTERNAL_SERVER_ERROR', {
+      message: 'Discord member lookups were rate limited. Try again shortly.',
+    })
+  }
+
+  throw new ORPCError('INTERNAL_SERVER_ERROR', {
+    message: `TokenGator could not load Discord member state for this server: ${error.message}.`,
+  })
 }
 
 function createCommunityRoleDiscordMappingStatus(input: {
@@ -338,6 +363,36 @@ async function getCommunityRoleRecordById(communityRoleId: string) {
 }
 
 export const adminCommunityRoleRouter = {
+  applyDiscordRoleSync: adminProcedure
+    .input(
+      z.object({
+        organizationId: z.string().min(1),
+      }),
+    )
+    .handler(async ({ input }) => {
+      const existingOrganization = await ensureOrganizationExists(input.organizationId)
+
+      if (!existingOrganization) {
+        throw new ORPCError('NOT_FOUND', {
+          message: 'Organization not found.',
+        })
+      }
+
+      const existingConnection = await getCommunityDiscordConnectionByOrganizationId(input.organizationId)
+
+      if (!existingConnection) {
+        throw new ORPCError('BAD_REQUEST', {
+          message: 'Connect a Discord server for this community before syncing Discord roles.',
+        })
+      }
+
+      try {
+        return await applyCommunityRoleDiscordSync(input.organizationId)
+      } catch (error) {
+        rethrowDiscordRoleSyncError(error)
+      }
+    }),
+
   applySync: adminProcedure
     .input(
       z.object({
@@ -478,6 +533,36 @@ export const adminCommunityRoleRouter = {
       }
 
       return await getCommunityDiscordGuildRoles(input.organizationId)
+    }),
+
+  previewDiscordRoleSync: adminProcedure
+    .input(
+      z.object({
+        organizationId: z.string().min(1),
+      }),
+    )
+    .handler(async ({ input }) => {
+      const existingOrganization = await ensureOrganizationExists(input.organizationId)
+
+      if (!existingOrganization) {
+        throw new ORPCError('NOT_FOUND', {
+          message: 'Organization not found.',
+        })
+      }
+
+      const existingConnection = await getCommunityDiscordConnectionByOrganizationId(input.organizationId)
+
+      if (!existingConnection) {
+        throw new ORPCError('BAD_REQUEST', {
+          message: 'Connect a Discord server for this community before syncing Discord roles.',
+        })
+      }
+
+      try {
+        return await previewCommunityRoleDiscordSync(input.organizationId)
+      } catch (error) {
+        rethrowDiscordRoleSyncError(error)
+      }
     }),
 
   previewSync: adminProcedure

@@ -59,11 +59,16 @@ type DiscordGuildRoleRecord = Awaited<
   ReturnType<typeof orpc.adminCommunityRole.listDiscordGuildRoles.call>
 >['guildRoles'][number]
 type DiscordGuildRolesResult = Awaited<ReturnType<typeof orpc.adminCommunityRole.listDiscordGuildRoles.call>>
+type DiscordRoleSyncResult =
+  | Awaited<ReturnType<typeof orpc.adminCommunityRole.applyDiscordRoleSync.call>>
+  | Awaited<ReturnType<typeof orpc.adminCommunityRole.previewDiscordRoleSync.call>>
 
 const discordCheckLabels: Record<string, string> = {
+  already_correct: 'Discord role is already correct.',
   bot_identity_lookup_failed: 'TokenGator could not identify the Discord bot account.',
   bot_not_in_guild: 'The Discord bot is not a member of this server yet.',
   bot_token_missing: 'The Discord bot token is not configured for the API environment.',
+  discord_api_failure: 'Discord API request failed during reconcile.',
   discord_connection_missing: 'Connect a Discord server for this community before mapping roles.',
   discord_role_hierarchy_blocked: 'The bot role must be above this Discord role in the server hierarchy.',
   discord_role_is_default: 'The @everyone role cannot be used for TokenGator role mapping.',
@@ -73,7 +78,13 @@ const discordCheckLabels: Record<string, string> = {
   guild_fetch_failed: 'TokenGator could not load the Discord server details.',
   guild_not_found: 'The Discord server could not be found from the configured guild ID.',
   guild_roles_fetch_failed: 'TokenGator could not load the Discord role list for this server.',
+  linked_but_not_in_guild: 'This linked Discord account is not in the connected server.',
   manage_roles_missing: 'The Discord bot is missing the Manage Roles permission.',
+  mapping_missing: 'This TokenGator role is not mapped to a Discord role yet.',
+  mapping_not_assignable: 'The mapped Discord role is not assignable by the bot right now.',
+  no_discord_account_linked: 'This user has no linked Discord account.',
+  will_grant: 'Discord role will be granted.',
+  will_revoke: 'Discord role will be revoked.',
 }
 
 function formatDiscordCheck(
@@ -115,6 +126,26 @@ function getDiscordMappingStatusClassName(status: 'needs_attention' | 'not_mappe
   }
 
   return 'border px-2 py-1 text-xs font-medium'
+}
+
+function getDiscordOutcomeStatusClassName(status: string) {
+  if (status === 'already_correct') {
+    return 'border border-slate-500/30 bg-slate-500/10 px-2 py-1 text-xs font-medium text-slate-700'
+  }
+
+  if (status === 'will_grant') {
+    return 'border border-emerald-600/30 bg-emerald-600/10 px-2 py-1 text-xs font-medium text-emerald-700'
+  }
+
+  if (status === 'will_revoke') {
+    return 'border border-orange-600/30 bg-orange-600/10 px-2 py-1 text-xs font-medium text-orange-700'
+  }
+
+  if (status === 'discord_api_failure') {
+    return 'border border-red-600/30 bg-red-600/10 px-2 py-1 text-xs font-medium text-red-700'
+  }
+
+  return 'border border-amber-600/30 bg-amber-600/10 px-2 py-1 text-xs font-medium text-amber-700'
 }
 
 function normalizeDiscordRoleName(name: string) {
@@ -480,6 +511,7 @@ function RouteComponent() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [deletePendingRole, setDeletePendingRole] = useState<{ id: string; name: string } | null>(null)
   const [discordRoleDrafts, setDiscordRoleDrafts] = useState<Record<string, string>>({})
+  const [discordSyncResult, setDiscordSyncResult] = useState<DiscordRoleSyncResult | null>(null)
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null)
   const [syncResult, setSyncResult] = useState<Awaited<
     ReturnType<typeof orpc.adminCommunityRole.previewSync.call>
@@ -520,6 +552,7 @@ function RouteComponent() {
           }),
         })
         setCreateDialogOpen(false)
+        setDiscordSyncResult(null)
         setSyncResult(null)
         toast.success('Community role created.')
       },
@@ -549,8 +582,20 @@ function RouteComponent() {
           queryKey: orpc.organization.listMine.key(),
         })
         setDeletePendingRole(null)
+        setDiscordSyncResult(null)
         setSyncResult(null)
         toast.success('Community role deleted.')
+      },
+    }),
+  )
+  const previewDiscordSyncMutation = useMutation(
+    orpc.adminCommunityRole.previewDiscordRoleSync.mutationOptions({
+      onError: (error) => {
+        toast.error(error.message)
+      },
+      onSuccess: (result) => {
+        setDiscordSyncResult(result)
+        toast.success('Discord role preview updated.')
       },
     }),
   )
@@ -562,6 +607,17 @@ function RouteComponent() {
       onSuccess: (result) => {
         setSyncResult(result)
         toast.success('Access preview updated.')
+      },
+    }),
+  )
+  const applyDiscordSyncMutation = useMutation(
+    orpc.adminCommunityRole.applyDiscordRoleSync.mutationOptions({
+      onError: (error) => {
+        toast.error(error.message)
+      },
+      onSuccess: (result) => {
+        setDiscordSyncResult(result)
+        toast.success('Discord role reconcile applied.')
       },
     }),
   )
@@ -609,6 +665,7 @@ function RouteComponent() {
           }),
         })
         setEditingRoleId(null)
+        setDiscordSyncResult(null)
         setSyncResult(null)
         toast.success('Community role updated.')
       },
@@ -647,6 +704,7 @@ function RouteComponent() {
 
           return nextDrafts
         })
+        setDiscordSyncResult(null)
         toast.success(
           result.mapping.status === 'ready'
             ? 'Discord role mapping saved.'
@@ -679,6 +737,15 @@ function RouteComponent() {
     discordConnection?.status === 'connected'
       ? 'border border-emerald-600/30 bg-emerald-600/10 px-2 py-1 text-xs font-medium text-emerald-700'
       : 'border border-amber-600/30 bg-amber-600/10 px-2 py-1 text-xs font-medium text-amber-700'
+  const discordSyncActionRequiredCount = discordSyncResult
+    ? discordSyncResult.summary.counts.discord_role_missing +
+      discordSyncResult.summary.counts.linked_but_not_in_guild +
+      discordSyncResult.summary.counts.mapping_missing +
+      discordSyncResult.summary.counts.mapping_not_assignable +
+      discordSyncResult.summary.counts.no_discord_account_linked
+    : 0
+  const discordSyncFailedCount =
+    discordSyncResult && 'failedCount' in discordSyncResult.summary ? discordSyncResult.summary.failedCount : 0
 
   if (!organization.data) {
     return null
@@ -770,9 +837,9 @@ function RouteComponent() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Access Sync</CardTitle>
+          <CardTitle>Internal Membership Sync</CardTitle>
           <CardDescription>
-            Preview and apply the current token-gated organization and team membership changes.
+            Preview and apply the current token-gated organization and team membership changes inside TokenGator.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -792,7 +859,7 @@ function RouteComponent() {
               ) : (
                 <RefreshCw className="size-4" />
               )}
-              Preview Access
+              Preview Membership
             </Button>
             <Button
               disabled={applySyncMutation.isPending}
@@ -804,7 +871,7 @@ function RouteComponent() {
               type="button"
             >
               {applySyncMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
-              Apply Access
+              Apply Membership
             </Button>
           </div>
           {syncResult ? (
@@ -827,6 +894,71 @@ function RouteComponent() {
             </div>
           ) : (
             <p className="text-muted-foreground text-sm">Run a preview to inspect the next membership diff.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Discord Role Sync</CardTitle>
+          <CardDescription>
+            Preview and apply Discord role grants and revokes for linked users in the connected server.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex flex-wrap gap-3">
+            <Button
+              disabled={previewDiscordSyncMutation.isPending}
+              onClick={() =>
+                previewDiscordSyncMutation.mutate({
+                  organizationId,
+                })
+              }
+              type="button"
+              variant="outline"
+            >
+              {previewDiscordSyncMutation.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <RefreshCw className="size-4" />
+              )}
+              Preview Discord Roles
+            </Button>
+            <Button
+              disabled={applyDiscordSyncMutation.isPending}
+              onClick={() =>
+                applyDiscordSyncMutation.mutate({
+                  organizationId,
+                })
+              }
+              type="button"
+            >
+              {applyDiscordSyncMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+              Apply Discord Reconcile
+            </Button>
+          </div>
+          {discordSyncResult ? (
+            <div className="grid gap-3 md:grid-cols-4">
+              <div className="rounded-lg border p-3 text-sm">
+                <div className="text-muted-foreground">Will Grant</div>
+                <div>{discordSyncResult.summary.counts.will_grant}</div>
+              </div>
+              <div className="rounded-lg border p-3 text-sm">
+                <div className="text-muted-foreground">Will Revoke</div>
+                <div>{discordSyncResult.summary.counts.will_revoke}</div>
+              </div>
+              <div className="rounded-lg border p-3 text-sm">
+                <div className="text-muted-foreground">Already Correct</div>
+                <div>{discordSyncResult.summary.counts.already_correct}</div>
+              </div>
+              <div className="rounded-lg border p-3 text-sm">
+                <div className="text-muted-foreground">Action Required</div>
+                <div>{discordSyncActionRequiredCount}</div>
+                {'failedCount' in discordSyncResult.summary ? <div>Failed: {discordSyncFailedCount}</div> : null}
+              </div>
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-sm">Run a preview to inspect the next Discord role reconcile.</p>
           )}
         </CardContent>
       </Card>
@@ -1105,7 +1237,7 @@ function RouteComponent() {
                     ) : (
                       <div className="text-muted-foreground text-xs">
                         {communityRole.discordRoleId
-                          ? 'This Discord role is ready for future sync execution.'
+                          ? 'This Discord role is ready for Discord reconcile.'
                           : 'No Discord role selected yet.'}
                       </div>
                     )}
@@ -1184,6 +1316,89 @@ function RouteComponent() {
                 <div>
                   Organization diff: {currentUser.addToOrganization ? 'add' : 'keep'}
                   {currentUser.removeFromOrganization ? ' / remove' : ''}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {discordSyncResult ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Discord Reconcile Details</CardTitle>
+            <CardDescription>
+              Inspect linked-account status, guild membership, and per-role Discord outcomes.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {!discordSyncResult.users.length ? (
+              <p className="text-muted-foreground text-sm">
+                No linked users or mapped Discord roles need review right now.
+              </p>
+            ) : null}
+            {discordSyncResult.users.map((currentUser) => (
+              <div className="grid gap-3 rounded-lg border p-3 text-sm" key={currentUser.userId}>
+                <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <div className="font-medium">{currentUser.name}</div>
+                    <div className="text-muted-foreground">
+                      {currentUser.username ? `@${currentUser.username}` : 'No username'} ·{' '}
+                      {currentUser.wallets.length ? currentUser.wallets.join(', ') : 'No linked wallets'}
+                    </div>
+                  </div>
+                  <div className="text-muted-foreground">
+                    Discord: {currentUser.discordAccountId ?? 'not linked'} · Guild:{' '}
+                    {currentUser.guildMemberPresent === null
+                      ? 'unknown'
+                      : currentUser.guildMemberPresent
+                        ? 'present'
+                        : 'absent'}
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  {currentUser.outcomes.map((outcome) => (
+                    <div
+                      className="grid gap-2 rounded-lg border p-3"
+                      key={`${currentUser.userId}-${outcome.communityRoleId}`}
+                    >
+                      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                        <div>
+                          <div className="font-medium">{outcome.communityRoleName}</div>
+                          <div className="text-muted-foreground">
+                            Discord role: {outcome.discordRoleName ?? outcome.discordRoleId ?? 'not mapped'}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <span className={getDiscordOutcomeStatusClassName(outcome.status)}>
+                            {formatDiscordCheck(outcome.status)}
+                          </span>
+                          {'execution' in outcome ? (
+                            <span className="border px-2 py-1 text-xs font-medium uppercase">{outcome.execution}</span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="text-muted-foreground">
+                        Desired: {outcome.desired ? 'yes' : 'no'} · Current:{' '}
+                        {outcome.current === null ? 'unknown' : outcome.current ? 'yes' : 'no'}
+                        {'attemptedAction' in outcome && outcome.attemptedAction
+                          ? ` · Action: ${outcome.attemptedAction}`
+                          : ''}
+                      </div>
+                      {'errorMessage' in outcome && outcome.errorMessage ? (
+                        <div className="text-destructive text-xs">{outcome.errorMessage}</div>
+                      ) : null}
+                      {outcome.checks.length ? (
+                        <ol className="list-decimal space-y-1 pl-5 text-xs">
+                          {outcome.checks.map((check) => (
+                            <li key={`${currentUser.userId}-${outcome.communityRoleId}-${check}`}>
+                              {formatDiscordCheck(check)}
+                            </li>
+                          ))}
+                        </ol>
+                      ) : null}
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}

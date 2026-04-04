@@ -1,11 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { SignInForm } from '@/components/sign-in-form'
+import { AuthFeatureSignIn } from '@/features/auth/feature/auth-feature-sign-in'
 
 export const Route = createFileRoute('/login')({
   component: RouteComponent,
 })
 
 function RouteComponent() {
-  return <SignInForm />
+  return <AuthFeatureSignIn />
 }

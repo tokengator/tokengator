@@ -6,11 +6,10 @@ import { toast } from 'sonner'
 import { Button } from '@tokengator/ui/components/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 
+import { authClient } from '@/features/auth/data-access/auth-client'
 import { refreshAppAuthState } from '@/features/auth/data-access/get-app-auth-state'
 import { useAppAuthStateQuery } from '@/features/auth/data-access/use-app-auth-state'
-import { authClient } from '@/lib/auth-client'
-
-import { SolanaAuthActions } from '@/components/solana-auth-actions'
+import { AuthFeatureSolanaActions } from '@/features/auth/feature/auth-feature-solana-actions'
 
 export function OnboardFeatureIndex() {
   const navigate = useNavigate({
@@ -139,7 +138,7 @@ export function OnboardFeatureIndex() {
             <p className="text-muted-foreground text-sm">
               TokenGator requires at least one linked Solana wallet to finish onboarding.
             </p>
-            <SolanaAuthActions action="link" />
+            <AuthFeatureSolanaActions action="link" />
           </CardContent>
         </Card>
       </div>

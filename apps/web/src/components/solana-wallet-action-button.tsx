@@ -4,8 +4,7 @@ import { toast } from 'sonner'
 import { Button } from '@tokengator/ui/components/button'
 
 import { refreshAppAuthState } from '@/features/auth/data-access/get-app-auth-state'
-
-import { handleSiwsAuth } from './solana/handle-siws-auth'
+import { handleSiwsAuth } from '@/features/auth/data-access/handle-siws-auth'
 
 function getActionErrorMessage(action: 'link' | 'verify') {
   switch (action) {

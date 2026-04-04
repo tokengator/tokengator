@@ -2,7 +2,7 @@ import type { SolanaSignInInput, SolanaSignInOutput } from '@wallet-ui/react'
 import { getBase58Decoder } from '@solana/kit'
 import { createSIWSInput, type SIWSNonceResponse } from 'better-auth-solana/client'
 
-import { authClient } from '@/lib/auth-client'
+import { authClient } from './auth-client'
 
 type SIWSAction = 'link' | 'verify'
 

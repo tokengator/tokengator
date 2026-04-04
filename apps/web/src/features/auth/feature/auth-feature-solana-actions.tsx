@@ -4,7 +4,7 @@ import { SolanaWalletActionButton } from '@/components/solana-wallet-action-butt
 import { useSignInWallets } from '@/components/solana/use-sign-in-wallets'
 import { Route as RootRoute } from '@/routes/__root'
 
-export function SolanaAuthActions({ action, onSuccess }: { action: 'link' | 'verify'; onSuccess?: () => void }) {
+export function AuthFeatureSolanaActions({ action, onSuccess }: { action: 'link' | 'verify'; onSuccess?: () => void }) {
   const { appConfig } = RootRoute.useRouteContext()
   const sortedWallets = useSignInWallets()
 

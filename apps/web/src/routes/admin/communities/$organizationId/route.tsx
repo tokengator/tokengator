@@ -1,16 +1,24 @@
 import { Outlet, createFileRoute } from '@tanstack/react-router'
 
+import { getAdminCommunityGetRouteQueryOptions } from '@/features/admin-community/data-access/use-admin-community-get-query'
 import { AdminCommunityFeatureShell } from '@/features/admin-community/feature/admin-community-feature-shell'
 
 export const Route = createFileRoute('/admin/communities/$organizationId')({
+  beforeLoad: async ({ context, params }) => {
+    const organization = await context.queryClient.ensureQueryData(
+      getAdminCommunityGetRouteQueryOptions(params.organizationId),
+    )
+
+    return { organization }
+  },
   component: RouteComponent,
 })
 
 function RouteComponent() {
-  const { organizationId } = Route.useParams()
+  const { organization } = Route.useRouteContext()
 
   return (
-    <AdminCommunityFeatureShell organizationId={organizationId}>
+    <AdminCommunityFeatureShell initialOrganization={organization}>
       <Outlet />
     </AdminCommunityFeatureShell>
   )

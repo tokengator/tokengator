@@ -1,4 +1,12 @@
 import { Button } from '@tokengator/ui/components/button'
+import {
+  UiTable,
+  UiTableBody,
+  UiTableCell,
+  UiTableHead,
+  UiTableHeaderCell,
+  UiTableRow,
+} from '@tokengator/ui/components/ui-table'
 
 interface AdminAssetUiTableAsset {
   address: string
@@ -33,35 +41,33 @@ export function AdminAssetUiTable(props: AdminAssetUiTableProps) {
   }
 
   return (
-    <div className="overflow-x-auto border">
-      <table className="w-full border-collapse text-left text-sm">
-        <thead className="bg-muted/40">
-          <tr>
-            <th className="border-b px-3 py-2 font-medium">Owner</th>
-            <th className="border-b px-3 py-2 font-medium">Address</th>
-            <th className="border-b px-3 py-2 font-medium">Resolver</th>
-            <th className="border-b px-3 py-2 font-medium">Amount</th>
-            <th className="border-b px-3 py-2 font-medium">Indexed</th>
-            <th className="border-b px-3 py-2 text-right font-medium">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {assets.map((asset) => (
-            <tr className="align-top" key={asset.id}>
-              <td className="border-b px-3 py-2 font-mono text-xs">{asset.owner}</td>
-              <td className="border-b px-3 py-2 font-mono text-xs">{asset.address}</td>
-              <td className="border-b px-3 py-2">{asset.resolverKind}</td>
-              <td className="border-b px-3 py-2">{asset.amount}</td>
-              <td className="border-b px-3 py-2">{formatDate(asset.indexedAt)}</td>
-              <td className="border-b px-3 py-2 text-right">
-                <Button disabled={isDeletePending} onClick={() => onDelete(asset.id)} type="button" variant="outline">
-                  {deletingAssetId === asset.id && isDeletePending ? 'Deleting...' : 'Delete'}
-                </Button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <UiTable>
+      <UiTableHead>
+        <UiTableRow>
+          <UiTableHeaderCell>Owner</UiTableHeaderCell>
+          <UiTableHeaderCell>Address</UiTableHeaderCell>
+          <UiTableHeaderCell>Resolver</UiTableHeaderCell>
+          <UiTableHeaderCell>Amount</UiTableHeaderCell>
+          <UiTableHeaderCell>Indexed</UiTableHeaderCell>
+          <UiTableHeaderCell className="text-right">Actions</UiTableHeaderCell>
+        </UiTableRow>
+      </UiTableHead>
+      <UiTableBody>
+        {assets.map((asset) => (
+          <UiTableRow className="align-top" key={asset.id}>
+            <UiTableCell className="font-mono text-xs">{asset.owner}</UiTableCell>
+            <UiTableCell className="font-mono text-xs">{asset.address}</UiTableCell>
+            <UiTableCell>{asset.resolverKind}</UiTableCell>
+            <UiTableCell>{asset.amount}</UiTableCell>
+            <UiTableCell>{formatDate(asset.indexedAt)}</UiTableCell>
+            <UiTableCell className="text-right">
+              <Button disabled={isDeletePending} onClick={() => onDelete(asset.id)} type="button" variant="outline">
+                {deletingAssetId === asset.id && isDeletePending ? 'Deleting...' : 'Delete'}
+              </Button>
+            </UiTableCell>
+          </UiTableRow>
+        ))}
+      </UiTableBody>
+    </UiTable>
   )
 }

@@ -1,6 +1,7 @@
 import { Loader2, RefreshCw } from 'lucide-react'
 import { Button } from '@tokengator/ui/components/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
+import { UiInfoCard, UiInfoCardLabel, UiInfoCardValue } from '@tokengator/ui/components/ui-info-card'
 
 import {
   type AdminCommunityMembershipSyncResult,
@@ -73,21 +74,39 @@ export function AdminCommunityFeatureMembershipSync(props: AdminCommunityFeature
         </div>
         {result ? (
           <div className="grid gap-3 md:grid-cols-3">
-            <div className="rounded-lg border p-3 text-sm">
-              <div className="text-muted-foreground">Organization Changes</div>
-              <div>Add: {result.summary.addToOrganizationCount}</div>
-              <div>Remove: {result.summary.removeFromOrganizationCount}</div>
-            </div>
-            <div className="rounded-lg border p-3 text-sm">
-              <div className="text-muted-foreground">Team Changes</div>
-              <div>Add: {result.summary.addToTeamCount}</div>
-              <div>Remove: {result.summary.removeFromTeamCount}</div>
-            </div>
-            <div className="rounded-lg border p-3 text-sm">
-              <div className="text-muted-foreground">Users</div>
-              <div>Qualified: {result.summary.qualifiedUserCount}</div>
-              <div>Changed: {result.summary.usersChangedCount}</div>
-            </div>
+            <UiInfoCard>
+              <UiInfoCardLabel>Organization Changes</UiInfoCardLabel>
+              <div className="mt-1 flex items-baseline justify-between gap-3">
+                <UiInfoCardLabel>Add</UiInfoCardLabel>
+                <UiInfoCardValue>{result.summary.addToOrganizationCount}</UiInfoCardValue>
+              </div>
+              <div className="flex items-baseline justify-between gap-3">
+                <UiInfoCardLabel>Remove</UiInfoCardLabel>
+                <UiInfoCardValue>{result.summary.removeFromOrganizationCount}</UiInfoCardValue>
+              </div>
+            </UiInfoCard>
+            <UiInfoCard>
+              <UiInfoCardLabel>Team Changes</UiInfoCardLabel>
+              <div className="mt-1 flex items-baseline justify-between gap-3">
+                <UiInfoCardLabel>Add</UiInfoCardLabel>
+                <UiInfoCardValue>{result.summary.addToTeamCount}</UiInfoCardValue>
+              </div>
+              <div className="flex items-baseline justify-between gap-3">
+                <UiInfoCardLabel>Remove</UiInfoCardLabel>
+                <UiInfoCardValue>{result.summary.removeFromTeamCount}</UiInfoCardValue>
+              </div>
+            </UiInfoCard>
+            <UiInfoCard>
+              <UiInfoCardLabel>Users</UiInfoCardLabel>
+              <div className="mt-1 flex items-baseline justify-between gap-3">
+                <UiInfoCardLabel>Qualified</UiInfoCardLabel>
+                <UiInfoCardValue>{result.summary.qualifiedUserCount}</UiInfoCardValue>
+              </div>
+              <div className="flex items-baseline justify-between gap-3">
+                <UiInfoCardLabel>Changed</UiInfoCardLabel>
+                <UiInfoCardValue>{result.summary.usersChangedCount}</UiInfoCardValue>
+              </div>
+            </UiInfoCard>
           </div>
         ) : (
           <p className="text-muted-foreground text-sm">Run a preview to inspect the next membership diff.</p>

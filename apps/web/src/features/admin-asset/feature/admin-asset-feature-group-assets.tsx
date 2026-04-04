@@ -2,7 +2,13 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@tokengator/ui/components/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@tokengator/ui/components/card'
-
+import {
+  UiInfoCard,
+  UiInfoCardError,
+  UiInfoCardLabel,
+  UiInfoCardMeta,
+  UiInfoCardValue,
+} from '@tokengator/ui/components/ui-info-card'
 import { UiStatus } from '@tokengator/ui/components/ui-status'
 
 import { formatTimestamp, getFreshnessTone } from '@/utils/admin-automation'
@@ -78,31 +84,31 @@ export function AdminAssetFeatureGroupAssets(props: AdminAssetFeatureGroupAssets
             <CardTitle className="text-base">Index Status</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-4">
-            <div className="rounded-lg border p-3 text-sm">
-              <div className="text-muted-foreground">Freshness</div>
-              <div className="mt-1">
+            <UiInfoCard>
+              <UiInfoCardLabel>Freshness</UiInfoCardLabel>
+              <UiInfoCardValue className="mt-1">
                 <UiStatus tone={getFreshnessTone(indexingStatus.freshnessStatus)}>
                   {indexingStatus.freshnessStatus}
                 </UiStatus>
-              </div>
-              <div className="text-muted-foreground mt-2">Stale after {indexingStatus.staleAfterMinutes} minutes</div>
-            </div>
-            <div className="rounded-lg border p-3 text-sm">
-              <div className="text-muted-foreground">Last Success</div>
-              <div>{formatTimestamp(indexingStatus.lastSuccessfulRun?.finishedAt ?? null)}</div>
-            </div>
-            <div className="rounded-lg border p-3 text-sm">
-              <div className="text-muted-foreground">Last Run</div>
-              <div>{indexingStatus.lastRun?.status ?? 'Never'}</div>
-              <div className="text-muted-foreground">{formatTimestamp(indexingStatus.lastRun?.startedAt ?? null)}</div>
-            </div>
-            <div className="rounded-lg border p-3 text-sm">
-              <div className="text-muted-foreground">Execution</div>
-              <div>{indexingStatus.isRunning ? 'Running now' : 'Idle'}</div>
+              </UiInfoCardValue>
+              <UiInfoCardMeta className="mt-2">Stale after {indexingStatus.staleAfterMinutes} minutes</UiInfoCardMeta>
+            </UiInfoCard>
+            <UiInfoCard>
+              <UiInfoCardLabel>Last Success</UiInfoCardLabel>
+              <UiInfoCardValue>{formatTimestamp(indexingStatus.lastSuccessfulRun?.finishedAt ?? null)}</UiInfoCardValue>
+            </UiInfoCard>
+            <UiInfoCard>
+              <UiInfoCardLabel>Last Run</UiInfoCardLabel>
+              <UiInfoCardValue>{indexingStatus.lastRun?.status ?? 'Never'}</UiInfoCardValue>
+              <UiInfoCardMeta>{formatTimestamp(indexingStatus.lastRun?.startedAt ?? null)}</UiInfoCardMeta>
+            </UiInfoCard>
+            <UiInfoCard>
+              <UiInfoCardLabel>Execution</UiInfoCardLabel>
+              <UiInfoCardValue>{indexingStatus.isRunning ? 'Running now' : 'Idle'}</UiInfoCardValue>
               {indexingStatus.lastRun?.status === 'failed' && indexingStatus.lastRun.errorMessage ? (
-                <div className="text-destructive mt-2 text-xs">{indexingStatus.lastRun.errorMessage}</div>
+                <UiInfoCardError className="mt-2">{indexingStatus.lastRun.errorMessage}</UiInfoCardError>
               ) : null}
-            </div>
+            </UiInfoCard>
           </CardContent>
         </Card>
       ) : null}

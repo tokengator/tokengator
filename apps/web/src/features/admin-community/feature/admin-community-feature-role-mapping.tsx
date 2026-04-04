@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router'
 import { Loader2 } from 'lucide-react'
 import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
+import { UiInfoCard, UiInfoCardLabel, UiInfoCardMeta, UiInfoCardValue } from '@tokengator/ui/components/ui-info-card'
 import { UiStatus, type UiStatusVariants } from '@tokengator/ui/components/ui-status'
 
 import { formatTimestamp } from '@/utils/admin-automation'
@@ -308,40 +309,46 @@ export function AdminCommunityFeatureRoleMapping(props: AdminCommunityFeatureRol
           {discordConnection ? (
             <>
               <div className="grid gap-3 md:grid-cols-3">
-                <div className="rounded-lg border p-3 text-sm">
-                  <div className="text-muted-foreground">Discord Server</div>
-                  <div>{discordConnection.guildName ?? 'Unknown'}</div>
-                  <div className="text-muted-foreground">{discordConnection.guildId}</div>
-                </div>
-                <div className="rounded-lg border p-3 text-sm">
-                  <div className="text-muted-foreground">Status</div>
-                  <div className="mt-1">
+                <UiInfoCard>
+                  <UiInfoCardLabel>Discord Server</UiInfoCardLabel>
+                  <UiInfoCardValue>{discordConnection.guildName ?? 'Unknown'}</UiInfoCardValue>
+                  <UiInfoCardMeta>{discordConnection.guildId}</UiInfoCardMeta>
+                </UiInfoCard>
+                <UiInfoCard>
+                  <UiInfoCardLabel>Status</UiInfoCardLabel>
+                  <UiInfoCardValue className="mt-1">
                     <UiStatus tone={discordConnectionStatusTone}>
                       {discordConnection.status === 'connected' ? 'Connected' : 'Needs attention'}
                     </UiStatus>
+                  </UiInfoCardValue>
+                  <div className="mt-2 flex items-baseline justify-between gap-3">
+                    <UiInfoCardLabel>Last checked</UiInfoCardLabel>
+                    <UiInfoCardMeta>{formatTimestamp(discordConnection.lastCheckedAt)}</UiInfoCardMeta>
                   </div>
-                  <div className="text-muted-foreground mt-2">
-                    Last checked: {formatTimestamp(discordConnection.lastCheckedAt)}
+                </UiInfoCard>
+                <UiInfoCard>
+                  <UiInfoCardLabel>Bot Role Readiness</UiInfoCardLabel>
+                  <div className="mt-1 flex items-baseline justify-between gap-3">
+                    <UiInfoCardLabel>Manage Roles</UiInfoCardLabel>
+                    <UiInfoCardValue>
+                      {discordConnection.diagnostics.permissions.manageRoles ? 'Granted' : 'Missing'}
+                    </UiInfoCardValue>
                   </div>
-                </div>
-                <div className="rounded-lg border p-3 text-sm">
-                  <div className="text-muted-foreground">Bot Role Readiness</div>
-                  <div>
-                    Manage Roles: {discordConnection.diagnostics.permissions.manageRoles ? 'Granted' : 'Missing'}
+                  <div className="flex items-baseline justify-between gap-3">
+                    <UiInfoCardLabel>Highest role</UiInfoCardLabel>
+                    <UiInfoCardValue>
+                      {discordConnection.diagnostics.botHighestRole
+                        ? `${discordConnection.diagnostics.botHighestRole.name ?? 'Unknown'} (#${discordConnection.diagnostics.botHighestRole.position})`
+                        : 'Unknown'}
+                    </UiInfoCardValue>
                   </div>
-                  <div>
-                    Highest role:{' '}
-                    {discordConnection.diagnostics.botHighestRole
-                      ? `${discordConnection.diagnostics.botHighestRole.name ?? 'Unknown'} (#${discordConnection.diagnostics.botHighestRole.position})`
-                      : 'Unknown'}
-                  </div>
-                </div>
+                </UiInfoCard>
               </div>
               <div className="grid gap-2 rounded-lg border p-3">
                 <div className="text-sm font-medium">Diagnostics</div>
                 {discordConnectionChecks.length ? (
                   <ol className="list-decimal space-y-1 pl-5 text-sm">
-                    {discordConnectionChecks.map((check) => (
+                    {discordConnectionChecks.map((check: string) => (
                       <li key={check}>{formatAdminCommunityDiscordCheck(check)}</li>
                     ))}
                   </ol>

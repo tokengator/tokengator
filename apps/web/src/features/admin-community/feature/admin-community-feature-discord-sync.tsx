@@ -1,6 +1,7 @@
 import { Loader2, RefreshCw } from 'lucide-react'
 import { Button } from '@tokengator/ui/components/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
+import { UiInfoCard, UiInfoCardLabel, UiInfoCardValue } from '@tokengator/ui/components/ui-info-card'
 
 import {
   type AdminCommunityDiscordSyncResult,
@@ -77,23 +78,28 @@ export function AdminCommunityFeatureDiscordSync(props: AdminCommunityFeatureDis
         </div>
         {result ? (
           <div className="grid gap-3 md:grid-cols-4">
-            <div className="rounded-lg border p-3 text-sm">
-              <div className="text-muted-foreground">Will Grant</div>
-              <div>{result.summary.counts.will_grant}</div>
-            </div>
-            <div className="rounded-lg border p-3 text-sm">
-              <div className="text-muted-foreground">Will Revoke</div>
-              <div>{result.summary.counts.will_revoke}</div>
-            </div>
-            <div className="rounded-lg border p-3 text-sm">
-              <div className="text-muted-foreground">Already Correct</div>
-              <div>{result.summary.counts.already_correct}</div>
-            </div>
-            <div className="rounded-lg border p-3 text-sm">
-              <div className="text-muted-foreground">Action Required</div>
-              <div>{discordSyncActionRequiredCount}</div>
-              {'failedCount' in result.summary ? <div>Failed: {discordSyncFailedCount}</div> : null}
-            </div>
+            <UiInfoCard>
+              <UiInfoCardLabel>Will Grant</UiInfoCardLabel>
+              <UiInfoCardValue>{result.summary.counts.will_grant}</UiInfoCardValue>
+            </UiInfoCard>
+            <UiInfoCard>
+              <UiInfoCardLabel>Will Revoke</UiInfoCardLabel>
+              <UiInfoCardValue>{result.summary.counts.will_revoke}</UiInfoCardValue>
+            </UiInfoCard>
+            <UiInfoCard>
+              <UiInfoCardLabel>Already Correct</UiInfoCardLabel>
+              <UiInfoCardValue>{result.summary.counts.already_correct}</UiInfoCardValue>
+            </UiInfoCard>
+            <UiInfoCard>
+              <UiInfoCardLabel>Action Required</UiInfoCardLabel>
+              <UiInfoCardValue>{discordSyncActionRequiredCount}</UiInfoCardValue>
+              {'failedCount' in result.summary ? (
+                <div className="mt-1 flex items-baseline justify-between gap-3">
+                  <UiInfoCardLabel>Failed</UiInfoCardLabel>
+                  <UiInfoCardValue>{discordSyncFailedCount}</UiInfoCardValue>
+                </div>
+              ) : null}
+            </UiInfoCard>
           </div>
         ) : (
           <p className="text-muted-foreground text-sm">Run a preview to inspect the next Discord role reconcile.</p>

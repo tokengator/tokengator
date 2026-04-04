@@ -1,4 +1,11 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
+import {
+  UiInfoCard,
+  UiInfoCardError,
+  UiInfoCardLabel,
+  UiInfoCardMeta,
+  UiInfoCardValue,
+} from '@tokengator/ui/components/ui-info-card'
 import { UiStatus, type UiStatusVariants } from '@tokengator/ui/components/ui-status'
 
 import { formatTimestamp, getFreshnessTone } from '@/utils/admin-automation'
@@ -67,40 +74,60 @@ export function AdminCommunityFeatureAutomationHealth(props: AdminCommunityFeatu
 
         {membershipStatus && discordStatus ? (
           <div className="grid gap-3 md:grid-cols-2">
-            <div className="grid gap-2 rounded-lg border p-3 text-sm">
+            <UiInfoCard className="grid gap-2">
               <div className="flex items-center justify-between gap-3">
-                <div className="font-medium">Membership</div>
+                <UiInfoCardLabel className="text-foreground font-medium">Membership</UiInfoCardLabel>
                 <UiStatus tone={getFreshnessTone(membershipStatus.freshnessStatus)}>
                   {membershipStatus.freshnessStatus}
                 </UiStatus>
               </div>
-              <div>Last success: {formatTimestamp(membershipStatus.lastSuccessfulRun?.finishedAt ?? null)}</div>
-              <div>Last run: {membershipStatus.lastRun?.status ?? 'Never'}</div>
-              <div className="text-muted-foreground">
-                {formatTimestamp(membershipStatus.lastRun?.startedAt ?? null)}
+              <div className="flex items-baseline justify-between gap-3">
+                <UiInfoCardLabel>Last success</UiInfoCardLabel>
+                <UiInfoCardValue>
+                  {formatTimestamp(membershipStatus.lastSuccessfulRun?.finishedAt ?? null)}
+                </UiInfoCardValue>
               </div>
-              <div>State: {membershipStatus.isRunning ? 'running' : 'idle'}</div>
-              <div className="text-muted-foreground">Stale after {membershipStatus.staleAfterMinutes} minutes</div>
+              <div className="flex items-baseline justify-between gap-3">
+                <UiInfoCardLabel>Last run</UiInfoCardLabel>
+                <UiInfoCardValue>{membershipStatus.lastRun?.status ?? 'Never'}</UiInfoCardValue>
+              </div>
+              <UiInfoCardMeta>{formatTimestamp(membershipStatus.lastRun?.startedAt ?? null)}</UiInfoCardMeta>
+              <div className="flex items-baseline justify-between gap-3">
+                <UiInfoCardLabel>State</UiInfoCardLabel>
+                <UiInfoCardValue>{membershipStatus.isRunning ? 'running' : 'idle'}</UiInfoCardValue>
+              </div>
+              <UiInfoCardMeta>Stale after {membershipStatus.staleAfterMinutes} minutes</UiInfoCardMeta>
               {membershipStatus.lastRun?.errorMessage ? (
-                <div className="text-destructive text-xs">{membershipStatus.lastRun.errorMessage}</div>
+                <UiInfoCardError>{membershipStatus.lastRun.errorMessage}</UiInfoCardError>
               ) : null}
-            </div>
-            <div className="grid gap-2 rounded-lg border p-3 text-sm">
+            </UiInfoCard>
+            <UiInfoCard className="grid gap-2">
               <div className="flex items-center justify-between gap-3">
-                <div className="font-medium">Discord</div>
+                <UiInfoCardLabel className="text-foreground font-medium">Discord</UiInfoCardLabel>
                 <UiStatus tone={getFreshnessTone(discordStatus.freshnessStatus)}>
                   {discordStatus.freshnessStatus}
                 </UiStatus>
               </div>
-              <div>Last success: {formatTimestamp(discordStatus.lastSuccessfulRun?.finishedAt ?? null)}</div>
-              <div>Last run: {discordStatus.lastRun?.status ?? 'Never'}</div>
-              <div className="text-muted-foreground">{formatTimestamp(discordStatus.lastRun?.startedAt ?? null)}</div>
-              <div>State: {discordStatus.isRunning ? 'running' : 'idle'}</div>
-              <div className="text-muted-foreground">Stale after {discordStatus.staleAfterMinutes} minutes</div>
+              <div className="flex items-baseline justify-between gap-3">
+                <UiInfoCardLabel>Last success</UiInfoCardLabel>
+                <UiInfoCardValue>
+                  {formatTimestamp(discordStatus.lastSuccessfulRun?.finishedAt ?? null)}
+                </UiInfoCardValue>
+              </div>
+              <div className="flex items-baseline justify-between gap-3">
+                <UiInfoCardLabel>Last run</UiInfoCardLabel>
+                <UiInfoCardValue>{discordStatus.lastRun?.status ?? 'Never'}</UiInfoCardValue>
+              </div>
+              <UiInfoCardMeta>{formatTimestamp(discordStatus.lastRun?.startedAt ?? null)}</UiInfoCardMeta>
+              <div className="flex items-baseline justify-between gap-3">
+                <UiInfoCardLabel>State</UiInfoCardLabel>
+                <UiInfoCardValue>{discordStatus.isRunning ? 'running' : 'idle'}</UiInfoCardValue>
+              </div>
+              <UiInfoCardMeta>Stale after {discordStatus.staleAfterMinutes} minutes</UiInfoCardMeta>
               {discordStatus.lastRun?.errorMessage ? (
-                <div className="text-destructive text-xs">{discordStatus.lastRun.errorMessage}</div>
+                <UiInfoCardError>{discordStatus.lastRun.errorMessage}</UiInfoCardError>
               ) : null}
-            </div>
+            </UiInfoCard>
           </div>
         ) : null}
 

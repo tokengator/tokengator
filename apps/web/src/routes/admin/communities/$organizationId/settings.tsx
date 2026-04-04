@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Loader2 } from 'lucide-react'
 import { type FormEvent, useEffect, useState } from 'react'
@@ -17,9 +17,8 @@ import { Input } from '@tokengator/ui/components/input'
 import { UiDetailRow } from '@tokengator/ui/components/ui-detail-row'
 import { UiStatus, type UiStatusVariants } from '@tokengator/ui/components/ui-status'
 
+import { useAdminCommunityGetQuery } from '@/features/admin-community/data-access/use-admin-community-get-query'
 import { orpc } from '@/utils/orpc'
-
-import { getAdminOrganizationQueryOptions } from './route'
 
 const discordCheckLabels: Record<string, string> = {
   bot_identity_lookup_failed: 'TokenGator could not identify the Discord bot account.',
@@ -59,7 +58,7 @@ function RouteComponent() {
     slug: '',
   })
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const organization = useQuery(getAdminOrganizationQueryOptions(organizationId))
+  const organization = useAdminCommunityGetQuery(organizationId)
   const deleteMutation = useMutation(
     orpc.adminOrganization.delete.mutationOptions({
       onError: (error) => {

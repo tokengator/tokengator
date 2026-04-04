@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react'
 
 import type { AppSessionUser } from '@/features/auth/data-access/get-app-auth-state'
+import { formatOwnerSummary } from '@/features/admin-community/util/format-owner-summary.tsx'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import { UiDetailRow } from '@tokengator/ui/components/ui-detail-row'
+import { formatDate } from '@tokengator/ui/util/format-date.ts'
 
 interface AdminCommunityDirectoryUiCardProps {
   createdAt: Date | string
@@ -11,14 +13,6 @@ interface AdminCommunityDirectoryUiCardProps {
   owners: Array<Pick<AppSessionUser, 'name' | 'username'>>
   slug: string
   title: ReactNode
-}
-
-function formatDate(value: Date | string) {
-  return new Date(value).toLocaleDateString('en-US')
-}
-
-function formatOwnerSummary(owner: AdminCommunityDirectoryUiCardProps['owners'][number]) {
-  return owner.username ? `${owner.name} (@${owner.username})` : owner.name
 }
 
 export function AdminCommunityDirectoryUiCard(props: AdminCommunityDirectoryUiCardProps) {

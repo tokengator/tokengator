@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -13,9 +13,8 @@ import {
   DialogTitle,
 } from '@tokengator/ui/components/dialog'
 
+import { useAdminCommunityGetQuery } from '@/features/admin-community/data-access/use-admin-community-get-query'
 import { orpc } from '@/utils/orpc'
-
-import { getAdminOrganizationQueryOptions } from './route'
 
 const roleOptions = ['owner', 'admin', 'member'] as const
 
@@ -30,7 +29,7 @@ function RouteComponent() {
     id: string
     name: string
   } | null>(null)
-  const organization = useQuery(getAdminOrganizationQueryOptions(organizationId))
+  const organization = useAdminCommunityGetQuery(organizationId)
   const removeMemberMutation = useMutation(
     orpc.adminOrganization.removeMember.mutationOptions({
       onError: (error) => {

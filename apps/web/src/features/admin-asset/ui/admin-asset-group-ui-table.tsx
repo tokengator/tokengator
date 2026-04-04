@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 
-import { formatTimestamp, getFreshnessClassName } from '@/utils/admin-automation'
+import { UiStatus } from '@tokengator/ui/components/ui-status'
+
+import { formatTimestamp, getFreshnessTone } from '@/utils/admin-automation'
 
 interface AdminAssetGroupUiTableAssetGroup {
   address: string
@@ -67,9 +69,9 @@ export function AdminAssetGroupUiTable(props: AdminAssetGroupUiTableProps) {
                 {assetGroup.indexingStatus ? (
                   <div className="flex flex-col gap-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={getFreshnessClassName(assetGroup.indexingStatus.freshnessStatus)}>
+                      <UiStatus tone={getFreshnessTone(assetGroup.indexingStatus.freshnessStatus)}>
                         {assetGroup.indexingStatus.freshnessStatus}
-                      </span>
+                      </UiStatus>
                       {assetGroup.indexingStatus.isRunning ? (
                         <span className="text-muted-foreground text-xs">running</span>
                       ) : null}
@@ -86,7 +88,7 @@ export function AdminAssetGroupUiTable(props: AdminAssetGroupUiTableProps) {
                     ) : null}
                   </div>
                 ) : (
-                  <span className={getFreshnessClassName('unknown')}>unknown</span>
+                  <UiStatus tone={getFreshnessTone('unknown')}>unknown</UiStatus>
                 )}
               </td>
               <td className="border-b px-3 py-2">{assetGroup.enabled ? 'enabled' : 'disabled'}</td>

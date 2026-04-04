@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from '@tokengator/ui/components/dialog'
 import { Input } from '@tokengator/ui/components/input'
+import { UiStatus, type UiStatusVariants } from '@tokengator/ui/components/ui-status'
 
 import { orpc } from '@/utils/orpc'
 
@@ -209,10 +210,7 @@ function RouteComponent() {
 
   const discordConnection = organization.data.discordConnection
   const discordChecks = discordConnection?.diagnostics?.checks ?? []
-  const discordStatusClassName =
-    discordConnection?.status === 'connected'
-      ? 'border border-emerald-600/30 bg-emerald-600/10 px-2 py-1 text-xs font-medium text-emerald-700'
-      : 'border border-amber-600/30 bg-amber-600/10 px-2 py-1 text-xs font-medium text-amber-700'
+  const discordStatusTone: UiStatusVariants['tone'] = discordConnection?.status === 'connected' ? 'success' : 'warning'
 
   return (
     <div className="flex flex-col gap-4">
@@ -336,9 +334,9 @@ function RouteComponent() {
                 </div>
                 <div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-2">
                   <span className="text-muted-foreground">Status:</span>
-                  <span className={discordStatusClassName}>
+                  <UiStatus tone={discordStatusTone}>
                     {discordConnection.status === 'connected' ? 'Connected' : 'Needs attention'}
-                  </span>
+                  </UiStatus>
                 </div>
                 <div className="flex flex-col gap-1 md:flex-row md:gap-2">
                   <span className="text-muted-foreground">Last checked:</span>

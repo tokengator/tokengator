@@ -3,7 +3,9 @@ import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@tokengator/ui/components/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 
-import { formatTimestamp, getFreshnessClassName } from '@/utils/admin-automation'
+import { UiStatus } from '@tokengator/ui/components/ui-status'
+
+import { formatTimestamp, getFreshnessTone } from '@/utils/admin-automation'
 import { orpc } from '@/utils/orpc'
 import { useAdminAssetDelete } from '../data-access/use-admin-asset-delete'
 import { useAdminAssetGroupGetQuery } from '../data-access/use-admin-asset-group-get-query'
@@ -79,9 +81,9 @@ export function AdminAssetFeatureGroupAssets(props: AdminAssetFeatureGroupAssets
             <div className="rounded-lg border p-3 text-sm">
               <div className="text-muted-foreground">Freshness</div>
               <div className="mt-1">
-                <span className={getFreshnessClassName(indexingStatus.freshnessStatus)}>
+                <UiStatus tone={getFreshnessTone(indexingStatus.freshnessStatus)}>
                   {indexingStatus.freshnessStatus}
-                </span>
+                </UiStatus>
               </div>
               <div className="text-muted-foreground mt-2">Stale after {indexingStatus.staleAfterMinutes} minutes</div>
             </div>

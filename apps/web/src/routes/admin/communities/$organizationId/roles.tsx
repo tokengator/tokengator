@@ -17,8 +17,9 @@ import {
 } from '@tokengator/ui/components/dialog'
 import { Input } from '@tokengator/ui/components/input'
 import { Label } from '@tokengator/ui/components/label'
+import { UiStatus, type UiStatusVariants } from '@tokengator/ui/components/ui-status'
 
-import { formatTimestamp, getFreshnessClassName } from '@/utils/admin-automation'
+import { formatTimestamp, getFreshnessTone } from '@/utils/admin-automation'
 import { orpc } from '@/utils/orpc'
 
 import { getAdminOrganizationQueryOptions } from './route'
@@ -116,52 +117,52 @@ function formatLastCheckedAt(value: Date | string | null) {
   return formatTimestamp(value)
 }
 
-function getSyncRunStatusClassName(status: string) {
+function getSyncRunTone(status: string): UiStatusVariants['tone'] {
   if (status === 'succeeded') {
-    return 'border border-emerald-600/30 bg-emerald-600/10 px-2 py-1 text-xs font-medium text-emerald-700'
+    return 'success'
   }
 
   if (status === 'partial') {
-    return 'border border-amber-600/30 bg-amber-600/10 px-2 py-1 text-xs font-medium text-amber-700'
+    return 'warning'
   }
 
   if (status === 'failed') {
-    return 'border border-red-600/30 bg-red-600/10 px-2 py-1 text-xs font-medium text-red-700'
+    return 'destructive'
   }
 
-  return 'border px-2 py-1 text-xs font-medium'
+  return 'default'
 }
 
-function getDiscordMappingStatusClassName(status: 'needs_attention' | 'not_mapped' | 'ready') {
+function getDiscordMappingStatusTone(status: 'needs_attention' | 'not_mapped' | 'ready'): UiStatusVariants['tone'] {
   if (status === 'ready') {
-    return 'border border-emerald-600/30 bg-emerald-600/10 px-2 py-1 text-xs font-medium text-emerald-700'
+    return 'success'
   }
 
   if (status === 'needs_attention') {
-    return 'border border-amber-600/30 bg-amber-600/10 px-2 py-1 text-xs font-medium text-amber-700'
+    return 'warning'
   }
 
-  return 'border px-2 py-1 text-xs font-medium'
+  return 'default'
 }
 
-function getDiscordOutcomeStatusClassName(status: string) {
+function getDiscordOutcomeStatusTone(status: string): UiStatusVariants['tone'] {
   if (status === 'already_correct') {
-    return 'border border-slate-500/30 bg-slate-500/10 px-2 py-1 text-xs font-medium text-slate-700'
+    return 'neutral'
   }
 
   if (status === 'will_grant') {
-    return 'border border-emerald-600/30 bg-emerald-600/10 px-2 py-1 text-xs font-medium text-emerald-700'
+    return 'success'
   }
 
   if (status === 'will_revoke') {
-    return 'border border-orange-600/30 bg-orange-600/10 px-2 py-1 text-xs font-medium text-orange-700'
+    return 'notice'
   }
 
   if (status === 'discord_api_failure') {
-    return 'border border-red-600/30 bg-red-600/10 px-2 py-1 text-xs font-medium text-red-700'
+    return 'destructive'
   }
 
-  return 'border border-amber-600/30 bg-amber-600/10 px-2 py-1 text-xs font-medium text-amber-700'
+  return 'warning'
 }
 
 function normalizeDiscordRoleName(name: string) {
@@ -795,11 +796,9 @@ function RouteComponent() {
     (discordGuildRoles.data?.guildRoles.length ?? 0) > 0
   const editingRole =
     communityRoles.data?.communityRoles.find((communityRole) => communityRole.id === editingRoleId) ?? null
-  const discordConnectionChecks = discordConnection?.diagnostics.checks ?? []
-  const discordConnectionStatusClassName =
-    discordConnection?.status === 'connected'
-      ? 'border border-emerald-600/30 bg-emerald-600/10 px-2 py-1 text-xs font-medium text-emerald-700'
-      : 'border border-amber-600/30 bg-amber-600/10 px-2 py-1 text-xs font-medium text-amber-700'
+  const discordConnectionChecks: string[] = discordConnection?.diagnostics.checks ?? []
+  const discordConnectionStatusTone: UiStatusVariants['tone'] =
+    discordConnection?.status === 'connected' ? 'success' : 'warning'
   const discordSyncActionRequiredCount = discordSyncResult
     ? discordSyncResult.summary.counts.discord_role_missing +
       discordSyncResult.summary.counts.linked_but_not_in_guild +
@@ -865,9 +864,9 @@ function RouteComponent() {
                 <div className="rounded-lg border p-3 text-sm">
                   <div className="text-muted-foreground">Status</div>
                   <div className="mt-1">
-                    <span className={discordConnectionStatusClassName}>
+                    <UiStatus tone={discordConnectionStatusTone}>
                       {discordConnection.status === 'connected' ? 'Connected' : 'Needs attention'}
-                    </span>
+                    </UiStatus>
                   </div>
                   <div className="text-muted-foreground mt-2">
                     Last checked: {formatLastCheckedAt(discordConnection.lastCheckedAt)}
@@ -929,9 +928,9 @@ function RouteComponent() {
               <div className="grid gap-2 rounded-lg border p-3 text-sm">
                 <div className="flex items-center justify-between gap-3">
                   <div className="font-medium">Membership</div>
-                  <span className={getFreshnessClassName(membershipStatus.freshnessStatus)}>
+                  <UiStatus tone={getFreshnessTone(membershipStatus.freshnessStatus)}>
                     {membershipStatus.freshnessStatus}
-                  </span>
+                  </UiStatus>
                 </div>
                 <div>Last success: {formatTimestamp(membershipStatus.lastSuccessfulRun?.finishedAt ?? null)}</div>
                 <div>Last run: {membershipStatus.lastRun?.status ?? 'Never'}</div>
@@ -947,9 +946,9 @@ function RouteComponent() {
               <div className="grid gap-2 rounded-lg border p-3 text-sm">
                 <div className="flex items-center justify-between gap-3">
                   <div className="font-medium">Discord</div>
-                  <span className={getFreshnessClassName(discordStatus.freshnessStatus)}>
+                  <UiStatus tone={getFreshnessTone(discordStatus.freshnessStatus)}>
                     {discordStatus.freshnessStatus}
-                  </span>
+                  </UiStatus>
                 </div>
                 <div>Last success: {formatTimestamp(discordStatus.lastSuccessfulRun?.finishedAt ?? null)}</div>
                 <div>Last run: {discordStatus.lastRun?.status ?? 'Never'}</div>
@@ -973,9 +972,9 @@ function RouteComponent() {
                   <div className="rounded-lg border p-3" key={assetGroup.id}>
                     <div className="flex items-center justify-between gap-2">
                       <div className="font-medium">{assetGroup.label}</div>
-                      <span className={getFreshnessClassName(assetGroup.indexingStatus.freshnessStatus)}>
+                      <UiStatus tone={getFreshnessTone(assetGroup.indexingStatus.freshnessStatus)}>
                         {assetGroup.indexingStatus.freshnessStatus}
-                      </span>
+                      </UiStatus>
                     </div>
                     <div className="text-muted-foreground">
                       {assetGroup.type} · {assetGroup.address}
@@ -1001,7 +1000,7 @@ function RouteComponent() {
                 recentMembershipRuns.map((run) => (
                   <div className="rounded-lg border p-3" key={run.id}>
                     <div className="flex items-center justify-between gap-2">
-                      <span className={getSyncRunStatusClassName(run.status)}>{run.status}</span>
+                      <UiStatus tone={getSyncRunTone(run.status)}>{run.status}</UiStatus>
                       <span className="text-muted-foreground text-xs">{run.triggerSource}</span>
                     </div>
                     <div className="mt-2">Started: {formatTimestamp(run.startedAt)}</div>
@@ -1025,7 +1024,7 @@ function RouteComponent() {
                 recentDiscordRuns.map((run) => (
                   <div className="rounded-lg border p-3" key={run.id}>
                     <div className="flex items-center justify-between gap-2">
-                      <span className={getSyncRunStatusClassName(run.status)}>{run.status}</span>
+                      <UiStatus tone={getSyncRunTone(run.status)}>{run.status}</UiStatus>
                       <span className="text-muted-foreground text-xs">{run.triggerSource}</span>
                     </div>
                     <div className="mt-2">Started: {formatTimestamp(run.startedAt)}</div>
@@ -1308,13 +1307,13 @@ function RouteComponent() {
                     <div className="rounded-lg border p-3">
                       <div className="text-muted-foreground">Discord Mapping</div>
                       <div className="mt-1">
-                        <span className={getDiscordMappingStatusClassName(currentDiscordMappingState.status)}>
+                        <UiStatus tone={getDiscordMappingStatusTone(currentDiscordMappingState.status)}>
                           {currentDiscordMappingState.status === 'ready'
                             ? 'Ready'
                             : currentDiscordMappingState.status === 'needs_attention'
                               ? 'Needs attention'
                               : 'Not mapped'}
-                        </span>
+                        </UiStatus>
                       </div>
                       <div className="text-muted-foreground mt-2">
                         {currentGuildRole
@@ -1584,12 +1583,10 @@ function RouteComponent() {
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <span className={getDiscordOutcomeStatusClassName(outcome.status)}>
+                          <UiStatus tone={getDiscordOutcomeStatusTone(outcome.status)}>
                             {formatDiscordCheck(outcome.status)}
-                          </span>
-                          {'execution' in outcome ? (
-                            <span className="border px-2 py-1 text-xs font-medium uppercase">{outcome.execution}</span>
-                          ) : null}
+                          </UiStatus>
+                          {'execution' in outcome ? <UiStatus casing="uppercase">{outcome.execution}</UiStatus> : null}
                         </div>
                       </div>
                       <div className="text-muted-foreground">

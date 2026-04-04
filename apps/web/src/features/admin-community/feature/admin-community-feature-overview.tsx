@@ -3,17 +3,18 @@ import { UiDetailRow } from '@tokengator/ui/components/ui-detail-row'
 import { formatDateTime } from '@tokengator/ui/util/format-date-time.ts'
 
 import { formatOwnerSummary } from '@/features/admin-community/util/format-owner-summary.tsx'
-import { useAdminCommunityGetQuery } from '../data-access/use-admin-community-get-query'
+import { type AdminCommunityGetResult, useAdminCommunityGetQuery } from '../data-access/use-admin-community-get-query'
 
-interface AdminCommunityFeatureOverviewProps {
-  organizationId: string
-}
+export function AdminCommunityFeatureOverview({
+  initialOrganization,
+}: {
+  initialOrganization: AdminCommunityGetResult
+}) {
+  const { data } = useAdminCommunityGetQuery(initialOrganization.id, {
+    initialData: initialOrganization,
+  })
 
-export function AdminCommunityFeatureOverview(props: AdminCommunityFeatureOverviewProps) {
-  const { organizationId } = props
-  const organization = useAdminCommunityGetQuery(organizationId)
-
-  if (!organization.data) {
+  if (!data) {
     return null
   }
 
@@ -24,15 +25,13 @@ export function AdminCommunityFeatureOverview(props: AdminCommunityFeatureOvervi
         <CardDescription>Reference values for support and auditing.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-2 text-sm">
-        <UiDetailRow label="Community ID:">{organization.data.id}</UiDetailRow>
-        <UiDetailRow label="Created:">{formatDateTime(organization.data.createdAt)}</UiDetailRow>
-        <UiDetailRow label="Members:">{organization.data.members.length}</UiDetailRow>
+        <UiDetailRow label="Community ID:">{data.id}</UiDetailRow>
+        <UiDetailRow label="Created:">{formatDateTime(data.createdAt)}</UiDetailRow>
+        <UiDetailRow label="Members:">{data.members.length}</UiDetailRow>
         <UiDetailRow label="Owners:">
-          {organization.data.owners.length
-            ? organization.data.owners.map(formatOwnerSummary).join(', ')
-            : 'No owners found'}
+          {data.owners.length ? data.owners.map(formatOwnerSummary).join(', ') : 'No owners found'}
         </UiDetailRow>
-        <UiDetailRow label="Logo:">{organization.data.logo ?? 'No logo configured'}</UiDetailRow>
+        <UiDetailRow label="Logo:">{data.logo ?? 'No logo configured'}</UiDetailRow>
       </CardContent>
     </Card>
   )

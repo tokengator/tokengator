@@ -56,6 +56,9 @@ let listCommunityDiscordSyncRuns: ListCommunityDiscordSyncRuns
 let listOrganizationsDueForScheduledCommunityDiscordSync: ListOrganizationsDueForScheduledCommunityDiscordSync
 let memberLookupFailures = new Map<string, unknown>()
 let mutationFailures = new Map<string, unknown>()
+let mutationObserver:
+  | ((input: { action: 'grant' | 'revoke'; roleId: string; userId: string }) => Promise<void> | void)
+  | null = null
 let runScheduledCommunityRoleDiscordSync: RunScheduledCommunityRoleDiscordSync
 
 function createAdminCallContext(): any {
@@ -150,6 +153,7 @@ function resetDiscordMockState() {
   inspectionStatus = 'connected'
   memberLookupFailures = new Map()
   mutationFailures = new Map()
+  mutationObserver = null
 }
 
 function syncDatabase(databaseUrl: string) {
@@ -487,6 +491,11 @@ beforeAll(async () => {
             left.localeCompare(right),
           ),
         })
+        await mutationObserver?.({
+          action: 'grant',
+          roleId: options.roleId,
+          userId: options.userId,
+        })
       },
       DiscordGuildMemberLookupError: MockDiscordGuildMemberLookupError,
       DiscordGuildMemberRoleMutationError: MockDiscordGuildMemberRoleMutationError,
@@ -541,6 +550,11 @@ beforeAll(async () => {
         guildMembersByDiscordUserId.set(options.userId, {
           discordUserId: options.userId,
           roleIds: currentMember.roleIds.filter((roleId) => roleId !== options.roleId),
+        })
+        await mutationObserver?.({
+          action: 'revoke',
+          roleId: options.roleId,
+          userId: options.userId,
         })
       },
     }
@@ -1510,6 +1524,212 @@ describe('admin community role Discord sync', () => {
         }),
       }),
     )
+  })
+
+  test('fails with lock_lost during Discord apply and preserves partial progress', async () => {
+    const now = new Date('2026-04-02T12:00:00.000Z')
+    const organizationId = 'org-lock-loss'
+    const groupId = 'asset-group-lock-loss'
+    let leaseLost = false
+
+    await insertOrganization({
+      id: organizationId,
+      name: 'Lock Loss Org',
+      slug: 'lock-loss-org',
+    })
+    await insertCommunityDiscordConnection({
+      guildId: '123456789012345678',
+      organizationId,
+    })
+    await insertAssetGroup({
+      address: 'collection-lock-loss',
+      id: groupId,
+      label: 'Collection Lock Loss',
+      type: 'collection',
+    })
+    await insertTeam({
+      id: 'team-lock-loss',
+      name: 'Lock Loss Team',
+      organizationId,
+    })
+    await insertCommunityRole({
+      discordRoleId: 'discord-role-lock-loss',
+      enabled: true,
+      id: 'role-lock-loss',
+      name: 'Lock Loss Role',
+      organizationId,
+      slug: 'lock-loss-role',
+      teamId: 'team-lock-loss',
+    })
+    await insertCommunityRoleCondition({
+      assetGroupId: groupId,
+      communityRoleId: 'role-lock-loss',
+      minimumAmount: '1',
+    })
+    await database.insert(assetSchema.assetGroupIndexRun).values({
+      assetGroupId: groupId,
+      deletedCount: 0,
+      errorMessage: null,
+      errorPayload: null,
+      finishedAt: new Date('2026-04-02T11:59:00.000Z'),
+      id: 'index-run-lock-loss',
+      insertedCount: 2,
+      pagesProcessed: 1,
+      resolverKind: 'helius-collection-assets',
+      startedAt: new Date('2026-04-02T11:58:00.000Z'),
+      status: 'succeeded',
+      totalCount: 2,
+      triggerSource: 'scheduled',
+      updatedCount: 0,
+    })
+
+    guildRoles = [
+      {
+        assignable: true,
+        checks: [],
+        id: 'discord-role-lock-loss',
+        isDefault: false,
+        managed: false,
+        name: 'Lock Loss',
+        position: 5,
+      },
+    ]
+
+    for (const currentUser of [
+      ['alice@example.com', 'user-alice', 'Alice', 'alice', 'wallet-alice', 'asset-alice', 'discord-alice'],
+      ['bob@example.com', 'user-bob', 'Bob', 'bob', 'wallet-bob', 'asset-bob', 'discord-bob'],
+    ] as const) {
+      await insertUser({
+        email: currentUser[0],
+        id: currentUser[1],
+        name: currentUser[2],
+        username: currentUser[3],
+      })
+      await insertSolanaWallet({
+        address: currentUser[4],
+        userId: currentUser[1],
+      })
+      await insertAsset({
+        address: currentUser[5],
+        amount: '1',
+        assetGroupId: groupId,
+        owner: currentUser[4],
+        resolverKind: 'helius-collection-assets',
+      })
+      await insertAccount({
+        accountId: currentUser[6],
+        userId: currentUser[1],
+      })
+    }
+
+    guildMembersByDiscordUserId = new Map([
+      [
+        'discord-alice',
+        {
+          discordUserId: 'discord-alice',
+          roleIds: [],
+        },
+      ],
+      [
+        'discord-bob',
+        {
+          discordUserId: 'discord-bob',
+          roleIds: [],
+        },
+      ],
+    ])
+    mutationObserver = ({ action }) => {
+      if (leaseLost || action !== 'grant') {
+        return
+      }
+
+      leaseLost = true
+    }
+    const leaseLossDatabase = new Proxy(database, {
+      get(target, property, receiver) {
+        if (property === 'select') {
+          return (...args: Parameters<DatabaseClient['select']>) => {
+            const selectBuilder = target.select(...args)
+
+            return new Proxy(selectBuilder, {
+              get(currentBuilder, currentProperty, currentReceiver) {
+                if (currentProperty === 'from') {
+                  return (table: unknown) => {
+                    if (leaseLost && table === automationSchema.automationLock) {
+                      return {
+                        where() {
+                          return {
+                            async limit() {
+                              return []
+                            },
+                          }
+                        },
+                      }
+                    }
+
+                    return currentBuilder.from(table as never)
+                  }
+                }
+
+                const value = Reflect.get(currentBuilder, currentProperty, currentReceiver)
+
+                return typeof value === 'function' ? value.bind(currentBuilder) : value
+              },
+            })
+          }
+        }
+
+        const value = Reflect.get(target, property, receiver)
+
+        return typeof value === 'function' ? value.bind(target) : value
+      },
+    })
+
+    await expect(
+      runScheduledCommunityRoleDiscordSync({
+        database: leaseLossDatabase as never,
+        now: () => now,
+        organizationId,
+      }),
+    ).resolves.toMatchObject({
+      organizationId,
+      status: 'failed',
+    })
+
+    expect(leaseLost).toBe(true)
+    expect(
+      ['discord-alice', 'discord-bob'].filter((discordUserId) =>
+        guildMembersByDiscordUserId.get(discordUserId)?.roleIds.includes('discord-role-lock-loss'),
+      ),
+    ).toHaveLength(1)
+    await expect(
+      listCommunityDiscordSyncRuns({
+        limit: 5,
+        organizationId,
+      }),
+    ).resolves.toMatchObject([
+      {
+        appliedGrantCount: 1,
+        appliedRevokeCount: 0,
+        errorPayload: {
+          reason: 'lock_lost',
+        },
+        failedCount: 0,
+        outcomeCounts: {
+          already_correct: 0,
+          discord_role_missing: 0,
+          linked_but_not_in_guild: 0,
+          mapping_missing: 0,
+          mapping_not_assignable: 0,
+          no_discord_account_linked: 0,
+          will_grant: 1,
+          will_revoke: 0,
+        },
+        status: 'failed',
+        triggerSource: 'scheduled',
+        usersChangedCount: 1,
+      },
+    ])
   })
 
   test('applies canonical Discord account selection when duplicate Discord identities exist unexpectedly', async () => {

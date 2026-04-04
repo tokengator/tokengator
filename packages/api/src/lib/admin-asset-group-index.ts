@@ -22,7 +22,10 @@ import {
 } from './automation-config'
 import {
   acquireAutomationLock,
+  createAutomationLockLeaseController,
+  getAutomationLockLeaseLostError,
   type AutomationTransaction,
+  type AutomationLockLeaseController,
   AutomationLockConflictError,
   releaseAutomationLock,
 } from './automation-lock'
@@ -168,6 +171,12 @@ function buildAssetGroupIndexLockKey(assetGroupId: string) {
 }
 
 function buildAssetGroupIndexRunErrorPayload(error: unknown) {
+  if (getAutomationLockLeaseLostError(error)) {
+    return {
+      reason: 'lock_lost',
+    }
+  }
+
   if (error instanceof Error) {
     return {
       message: error.message,
@@ -350,6 +359,7 @@ function toAssetGroupIndexRunRecord(row: {
 
 async function executeAssetGroupIndex(
   options: IndexAssetGroupOptions & {
+    leaseController: AutomationLockLeaseController
     startedAt: Date
   },
 ): Promise<IndexAssetGroupResult> {
@@ -384,6 +394,7 @@ async function executeAssetGroupIndex(
     `[asset-group-index:${resolver.kind}:${options.assetGroup.id}] started address=${options.assetGroup.address} heliusCluster=${options.heliusCluster} startedAt=${options.startedAt.toISOString()}`,
   )
 
+  await options.leaseController.ensureOwned()
   await database
     .update(assetGroup)
     .set({
@@ -399,6 +410,7 @@ async function executeAssetGroupIndex(
       },
       input: resolver,
       onPage: async (page: { items: unknown[]; page: number }) => {
+        await options.leaseController.ensureOwned()
         progress.pages = Math.max(progress.pages, page.page)
 
         const normalizedRows = normalizeOwnershipRows({
@@ -470,6 +482,7 @@ async function executeAssetGroupIndex(
         progress.updated += pageUpdated
 
         for (const rowChunk of splitIntoChunks(rows, getSqliteChunkSize(Object.keys(rows[0]!).length))) {
+          await options.leaseController.ensureOwned()
           await database.insert(asset).values(rowChunk).onConflictDoUpdate({
             set: getUpsertSet(),
             target: asset.indexedAssetId,
@@ -484,6 +497,7 @@ async function executeAssetGroupIndex(
       },
     })
 
+    await options.leaseController.ensureOwned()
     const staleRowFilter = and(eq(asset.assetGroupId, options.assetGroup.id), lt(asset.indexedAt, options.startedAt))
     const [deletedRowCount] = await database
       .select({
@@ -492,6 +506,7 @@ async function executeAssetGroupIndex(
       .from(asset)
       .where(staleRowFilter)
 
+    await options.leaseController.ensureOwned()
     await database.delete(asset).where(staleRowFilter)
 
     progress.deleted = deletedRowCount?.count ?? 0
@@ -674,9 +689,9 @@ async function markAssetGroupIndexRunFailedForExpiredLock(input: {
   await input.transaction
     .update(assetGroupIndexRun)
     .set({
-      errorMessage: 'Asset group indexing lock expired before the run completed.',
+      errorMessage: 'Asset group indexing lock ownership was lost before the run completed.',
       errorPayload: JSON.stringify({
-        reason: 'lock_expired',
+        reason: 'lock_lost',
       }),
       finishedAt: input.stolenAt,
       status: 'failed',
@@ -713,8 +728,19 @@ async function runAssetGroupIndex(
     throw new AutomationLockConflictError(buildAssetGroupIndexLockKey(options.assetGroup.id))
   }
   let runInserted = false
+  const lockKey = buildAssetGroupIndexLockKey(options.assetGroup.id)
+  const leaseController = createAutomationLockLeaseController({
+    database,
+    key: lockKey,
+    now,
+    runId,
+  })
+  let result: IndexAssetGroupResult | null = null
+
+  leaseController.start()
 
   try {
+    await leaseController.ensureOwned()
     await database.insert(assetGroupIndexRun).values({
       assetGroupId: options.assetGroup.id,
       deletedCount: 0,
@@ -733,13 +759,15 @@ async function runAssetGroupIndex(
     })
     runInserted = true
 
-    const result = await executeAssetGroupIndex({
+    result = await executeAssetGroupIndex({
       ...options,
       database,
+      leaseController,
       startedAt,
     })
     const finishedAt = now()
 
+    await leaseController.ensureOwned()
     await finalizeAssetGroupIndexRun({
       database,
       deletedCount: result.deleted,
@@ -760,14 +788,23 @@ async function runAssetGroupIndex(
     const progress =
       error instanceof AssetGroupIndexExecutionError
         ? error.progress
-        : {
-            deleted: 0,
-            inserted: 0,
-            pages: 0,
-            resolverKind: resolver.kind,
-            startedAt,
-            updated: 0,
-          }
+        : result
+          ? {
+              deleted: result.deleted,
+              inserted: result.inserted,
+              pages: result.pages,
+              resolverKind: result.resolverKind,
+              startedAt: result.startedAt,
+              updated: result.updated,
+            }
+          : {
+              deleted: 0,
+              inserted: 0,
+              pages: 0,
+              resolverKind: resolver.kind,
+              startedAt,
+              updated: 0,
+            }
 
     if (runInserted) {
       await finalizeAssetGroupIndexRun({
@@ -787,9 +824,10 @@ async function runAssetGroupIndex(
 
     throw error
   } finally {
+    await leaseController.stop()
     await releaseAutomationLock({
       database,
-      key: buildAssetGroupIndexLockKey(options.assetGroup.id),
+      key: lockKey,
       runId,
     })
   }

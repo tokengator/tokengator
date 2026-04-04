@@ -1240,6 +1240,190 @@ describe('community role sync', () => {
     )
   })
 
+  test('fails with lock_lost between membership users and preserves committed progress', async () => {
+    const now = new Date('2026-04-02T12:00:00.000Z')
+    const assetGroupId = 'asset-group-lock-loss'
+    const organizationId = 'org-lock-loss'
+    const roleId = 'role-lock-loss'
+    const teamId = 'team-lock-loss'
+    let lockStolen = false
+    let transactionCount = 0
+
+    await insertOrganization({
+      id: organizationId,
+      name: 'Lock Loss Org',
+      slug: 'lock-loss-org',
+    })
+    await insertTeam({
+      id: teamId,
+      name: 'Lock Loss Team',
+      organizationId,
+    })
+    await insertCommunityRole({
+      enabled: true,
+      id: roleId,
+      matchMode: 'any',
+      name: 'Lock Loss Role',
+      organizationId,
+      slug: 'lock-loss-role',
+      teamId,
+    })
+    await insertAssetGroup({
+      address: 'collection-lock-loss',
+      enabled: true,
+      id: assetGroupId,
+      label: 'Collection Lock Loss',
+      type: 'collection',
+    })
+    await insertCommunityRoleCondition({
+      assetGroupId,
+      communityRoleId: roleId,
+      minimumAmount: '1',
+    })
+    await database.insert(assetSchema.assetGroupIndexRun).values({
+      assetGroupId,
+      deletedCount: 0,
+      errorMessage: null,
+      errorPayload: null,
+      finishedAt: new Date('2026-04-02T11:59:00.000Z'),
+      id: 'index-run-lock-loss',
+      insertedCount: 2,
+      pagesProcessed: 1,
+      resolverKind: 'helius-collection-assets',
+      startedAt: new Date('2026-04-02T11:58:00.000Z'),
+      status: 'succeeded',
+      totalCount: 2,
+      triggerSource: 'scheduled',
+      updatedCount: 0,
+    })
+
+    for (const currentUser of [
+      ['alice@example.com', 'user-alice', 'Alice', 'alice', 'wallet-alice', 'asset-alice'],
+      ['bob@example.com', 'user-bob', 'Bob', 'bob', 'wallet-bob', 'asset-bob'],
+    ] as const) {
+      await insertUser({
+        email: currentUser[0],
+        id: currentUser[1],
+        name: currentUser[2],
+        username: currentUser[3],
+      })
+      await insertSolanaWallet({
+        address: currentUser[4],
+        userId: currentUser[1],
+      })
+      await insertAsset({
+        address: currentUser[5],
+        amount: '1',
+        assetGroupId,
+        owner: currentUser[4],
+        resolverKind: 'helius-collection-assets',
+      })
+    }
+
+    const leaseLossDatabase = new Proxy(database, {
+      get(target, property, receiver) {
+        if (property === 'transaction') {
+          return async (callback: Parameters<DatabaseClient['transaction']>[0]) => {
+            transactionCount += 1
+            const result = await target.transaction(callback)
+
+            if (!lockStolen && transactionCount === 2) {
+              lockStolen = true
+              await target
+                .update(automationSchema.automationLock)
+                .set({
+                  expiresAt: new Date('2026-04-02T12:30:00.000Z'),
+                  runId: 'stolen-run',
+                  startedAt: new Date('2026-04-02T12:15:00.000Z'),
+                })
+                .where(eq(automationSchema.automationLock.key, `community-sync:${organizationId}`))
+            }
+
+            return result
+          }
+        }
+
+        const value = Reflect.get(target, property, receiver)
+
+        return typeof value === 'function' ? value.bind(target) : value
+      },
+    })
+
+    await expect(
+      runScheduledCommunityRoleSync({
+        database: leaseLossDatabase as never,
+        now: () => now,
+        organizationId,
+      }),
+    ).resolves.toMatchObject({
+      organizationId,
+      status: 'failed',
+    })
+
+    expect(
+      await database
+        .select({
+          role: authSchema.member.role,
+          userId: authSchema.member.userId,
+        })
+        .from(authSchema.member)
+        .where(eq(authSchema.member.organizationId, organizationId))
+        .orderBy(asc(authSchema.member.userId)),
+    ).toEqual([
+      {
+        role: 'member',
+        userId: 'user-alice',
+      },
+    ])
+    expect(
+      await database
+        .select({
+          teamId: authSchema.teamMember.teamId,
+          userId: authSchema.teamMember.userId,
+        })
+        .from(authSchema.teamMember)
+        .orderBy(asc(authSchema.teamMember.teamId), asc(authSchema.teamMember.userId)),
+    ).toEqual([
+      {
+        teamId,
+        userId: 'user-alice',
+      },
+    ])
+    expect(
+      await database
+        .select({
+          userId: communityRoleSchema.communityManagedMember.userId,
+        })
+        .from(communityRoleSchema.communityManagedMember)
+        .where(eq(communityRoleSchema.communityManagedMember.organizationId, organizationId))
+        .orderBy(asc(communityRoleSchema.communityManagedMember.userId)),
+    ).toEqual([
+      {
+        userId: 'user-alice',
+      },
+    ])
+    await expect(
+      listCommunityMembershipSyncRuns({
+        limit: 5,
+        organizationId,
+      }),
+    ).resolves.toMatchObject([
+      {
+        addToOrganizationCount: 1,
+        addToTeamCount: 1,
+        errorPayload: {
+          reason: 'lock_lost',
+        },
+        qualifiedUserCount: 1,
+        removeFromOrganizationCount: 0,
+        removeFromTeamCount: 0,
+        status: 'failed',
+        triggerSource: 'scheduled',
+        usersChangedCount: 1,
+      },
+    ])
+  })
+
   test('matches Solana wallets case-sensitively when assigning gated roles', async () => {
     const organizationId = 'org-case-sensitive'
     const assetGroupId = 'group-case-sensitive'

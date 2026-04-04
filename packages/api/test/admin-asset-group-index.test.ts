@@ -9,6 +9,10 @@ type AssetSchema = typeof import('@tokengator/db/schema/asset')
 type AutomationSchema = typeof import('@tokengator/db/schema/automation')
 type DatabaseClient = (typeof import('@tokengator/db'))['db']
 type AcquireAutomationLock = (typeof import('../src/lib/automation-lock'))['acquireAutomationLock']
+type CreateAutomationLockLeaseController =
+  (typeof import('../src/lib/automation-lock'))['createAutomationLockLeaseController']
+type ReleaseAutomationLock = (typeof import('../src/lib/automation-lock'))['releaseAutomationLock']
+type RenewAutomationLock = (typeof import('../src/lib/automation-lock'))['renewAutomationLock']
 type GetAssetGroupIndexStatusSummaries =
   (typeof import('../src/lib/admin-asset-group-index'))['getAssetGroupIndexStatusSummaries']
 type IndexAssetGroup = (typeof import('../src/lib/admin-asset-group-index'))['indexAssetGroup']
@@ -24,11 +28,14 @@ const TEST_DATABASE_URL = pathToFileURL(resolve(TEST_DATABASE_DIR, 'test.sqlite'
 let assetSchema: AssetSchema
 let automationSchema: AutomationSchema
 let acquireAutomationLock: AcquireAutomationLock
+let createAutomationLockLeaseController: CreateAutomationLockLeaseController
 let database: DatabaseClient
 let getAssetGroupIndexStatusSummaries: GetAssetGroupIndexStatusSummaries
 let indexAssetGroup: IndexAssetGroup
 let listAssetGroupIndexRuns: ListAssetGroupIndexRuns
 let listEnabledAssetGroupsDueForScheduledIndexing: ListEnabledAssetGroupsDueForScheduledIndexing
+let releaseAutomationLock: ReleaseAutomationLock
+let renewAutomationLock: RenewAutomationLock
 let runScheduledAssetGroupIndex: RunScheduledAssetGroupIndex
 function buildIndexedAssetId(input: {
   address: string
@@ -236,7 +243,8 @@ beforeAll(async () => {
   ;({ db: database } = await import('@tokengator/db'))
   assetSchema = await import('@tokengator/db/schema/asset')
   automationSchema = await import('@tokengator/db/schema/automation')
-  ;({ acquireAutomationLock } = await import('../src/lib/automation-lock'))
+  ;({ acquireAutomationLock, createAutomationLockLeaseController, releaseAutomationLock, renewAutomationLock } =
+    await import('../src/lib/automation-lock'))
   ;({
     getAssetGroupIndexStatusSummaries,
     indexAssetGroup,
@@ -306,6 +314,153 @@ describe('acquireAutomationLock', () => {
       acquired: false,
       staleRunId: null,
     })
+  })
+})
+
+describe('renewAutomationLock', () => {
+  test('extends the lease while the current run still owns the lock', async () => {
+    const startedAt = new Date('2026-04-04T10:00:00.000Z')
+    const key = 'community-sync:org-1'
+
+    await acquireAutomationLock({
+      database,
+      expiresAt: new Date('2026-04-04T10:15:00.000Z'),
+      key,
+      runId: 'run-1',
+      startedAt,
+    })
+
+    await expect(
+      renewAutomationLock({
+        database,
+        key,
+        now: new Date('2026-04-04T10:05:00.000Z'),
+        runId: 'run-1',
+      }),
+    ).resolves.toEqual({
+      expiresAt: new Date('2026-04-04T10:20:00.000Z'),
+      renewed: true,
+    })
+  })
+
+  test('returns renewed false after the lease has already expired', async () => {
+    const startedAt = new Date('2026-04-04T10:00:00.000Z')
+    const key = 'community-sync:org-2'
+
+    await acquireAutomationLock({
+      database,
+      expiresAt: new Date('2026-04-04T10:15:00.000Z'),
+      key,
+      runId: 'run-2',
+      startedAt,
+    })
+
+    await expect(
+      renewAutomationLock({
+        database,
+        key,
+        now: new Date('2026-04-04T10:16:00.000Z'),
+        runId: 'run-2',
+      }),
+    ).resolves.toEqual({
+      expiresAt: null,
+      renewed: false,
+    })
+  })
+
+  test('returns renewed false after another run steals the lock and release stays a no-op', async () => {
+    const key = 'community-sync:org-3'
+    const stolenAt = new Date('2026-04-04T10:16:00.000Z')
+
+    await acquireAutomationLock({
+      database,
+      expiresAt: new Date('2026-04-04T10:15:00.000Z'),
+      key,
+      runId: 'run-3',
+      startedAt: new Date('2026-04-04T10:00:00.000Z'),
+    })
+    await database
+      .update(automationSchema.automationLock)
+      .set({
+        expiresAt: new Date('2026-04-04T10:31:00.000Z'),
+        runId: 'run-4',
+        startedAt: stolenAt,
+      })
+      .where(eq(automationSchema.automationLock.key, key))
+
+    await expect(
+      renewAutomationLock({
+        database,
+        key,
+        now: new Date('2026-04-04T10:20:00.000Z'),
+        runId: 'run-3',
+      }),
+    ).resolves.toEqual({
+      expiresAt: null,
+      renewed: false,
+    })
+
+    await expect(
+      releaseAutomationLock({
+        database,
+        key,
+        runId: 'run-3',
+      }),
+    ).resolves.toBeUndefined()
+
+    expect(await database.select().from(automationSchema.automationLock)).toEqual([
+      {
+        expiresAt: new Date('2026-04-04T10:31:00.000Z'),
+        key,
+        runId: 'run-4',
+        startedAt: stolenAt,
+      },
+    ])
+  })
+
+  test('clears transient serialized failures so later lease checks can recover', async () => {
+    const key = 'community-sync:org-4'
+
+    await acquireAutomationLock({
+      database,
+      expiresAt: new Date('2026-04-04T10:15:00.000Z'),
+      key,
+      runId: 'run-4',
+      startedAt: new Date('2026-04-04T10:00:00.000Z'),
+    })
+
+    let shouldFailSelect = true
+    const flakyDatabase = new Proxy(database, {
+      get(target, property, receiver) {
+        if (property === 'select') {
+          return (...args: Parameters<typeof target.select>) => {
+            if (shouldFailSelect) {
+              shouldFailSelect = false
+              throw new Error('Transient select failure.')
+            }
+
+            return target.select(...args)
+          }
+        }
+
+        const value = Reflect.get(target, property, receiver)
+
+        return typeof value === 'function' ? value.bind(target) : value
+      },
+    })
+    const leaseController = createAutomationLockLeaseController({
+      database: flakyDatabase as never,
+      key,
+      now: () => new Date('2026-04-04T10:05:00.000Z'),
+      runId: 'run-4',
+    })
+
+    try {
+      await expect(leaseController.ensureOwned()).rejects.toThrow('Transient select failure.')
+      await expect(leaseController.ensureOwned()).resolves.toBeUndefined()
+    } finally {
+      await leaseController.stop()
+    }
   })
 })
 
@@ -591,6 +746,120 @@ describe('indexAssetGroup', () => {
       {
         address: 'asset-stale',
         indexedAt: staleTime,
+      },
+    ])
+  })
+
+  test('fails with lock_lost and stops later page writes after another run steals the lease', async () => {
+    const assetGroupId = crypto.randomUUID()
+    const now = new Date('2026-03-31T12:00:00.000Z')
+    const staleTime = new Date('2026-03-30T12:00:00.000Z')
+    const adapter = {
+      async getAssetsByCollection(args: { collection: string; cursor?: string; limit: number; page: number }) {
+        if (args.page === 1) {
+          return {
+            cursor: 'page-2',
+            items: [
+              {
+                content: {
+                  metadata: {
+                    name: 'Alpha',
+                  },
+                },
+                id: 'asset-a',
+                ownership: {
+                  owner: 'wallet-a',
+                },
+              },
+            ],
+          }
+        }
+
+        await database
+          .update(automationSchema.automationLock)
+          .set({
+            expiresAt: new Date('2026-03-31T12:30:00.000Z'),
+            runId: 'stolen-run',
+            startedAt: new Date('2026-03-31T12:16:00.000Z'),
+          })
+          .where(eq(automationSchema.automationLock.key, `asset-group-index:${assetGroupId}`))
+
+        return {
+          items: [
+            {
+              content: {
+                metadata: {
+                  name: 'Beta',
+                },
+              },
+              id: 'asset-b',
+              ownership: {
+                owner: 'wallet-b',
+              },
+            },
+          ],
+        }
+      },
+      async getTokenAccounts() {
+        throw new Error('Expected collection indexing.')
+      },
+    }
+
+    await insertAssetGroupRecord({
+      address: 'collection-lock-loss',
+      id: assetGroupId,
+      type: 'collection',
+    })
+    await insertAssetRecord({
+      address: 'asset-stale',
+      amount: '1',
+      assetGroupId,
+      firstSeenAt: staleTime,
+      indexedAt: staleTime,
+      metadataName: 'Stale',
+      owner: 'wallet-stale',
+      resolverKind: 'helius-collection-assets',
+    })
+
+    await expect(
+      indexAssetGroup({
+        adapter,
+        apiKey: 'helius-api-key',
+        assetGroup: {
+          address: 'collection-lock-loss',
+          id: assetGroupId,
+          type: 'collection',
+        },
+        heliusCluster: 'devnet',
+        now: () => now,
+      }),
+    ).rejects.toThrow('Automation lock lease was lost')
+
+    await expect(getStoredAssets(assetGroupId)).resolves.toMatchObject([
+      {
+        address: 'asset-a',
+        indexedAt: now,
+      },
+      {
+        address: 'asset-stale',
+        indexedAt: staleTime,
+      },
+    ])
+    await expect(
+      listAssetGroupIndexRuns({
+        assetGroupId,
+        limit: 5,
+      }),
+    ).resolves.toMatchObject([
+      {
+        deletedCount: 0,
+        errorPayload: {
+          reason: 'lock_lost',
+        },
+        insertedCount: 1,
+        status: 'failed',
+        triggerSource: 'manual',
+        updatedCount: 0,
       },
     ])
   })

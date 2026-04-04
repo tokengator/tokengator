@@ -40,6 +40,9 @@ import {
 } from './automation-config'
 import {
   acquireAutomationLock,
+  createAutomationLockLeaseController,
+  getAutomationLockLeaseLostError,
+  type AutomationLockLeaseController,
   type AutomationTransaction,
   AutomationLockConflictError,
   releaseAutomationLock,
@@ -346,6 +349,13 @@ type StoredCommunityDiscordConnectionRecord = {
   guildName: string | null
 }
 
+type CommunityRoleDiscordSyncExecutionProgress = {
+  appliedGrantCount: number
+  appliedRevokeCount: number
+  failedCount: number
+  users: CommunityRoleDiscordSyncApplyUser[]
+}
+
 const blockingDiscordGuildRoleInspectionChecks = new Set([
   'bot_identity_lookup_failed',
   'bot_not_in_guild',
@@ -356,6 +366,12 @@ const blockingDiscordGuildRoleInspectionChecks = new Set([
 ])
 
 function buildCommunitySyncErrorPayload(error: unknown) {
+  if (getAutomationLockLeaseLostError(error)) {
+    return {
+      reason: 'lock_lost',
+    }
+  }
+
   if (error instanceof Error) {
     return {
       message: error.message,
@@ -1948,9 +1964,9 @@ async function markCommunitySyncRunFailedForExpiredLock(input: {
     return
   }
 
-  const errorMessage = 'Community sync lock expired before the run completed.'
+  const errorMessage = 'Community sync lock ownership was lost before the run completed.'
   const errorPayload = JSON.stringify({
-    reason: 'lock_expired',
+    reason: 'lock_lost',
   })
 
   await input.transaction
@@ -2070,175 +2086,52 @@ function getEmptyCommunityRoleSyncSummary(): CommunityRoleSyncPreview['summary']
   }
 }
 
-async function executeCommunityRoleSyncPreview(input: {
-  database?: Database
-  organizationId: string
-  preview: CommunityRoleSyncPreview
-}) {
-  const database = input.database ?? db
-
-  await database.transaction(async (transaction) => {
-    for (const currentUser of input.preview.users) {
-      if (currentUser.addToOrganization) {
-        const now = new Date()
-
-        await transaction.insert(member).values({
-          createdAt: now,
-          id: crypto.randomUUID(),
-          organizationId: input.organizationId,
-          role: 'member',
-          userId: currentUser.userId,
-        })
-        await transaction.insert(communityManagedMember).values({
-          createdAt: now,
-          id: crypto.randomUUID(),
-          organizationId: input.organizationId,
-          updatedAt: now,
-          userId: currentUser.userId,
-        })
-      }
-
-      for (const addedTeam of currentUser.addToTeams) {
-        await transaction.insert(teamMember).values({
-          createdAt: new Date(),
-          id: crypto.randomUUID(),
-          teamId: addedTeam.teamId,
-          userId: currentUser.userId,
-        })
-      }
-
-      for (const removedTeam of currentUser.removeFromTeams) {
-        await transaction
-          .delete(teamMember)
-          .where(and(eq(teamMember.teamId, removedTeam.teamId), eq(teamMember.userId, currentUser.userId)))
-      }
-
-      await clearActiveTeamSessionsByIds({
-        database: transaction,
-        teamIds: currentUser.removeFromTeams.map((removedTeam) => removedTeam.teamId),
-        userId: currentUser.userId,
-      })
-
-      if (!currentUser.removeFromOrganization) {
-        continue
-      }
-
-      await transaction
-        .delete(member)
-        .where(and(eq(member.organizationId, input.organizationId), eq(member.userId, currentUser.userId)))
-      await transaction
-        .delete(communityManagedMember)
-        .where(
-          and(
-            eq(communityManagedMember.organizationId, input.organizationId),
-            eq(communityManagedMember.userId, currentUser.userId),
-          ),
-        )
-      await clearActiveOrganizationSessions({
-        database: transaction,
-        organizationId: input.organizationId,
-        userId: currentUser.userId,
-      })
-    }
-  })
-
-  return input.preview
+function createCommunityRoleDiscordSyncExecutionProgress(): CommunityRoleDiscordSyncExecutionProgress {
+  return {
+    appliedGrantCount: 0,
+    appliedRevokeCount: 0,
+    failedCount: 0,
+    users: [],
+  }
 }
 
-async function executeCommunityRoleDiscordSyncPreview(input: {
-  preview: CommunityRoleDiscordSyncPreview
-}): Promise<CommunityRoleDiscordSyncApply> {
-  let appliedGrantCount = 0
-  let appliedRevokeCount = 0
-  let failedCount = 0
-  const users: CommunityRoleDiscordSyncApplyUser[] = []
+function hasCommunityRoleSyncUserChanges(currentUser: CommunityRoleSyncChangeUser) {
+  return (
+    currentUser.addToOrganization ||
+    currentUser.removeFromOrganization ||
+    currentUser.addToTeams.length > 0 ||
+    currentUser.removeFromTeams.length > 0
+  )
+}
 
-  for (const currentUser of input.preview.users) {
-    const outcomes: CommunityRoleDiscordSyncApplyOutcome[] = []
-
-    for (const outcome of currentUser.outcomes) {
-      if (
-        (outcome.status !== 'will_grant' && outcome.status !== 'will_revoke') ||
-        !currentUser.discordAccountId ||
-        !outcome.discordRoleId
-      ) {
-        outcomes.push({
-          ...outcome,
-          attemptedAction: null,
-          errorMessage: null,
-          execution: 'noop',
-          status: outcome.status,
-        })
-
-        continue
-      }
-
-      try {
-        if (outcome.status === 'will_grant') {
-          await addDiscordGuildMemberRole(
-            {
-              env,
-            },
-            {
-              guildId: input.preview.connection.guildId,
-              reason: `community-role:${outcome.communityRoleId}`,
-              roleId: outcome.discordRoleId,
-              userId: currentUser.discordAccountId,
-            },
-          )
-          appliedGrantCount += 1
-        } else {
-          await removeDiscordGuildMemberRole(
-            {
-              env,
-            },
-            {
-              guildId: input.preview.connection.guildId,
-              reason: `community-role:${outcome.communityRoleId}`,
-              roleId: outcome.discordRoleId,
-              userId: currentUser.discordAccountId,
-            },
-          )
-          appliedRevokeCount += 1
-        }
-
-        outcomes.push({
-          ...outcome,
-          attemptedAction: outcome.status === 'will_grant' ? 'grant' : 'revoke',
-          errorMessage: null,
-          execution: 'applied',
-          status: outcome.status,
-        })
-      } catch (error) {
-        if (error instanceof DiscordGuildMemberRoleMutationError && error.code === 'guild_member_not_found') {
-          outcomes.push({
-            ...outcome,
-            attemptedAction: outcome.status === 'will_grant' ? 'grant' : 'revoke',
-            errorMessage: null,
-            execution: 'skipped',
-            status: 'linked_but_not_in_guild',
-          })
-
-          continue
-        }
-
-        failedCount += 1
-        outcomes.push({
-          ...outcome,
-          attemptedAction: outcome.status === 'will_grant' ? 'grant' : 'revoke',
-          errorMessage: error instanceof Error ? error.message : 'Discord request failed.',
-          execution: 'failed',
-          status: 'discord_api_failure',
-        })
-      }
-    }
-
-    users.push({
-      ...currentUser,
-      outcomes,
-    })
+function recordCommunityRoleSyncUserProgress(
+  summary: CommunityRoleSyncPreview['summary'],
+  currentUser: CommunityRoleSyncChangeUser,
+) {
+  if (currentUser.nextGatedRoles.length > 0) {
+    summary.qualifiedUserCount += 1
   }
 
+  if (currentUser.addToOrganization) {
+    summary.addToOrganizationCount += 1
+  }
+
+  if (currentUser.removeFromOrganization) {
+    summary.removeFromOrganizationCount += 1
+  }
+
+  summary.addToTeamCount += currentUser.addToTeams.length
+  summary.removeFromTeamCount += currentUser.removeFromTeams.length
+
+  if (hasCommunityRoleSyncUserChanges(currentUser)) {
+    summary.usersChangedCount += 1
+  }
+}
+
+function buildCommunityRoleDiscordSyncApplyFromProgress(input: {
+  preview: CommunityRoleDiscordSyncPreview
+  progress: CommunityRoleDiscordSyncExecutionProgress
+}): CommunityRoleDiscordSyncApply {
   const mappingStateByRoleId = new Map(
     input.preview.roles.map((role) => [
       role.communityRoleId,
@@ -2262,7 +2155,7 @@ async function executeCommunityRoleDiscordSyncPreview(input: {
     mappingStateByRoleId,
     qualifiedUserCountByRoleId,
     roles: summarizedRoles,
-    users,
+    users: input.progress.users,
   })
 
   return {
@@ -2270,12 +2163,217 @@ async function executeCommunityRoleDiscordSyncPreview(input: {
     roles,
     summary: {
       ...summary,
-      appliedGrantCount,
-      appliedRevokeCount,
-      failedCount,
+      appliedGrantCount: input.progress.appliedGrantCount,
+      appliedRevokeCount: input.progress.appliedRevokeCount,
+      failedCount: input.progress.failedCount,
     },
-    users,
+    users: input.progress.users,
   }
+}
+
+async function executeCommunityRoleSyncUser(input: {
+  currentUser: CommunityRoleSyncChangeUser
+  database?: Database
+  organizationId: string
+}) {
+  const database = input.database ?? db
+
+  await database.transaction(async (transaction) => {
+    const currentNow = new Date()
+
+    if (input.currentUser.addToOrganization) {
+      await transaction.insert(member).values({
+        createdAt: currentNow,
+        id: crypto.randomUUID(),
+        organizationId: input.organizationId,
+        role: 'member',
+        userId: input.currentUser.userId,
+      })
+      await transaction.insert(communityManagedMember).values({
+        createdAt: currentNow,
+        id: crypto.randomUUID(),
+        organizationId: input.organizationId,
+        updatedAt: currentNow,
+        userId: input.currentUser.userId,
+      })
+    }
+
+    for (const addedTeam of input.currentUser.addToTeams) {
+      await transaction.insert(teamMember).values({
+        createdAt: currentNow,
+        id: crypto.randomUUID(),
+        teamId: addedTeam.teamId,
+        userId: input.currentUser.userId,
+      })
+    }
+
+    for (const removedTeam of input.currentUser.removeFromTeams) {
+      await transaction
+        .delete(teamMember)
+        .where(and(eq(teamMember.teamId, removedTeam.teamId), eq(teamMember.userId, input.currentUser.userId)))
+    }
+
+    await clearActiveTeamSessionsByIds({
+      database: transaction,
+      teamIds: input.currentUser.removeFromTeams.map((removedTeam) => removedTeam.teamId),
+      userId: input.currentUser.userId,
+    })
+
+    if (!input.currentUser.removeFromOrganization) {
+      return
+    }
+
+    await transaction
+      .delete(member)
+      .where(and(eq(member.organizationId, input.organizationId), eq(member.userId, input.currentUser.userId)))
+    await transaction
+      .delete(communityManagedMember)
+      .where(
+        and(
+          eq(communityManagedMember.organizationId, input.organizationId),
+          eq(communityManagedMember.userId, input.currentUser.userId),
+        ),
+      )
+    await clearActiveOrganizationSessions({
+      database: transaction,
+      organizationId: input.organizationId,
+      userId: input.currentUser.userId,
+    })
+  })
+}
+
+async function executeCommunityRoleSyncPreview(input: {
+  database?: Database
+  leaseController: AutomationLockLeaseController
+  organizationId: string
+  preview: CommunityRoleSyncPreview
+  summary: CommunityRoleSyncPreview['summary']
+}) {
+  const database = input.database ?? db
+
+  for (const currentUser of input.preview.users) {
+    await input.leaseController.ensureOwned()
+
+    if (hasCommunityRoleSyncUserChanges(currentUser)) {
+      await executeCommunityRoleSyncUser({
+        currentUser,
+        database,
+        organizationId: input.organizationId,
+      })
+    }
+
+    recordCommunityRoleSyncUserProgress(input.summary, currentUser)
+  }
+
+  return input.preview
+}
+
+async function executeCommunityRoleDiscordSyncPreview(input: {
+  leaseController: AutomationLockLeaseController
+  progress: CommunityRoleDiscordSyncExecutionProgress
+  preview: CommunityRoleDiscordSyncPreview
+}): Promise<CommunityRoleDiscordSyncApply> {
+  for (const currentUser of input.preview.users) {
+    const outcomes: CommunityRoleDiscordSyncApplyOutcome[] = []
+
+    try {
+      for (const outcome of currentUser.outcomes) {
+        if (
+          (outcome.status !== 'will_grant' && outcome.status !== 'will_revoke') ||
+          !currentUser.discordAccountId ||
+          !outcome.discordRoleId
+        ) {
+          outcomes.push({
+            ...outcome,
+            attemptedAction: null,
+            errorMessage: null,
+            execution: 'noop',
+            status: outcome.status,
+          })
+
+          continue
+        }
+
+        await input.leaseController.ensureOwned()
+
+        try {
+          if (outcome.status === 'will_grant') {
+            await addDiscordGuildMemberRole(
+              {
+                env,
+              },
+              {
+                guildId: input.preview.connection.guildId,
+                reason: `community-role:${outcome.communityRoleId}`,
+                roleId: outcome.discordRoleId,
+                userId: currentUser.discordAccountId,
+              },
+            )
+            input.progress.appliedGrantCount += 1
+          } else {
+            await removeDiscordGuildMemberRole(
+              {
+                env,
+              },
+              {
+                guildId: input.preview.connection.guildId,
+                reason: `community-role:${outcome.communityRoleId}`,
+                roleId: outcome.discordRoleId,
+                userId: currentUser.discordAccountId,
+              },
+            )
+            input.progress.appliedRevokeCount += 1
+          }
+
+          outcomes.push({
+            ...outcome,
+            attemptedAction: outcome.status === 'will_grant' ? 'grant' : 'revoke',
+            errorMessage: null,
+            execution: 'applied',
+            status: outcome.status,
+          })
+        } catch (error) {
+          if (error instanceof DiscordGuildMemberRoleMutationError && error.code === 'guild_member_not_found') {
+            outcomes.push({
+              ...outcome,
+              attemptedAction: outcome.status === 'will_grant' ? 'grant' : 'revoke',
+              errorMessage: null,
+              execution: 'skipped',
+              status: 'linked_but_not_in_guild',
+            })
+
+            continue
+          }
+
+          input.progress.failedCount += 1
+          outcomes.push({
+            ...outcome,
+            attemptedAction: outcome.status === 'will_grant' ? 'grant' : 'revoke',
+            errorMessage: error instanceof Error ? error.message : 'Discord request failed.',
+            execution: 'failed',
+            status: 'discord_api_failure',
+          })
+        }
+      }
+    } catch (error) {
+      input.progress.users.push({
+        ...currentUser,
+        outcomes,
+      })
+
+      throw error
+    }
+
+    input.progress.users.push({
+      ...currentUser,
+      outcomes,
+    })
+  }
+
+  return buildCommunityRoleDiscordSyncApplyFromProgress({
+    preview: input.preview,
+    progress: input.progress,
+  })
 }
 
 async function runCommunityMembershipSync(input: {
@@ -2329,9 +2427,19 @@ async function runCommunityMembershipSync(input: {
   }
 
   let preview: CommunityRoleSyncPreview | null = null
+  const appliedSummary = getEmptyCommunityRoleSyncSummary()
+  const leaseController = createAutomationLockLeaseController({
+    database,
+    key: lockKey,
+    now,
+    runId,
+  })
   let runInserted = false
 
+  leaseController.start()
+
   try {
+    await leaseController.ensureOwned()
     await database.insert(communityMembershipSyncRun).values({
       addToOrganizationCount: 0,
       addToTeamCount: 0,
@@ -2354,6 +2462,7 @@ async function runCommunityMembershipSync(input: {
     runInserted = true
 
     if (input.skipIfDependenciesNotFresh && !dependencies.dependencyFreshAtStart) {
+      await leaseController.ensureOwned()
       await finalizeCommunityMembershipSyncRun({
         addToOrganizationCount: 0,
         addToTeamCount: 0,
@@ -2381,23 +2490,26 @@ async function runCommunityMembershipSync(input: {
     preview = buildPreviewFromSyncState(await loadSyncState(input.organizationId, database))
     await executeCommunityRoleSyncPreview({
       database,
+      leaseController,
       organizationId: input.organizationId,
       preview,
+      summary: appliedSummary,
     })
+    await leaseController.ensureOwned()
     await finalizeCommunityMembershipSyncRun({
-      addToOrganizationCount: preview.summary.addToOrganizationCount,
-      addToTeamCount: preview.summary.addToTeamCount,
+      addToOrganizationCount: appliedSummary.addToOrganizationCount,
+      addToTeamCount: appliedSummary.addToTeamCount,
       blockedAssetGroupIds: dependencies.blockedAssetGroupIds,
       database,
       errorMessage: null,
       errorPayload: null,
       finishedAt: now(),
-      qualifiedUserCount: preview.summary.qualifiedUserCount,
-      removeFromOrganizationCount: preview.summary.removeFromOrganizationCount,
-      removeFromTeamCount: preview.summary.removeFromTeamCount,
+      qualifiedUserCount: appliedSummary.qualifiedUserCount,
+      removeFromOrganizationCount: appliedSummary.removeFromOrganizationCount,
+      removeFromTeamCount: appliedSummary.removeFromTeamCount,
       runId,
       status: 'succeeded',
-      usersChangedCount: preview.summary.usersChangedCount,
+      usersChangedCount: appliedSummary.usersChangedCount,
     })
 
     return {
@@ -2405,28 +2517,27 @@ async function runCommunityMembershipSync(input: {
       status: 'succeeded' as const,
     }
   } catch (error) {
-    const summary = preview?.summary ?? getEmptyCommunityRoleSyncSummary()
-
     if (runInserted) {
       await finalizeCommunityMembershipSyncRun({
-        addToOrganizationCount: summary.addToOrganizationCount,
-        addToTeamCount: summary.addToTeamCount,
+        addToOrganizationCount: appliedSummary.addToOrganizationCount,
+        addToTeamCount: appliedSummary.addToTeamCount,
         blockedAssetGroupIds: dependencies.blockedAssetGroupIds,
         database,
         errorMessage: error instanceof Error ? error.message : 'Community membership sync failed.',
         errorPayload: buildCommunitySyncErrorPayload(error),
         finishedAt: now(),
-        qualifiedUserCount: summary.qualifiedUserCount,
-        removeFromOrganizationCount: summary.removeFromOrganizationCount,
-        removeFromTeamCount: summary.removeFromTeamCount,
+        qualifiedUserCount: appliedSummary.qualifiedUserCount,
+        removeFromOrganizationCount: appliedSummary.removeFromOrganizationCount,
+        removeFromTeamCount: appliedSummary.removeFromTeamCount,
         runId,
         status: 'failed',
-        usersChangedCount: summary.usersChangedCount,
+        usersChangedCount: appliedSummary.usersChangedCount,
       })
     }
 
     throw error
   } finally {
+    await leaseController.stop()
     await releaseAutomationLock({
       database,
       key: lockKey,
@@ -2486,10 +2597,21 @@ async function runCommunityDiscordSync(input: {
     throw new AutomationLockConflictError(lockKey)
   }
 
+  let preview: CommunityRoleDiscordSyncPreview | null = null
+  const progress = createCommunityRoleDiscordSyncExecutionProgress()
+  const leaseController = createAutomationLockLeaseController({
+    database,
+    key: lockKey,
+    now,
+    runId,
+  })
   let result: CommunityRoleDiscordSyncApply | null = null
   let runInserted = false
 
+  leaseController.start()
+
   try {
+    await leaseController.ensureOwned()
     await database.insert(communityDiscordSyncRun).values({
       appliedGrantCount: 0,
       appliedRevokeCount: 0,
@@ -2513,6 +2635,7 @@ async function runCommunityDiscordSync(input: {
     runInserted = true
 
     if (input.skipReason === 'membership_run_failed') {
+      await leaseController.ensureOwned()
       await finalizeCommunityDiscordSyncRun({
         appliedGrantCount: 0,
         appliedRevokeCount: 0,
@@ -2539,6 +2662,7 @@ async function runCommunityDiscordSync(input: {
     }
 
     if (input.skipIfDependenciesNotFresh && !dependencies.dependencyFreshAtStart) {
+      await leaseController.ensureOwned()
       await finalizeCommunityDiscordSyncRun({
         appliedGrantCount: 0,
         appliedRevokeCount: 0,
@@ -2564,11 +2688,15 @@ async function runCommunityDiscordSync(input: {
       }
     }
 
+    preview = await buildCommunityRoleDiscordSyncPreview(input.organizationId, database)
     result = await executeCommunityRoleDiscordSyncPreview({
-      preview: await buildCommunityRoleDiscordSyncPreview(input.organizationId, database),
+      leaseController,
+      preview,
+      progress,
     })
     const status = getCommunityDiscordSyncApplyStatus(result)
 
+    await leaseController.ensureOwned()
     await finalizeCommunityDiscordSyncRun({
       appliedGrantCount: result.summary.appliedGrantCount,
       appliedRevokeCount: result.summary.appliedRevokeCount,
@@ -2591,7 +2719,14 @@ async function runCommunityDiscordSync(input: {
       status,
     }
   } catch (error) {
-    const summary = result?.summary ?? getEmptyCommunityDiscordSyncApplySummary()
+    const summary =
+      result?.summary ??
+      (preview
+        ? buildCommunityRoleDiscordSyncApplyFromProgress({
+            preview,
+            progress,
+          }).summary
+        : getEmptyCommunityDiscordSyncApplySummary())
 
     if (runInserted) {
       await finalizeCommunityDiscordSyncRun({
@@ -2614,6 +2749,7 @@ async function runCommunityDiscordSync(input: {
 
     throw error
   } finally {
+    await leaseController.stop()
     await releaseAutomationLock({
       database,
       key: lockKey,

@@ -46,25 +46,9 @@ export function UserMenu() {
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           {session.user.role === 'admin' ? (
-            <DropdownMenuItem
-              onClick={() => {
-                navigate({
-                  to: '/admin',
-                })
-              }}
-            >
-              Admin
-            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => void navigate({ to: '/admin' })}>Admin</DropdownMenuItem>
           ) : null}
-          <DropdownMenuItem
-            onClick={() => {
-              navigate({
-                to: '/profile',
-              })
-            }}
-          >
-            Profile
-          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => void navigate({ to: '/profile' })}>Profile</DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={() => {
@@ -72,9 +56,7 @@ export function UserMenu() {
                 fetchOptions: {
                   onSuccess: async () => {
                     await refreshAppAuthState(queryClient)
-                    navigate({
-                      to: '/',
-                    })
+                    void navigate({ to: '/' })
                   },
                 },
               })

@@ -30,9 +30,7 @@ export function OnboardFeatureIndex() {
       return
     }
 
-    void navigate({
-      to: '/profile',
-    })
+    void navigate({ to: '/profile' })
   }, [isOnboardingComplete, navigate])
 
   async function handleDiscordLink() {

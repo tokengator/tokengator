@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ellipsify, useWalletUi } from '@wallet-ui/react'
-import { type FormEvent, useEffect, useState } from 'react'
+import { type SubmitEvent, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@tokengator/ui/components/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
@@ -83,7 +83,7 @@ function ProfileUiSolanaWalletRow({
     setName(wallet.name ?? '')
   }, [wallet.name])
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
     updateMutation.mutate({
       id: wallet.id,

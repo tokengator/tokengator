@@ -16,6 +16,7 @@ import {
 } from '@tokengator/ui/components/dialog'
 import { Input } from '@tokengator/ui/components/input'
 import { cn } from '@tokengator/ui/lib/utils'
+import { slugify } from '@tokengator/ui/util/slugify'
 
 import { useAppSession } from '@/features/auth/data-access/use-app-auth-state'
 import { orpc } from '@/utils/orpc'
@@ -32,16 +33,6 @@ function formatDate(value: Date | string) {
 
 function formatOwnerSummary(owner: { name: string; username?: string | null }) {
   return owner.username ? `${owner.name} (@${owner.username})` : owner.name
-}
-
-function slugify(value: string) {
-  return value
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .replace(/-{2,}/g, '-')
 }
 
 export const Route = createFileRoute('/admin/communities/')({

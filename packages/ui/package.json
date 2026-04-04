@@ -4,11 +4,12 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./globals.css": "./src/styles/globals.css",
-    "./lib/*": "./src/lib/*.ts",
     "./components/*": "./src/components/*.tsx",
+    "./globals.css": "./src/styles/globals.css",
     "./hooks/*": "./src/hooks/*.ts",
-    "./postcss.config": "./postcss.config.mjs"
+    "./lib/*": "./src/lib/*.ts",
+    "./postcss.config": "./postcss.config.mjs",
+    "./util/*": "./src/util/*.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit"

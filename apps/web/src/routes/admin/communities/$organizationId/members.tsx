@@ -15,6 +15,7 @@ import {
 
 import { useAdminCommunityGetQuery } from '@/features/admin-community/data-access/use-admin-community-get-query'
 import { orpc } from '@/utils/orpc'
+import { Route as CommunityRoute } from './route'
 
 const roleOptions = ['owner', 'admin', 'member'] as const
 
@@ -24,12 +25,15 @@ export const Route = createFileRoute('/admin/communities/$organizationId/members
 
 function RouteComponent() {
   const queryClient = useQueryClient()
-  const { organizationId } = Route.useParams()
+  const { organization: initialOrganization } = CommunityRoute.useRouteContext()
+  const organizationId = initialOrganization.id
   const [memberPendingRemoval, setMemberPendingRemoval] = useState<{
     id: string
     name: string
   } | null>(null)
-  const organization = useAdminCommunityGetQuery(organizationId)
+  const { data } = useAdminCommunityGetQuery(organizationId, {
+    initialData: initialOrganization,
+  })
   const removeMemberMutation = useMutation(
     orpc.adminOrganization.removeMember.mutationOptions({
       onError: (error) => {
@@ -89,7 +93,7 @@ function RouteComponent() {
     })
   }
 
-  if (!organization.data) {
+  if (!data) {
     return null
   }
 
@@ -100,9 +104,9 @@ function RouteComponent() {
         <CardDescription>Update roles or remove members from the community.</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        {organization.data.members.length ? (
+        {data.members.length ? (
           <>
-            {organization.data.members.map((member) => {
+            {data.members.map((member) => {
               const memberRoles = roleOptions.includes(member.role as (typeof roleOptions)[number])
                 ? roleOptions
                 : [member.role, ...roleOptions]

@@ -24,6 +24,7 @@ const adminCommunityDiscordCheckLabels: Record<string, string> = {
   bot_identity_lookup_failed: 'TokenGator could not identify the Discord bot account.',
   bot_not_in_guild: 'The Discord bot is not a member of this server yet.',
   bot_token_missing: 'The Discord bot token is not configured for the API environment.',
+  commands_registration_failed: 'Guild slash command registration failed for this server.',
   discord_api_failure: 'Discord API request failed during reconcile.',
   discord_connection_missing: 'Connect a Discord server for this community before mapping roles.',
   discord_role_hierarchy_blocked: 'The bot role must be above this Discord role in the server hierarchy.',

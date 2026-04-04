@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react'
 import { Card, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import { Tabs, TabsList, TabsTrigger } from '@tokengator/ui/components/tabs'
 
-import { useAdminCommunityGetQuery } from '../data-access/use-admin-community-get-query'
+import { type AdminCommunityGetResult, useAdminCommunityGetQuery } from '../data-access/use-admin-community-get-query'
 
 const organizationTabs = [
   {
@@ -37,19 +37,22 @@ function getCurrentTab(pathname: string) {
   return activeTab?.value ?? 'overview'
 }
 
-interface AdminCommunityFeatureShellProps {
+export function AdminCommunityFeatureShell({
+  children,
+  initialOrganization,
+}: {
   children: ReactNode
-  organizationId: string
-}
-
-export function AdminCommunityFeatureShell(props: AdminCommunityFeatureShellProps) {
-  const { children, organizationId } = props
+  initialOrganization: AdminCommunityGetResult
+}) {
   const location = useLocation()
   const navigate = useNavigate()
   const currentTab = getCurrentTab(location.pathname)
-  const organization = useAdminCommunityGetQuery(organizationId)
+  const { data, isPending } = useAdminCommunityGetQuery(initialOrganization.id, {
+    initialData: initialOrganization,
+  })
+  const organizationId = initialOrganization.id
 
-  if (!organization.isPending && !organization.data) {
+  if (!isPending && !data) {
     return (
       <Card>
         <CardHeader>
@@ -67,10 +70,10 @@ export function AdminCommunityFeatureShell(props: AdminCommunityFeatureShellProp
           <Link className="text-muted-foreground hover:text-foreground text-sm" to="/admin/communities">
             Back to communities
           </Link>
-          {organization.data ? (
+          {data ? (
             <>
-              <h2 className="text-lg font-medium">{organization.data.name}</h2>
-              <p className="text-muted-foreground text-sm">{organization.data.slug}</p>
+              <h2 className="text-lg font-medium">{data.name}</h2>
+              <p className="text-muted-foreground text-sm">{data.slug}</p>
             </>
           ) : (
             <div className="text-muted-foreground flex items-center gap-2 text-sm">
@@ -110,7 +113,7 @@ export function AdminCommunityFeatureShell(props: AdminCommunityFeatureShellProp
         </TabsList>
       </Tabs>
 
-      {organization.data ? (
+      {data ? (
         children
       ) : (
         <div className="text-muted-foreground flex items-center gap-2 text-sm">

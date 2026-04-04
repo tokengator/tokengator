@@ -7,22 +7,15 @@ import { getProfileListSolanaWalletsQueryKey } from '@/features/profile/data-acc
 import { authMiddleware } from '@/middleware/auth'
 import { serverOrpcClient } from '@/utils/orpc-server'
 
-interface AuthContextSession {
-  user: {
-    id: string
-    name: string
-    role?: string | null
-    username?: string | null
-  }
+export interface AppSessionUser {
+  id: string
+  name: string
+  role?: string | null
+  username?: string | null
 }
 
 export interface AppSession {
-  user: {
-    id: string
-    name: string
-    role?: string | null
-    username?: string | null
-  }
+  user: AppSessionUser
 }
 
 export interface AppAuthState {
@@ -49,7 +42,7 @@ function buildOnboardingStatus(args: {
   }
 }
 
-function toAppSession(session: AuthContextSession | null | undefined): AppSession | null {
+function toAppSession(session: AppSession | null | undefined): AppSession | null {
   if (!session) {
     return null
   }

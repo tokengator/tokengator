@@ -2,13 +2,15 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 
+import type { AppSessionUser } from '@/features/auth/data-access/get-app-auth-state'
+
 import { getAdminOrganizationQueryOptions } from './route'
 
 function formatDate(value: Date | string) {
   return new Date(value).toLocaleString()
 }
 
-function formatOwnerSummary(owner: { name: string; username?: string | null }) {
+function formatOwnerSummary(owner: Pick<AppSessionUser, 'name' | 'username'>) {
   return owner.username ? `${owner.name} (@${owner.username})` : owner.name
 }
 

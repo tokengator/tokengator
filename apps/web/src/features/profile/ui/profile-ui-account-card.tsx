@@ -1,10 +1,8 @@
+import type { AppSessionUser } from '@/features/auth/data-access/get-app-auth-state'
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 
-interface ProfileUiAccountCardProps {
-  name: string
-  role?: string | null
-  username?: string | null
-}
+type ProfileUiAccountCardProps = Pick<AppSessionUser, 'name' | 'role' | 'username'>
 
 export function ProfileUiAccountCard({ name, role, username }: ProfileUiAccountCardProps) {
   return (

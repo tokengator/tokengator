@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
+import { UiDetailRow } from '@tokengator/ui/components/ui-detail-row'
 
 import type { AppSessionUser } from '@/features/auth/data-access/get-app-auth-state'
 
@@ -33,30 +34,15 @@ function RouteComponent() {
         <CardDescription>Reference values for support and auditing.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-2 text-sm">
-        <div className="flex flex-col gap-1 md:flex-row md:gap-2">
-          <span className="text-muted-foreground">Community ID:</span>
-          <span>{organization.data.id}</span>
-        </div>
-        <div className="flex flex-col gap-1 md:flex-row md:gap-2">
-          <span className="text-muted-foreground">Created:</span>
-          <span>{formatDate(organization.data.createdAt)}</span>
-        </div>
-        <div className="flex flex-col gap-1 md:flex-row md:gap-2">
-          <span className="text-muted-foreground">Members:</span>
-          <span>{organization.data.members.length}</span>
-        </div>
-        <div className="flex flex-col gap-1 md:flex-row md:gap-2">
-          <span className="text-muted-foreground">Owners:</span>
-          <span>
-            {organization.data.owners.length
-              ? organization.data.owners.map(formatOwnerSummary).join(', ')
-              : 'No owners found'}
-          </span>
-        </div>
-        <div className="flex flex-col gap-1 md:flex-row md:gap-2">
-          <span className="text-muted-foreground">Logo:</span>
-          <span>{organization.data.logo ?? 'No logo configured'}</span>
-        </div>
+        <UiDetailRow label="Community ID:">{organization.data.id}</UiDetailRow>
+        <UiDetailRow label="Created:">{formatDate(organization.data.createdAt)}</UiDetailRow>
+        <UiDetailRow label="Members:">{organization.data.members.length}</UiDetailRow>
+        <UiDetailRow label="Owners:">
+          {organization.data.owners.length
+            ? organization.data.owners.map(formatOwnerSummary).join(', ')
+            : 'No owners found'}
+        </UiDetailRow>
+        <UiDetailRow label="Logo:">{organization.data.logo ?? 'No logo configured'}</UiDetailRow>
       </CardContent>
     </Card>
   )

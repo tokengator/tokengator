@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from '@tokengator/ui/components/dialog'
 import { Input } from '@tokengator/ui/components/input'
+import { UiDetailRow } from '@tokengator/ui/components/ui-detail-row'
 import { UiStatus, type UiStatusVariants } from '@tokengator/ui/components/ui-status'
 
 import { orpc } from '@/utils/orpc'
@@ -324,37 +325,24 @@ function RouteComponent() {
           ) : (
             <>
               <div className="grid gap-2 text-sm">
-                <div className="flex flex-col gap-1 md:flex-row md:gap-2">
-                  <span className="text-muted-foreground">Server ID:</span>
-                  <span>{discordConnection.guildId}</span>
-                </div>
-                <div className="flex flex-col gap-1 md:flex-row md:gap-2">
-                  <span className="text-muted-foreground">Server Name:</span>
-                  <span>{discordConnection.guildName ?? 'Unknown'}</span>
-                </div>
-                <div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-2">
-                  <span className="text-muted-foreground">Status:</span>
+                <UiDetailRow label="Server ID:">{discordConnection.guildId}</UiDetailRow>
+                <UiDetailRow label="Server Name:">{discordConnection.guildName ?? 'Unknown'}</UiDetailRow>
+                <UiDetailRow align="center" label="Status:">
                   <UiStatus tone={discordStatusTone}>
                     {discordConnection.status === 'connected' ? 'Connected' : 'Needs attention'}
                   </UiStatus>
-                </div>
-                <div className="flex flex-col gap-1 md:flex-row md:gap-2">
-                  <span className="text-muted-foreground">Last checked:</span>
-                  <span>{formatLastCheckedAt(discordConnection.lastCheckedAt)}</span>
-                </div>
-                <div className="flex flex-col gap-1 md:flex-row md:gap-2">
-                  <span className="text-muted-foreground">Manage Roles:</span>
-                  <span>{discordConnection.diagnostics?.permissions.manageRoles ? 'Granted' : 'Missing'}</span>
-                </div>
-                <div className="flex flex-col gap-1 md:flex-row md:gap-2">
-                  <span className="text-muted-foreground">Commands:</span>
-                  <span>{discordConnection.diagnostics?.commands.registered ? 'Registered' : 'Not registered'}</span>
-                </div>
+                </UiDetailRow>
+                <UiDetailRow label="Last checked:">{formatLastCheckedAt(discordConnection.lastCheckedAt)}</UiDetailRow>
+                <UiDetailRow label="Manage Roles:">
+                  {discordConnection.diagnostics?.permissions.manageRoles ? 'Granted' : 'Missing'}
+                </UiDetailRow>
+                <UiDetailRow label="Commands:">
+                  {discordConnection.diagnostics?.commands.registered ? 'Registered' : 'Not registered'}
+                </UiDetailRow>
                 {discordConnection.diagnostics?.commands.errorMessage ? (
-                  <div className="flex flex-col gap-1 md:flex-row md:gap-2">
-                    <span className="text-muted-foreground">Command error:</span>
-                    <span>{discordConnection.diagnostics.commands.errorMessage}</span>
-                  </div>
+                  <UiDetailRow label="Command error:">
+                    {discordConnection.diagnostics.commands.errorMessage}
+                  </UiDetailRow>
                 ) : null}
               </div>
               <div className="flex flex-wrap gap-2">

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 
 import type { AppSessionUser } from '@/features/auth/data-access/get-app-auth-state'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
+import { UiDetailRow } from '@tokengator/ui/components/ui-detail-row'
 
 interface AdminCommunityDirectoryUiCardProps {
   createdAt: Date | string
@@ -35,18 +36,11 @@ export function AdminCommunityDirectoryUiCard(props: AdminCommunityDirectoryUiCa
         </div>
       </CardHeader>
       <CardContent className="grid gap-2 text-sm">
-        <div className="flex flex-col gap-1 md:flex-row md:gap-2">
-          <span className="text-muted-foreground">Owners:</span>
-          <span>{owners.length ? owners.map(formatOwnerSummary).join(', ') : 'No owners found'}</span>
-        </div>
-        <div className="flex flex-col gap-1 md:flex-row md:gap-2">
-          <span className="text-muted-foreground">Members:</span>
-          <span>{memberCount}</span>
-        </div>
-        <div className="flex flex-col gap-1 md:flex-row md:gap-2">
-          <span className="text-muted-foreground">Created:</span>
-          <span>{formatDate(createdAt)}</span>
-        </div>
+        <UiDetailRow label="Owners:">
+          {owners.length ? owners.map(formatOwnerSummary).join(', ') : 'No owners found'}
+        </UiDetailRow>
+        <UiDetailRow label="Members:">{memberCount}</UiDetailRow>
+        <UiDetailRow label="Created:">{formatDate(createdAt)}</UiDetailRow>
       </CardContent>
     </Card>
   )

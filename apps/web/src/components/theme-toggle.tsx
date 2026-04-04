@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@tokengator/ui/components/button'
 import { Skeleton } from '@tokengator/ui/components/skeleton'
 
-export default function ThemeToggle() {
+export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 

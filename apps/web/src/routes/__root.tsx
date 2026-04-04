@@ -10,9 +10,9 @@ import {
   populateAppAuthStateRelatedQueries,
 } from '@/features/auth/data-access/get-app-auth-state'
 
-import Header from '../components/header'
+import { Header } from '../components/header'
 import { SolanaProvider } from '../components/solana/solana-provider'
-import ThemeProvider from '../components/theme-provider'
+import { ThemeProvider } from '../components/theme-provider'
 
 import appCss from '../index.css?url'
 

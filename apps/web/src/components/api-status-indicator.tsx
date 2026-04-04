@@ -3,7 +3,7 @@ import { cn } from '@tokengator/ui/lib/utils'
 
 import { orpc } from '@/utils/orpc'
 
-export default function ApiStatusIndicator() {
+export function ApiStatusIndicator() {
   const healthCheck = useQuery(orpc.healthCheck.queryOptions())
 
   const label = healthCheck.isLoading ? 'Checking API status' : healthCheck.data ? 'API connected' : 'API disconnected'

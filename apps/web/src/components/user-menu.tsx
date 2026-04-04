@@ -16,7 +16,7 @@ import { refreshAppAuthState } from '@/features/auth/data-access/get-app-auth-st
 import { useAppSession } from '@/features/auth/data-access/use-app-auth-state'
 import { authClient } from '@/lib/auth-client'
 
-export default function UserMenu() {
+export function UserMenu() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { data: session, isPending } = useAppSession()

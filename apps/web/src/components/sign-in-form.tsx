@@ -6,10 +6,10 @@ import { Button } from '@tokengator/ui/components/button'
 import { useAppAuthStateQuery } from '@/features/auth/data-access/use-app-auth-state'
 import { authClient } from '@/lib/auth-client'
 
-import Loader from './loader'
+import { Loader } from './loader'
 import { SolanaAuthActions } from './solana-auth-actions'
 
-export default function SignInForm() {
+export function SignInForm() {
   const navigate = useNavigate({
     from: '/',
   })

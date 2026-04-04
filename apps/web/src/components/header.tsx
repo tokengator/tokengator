@@ -4,11 +4,11 @@ import type { OnboardingStatus } from '@/features/organization/feature/organizat
 import { useAppAuthStateQuery } from '@/features/auth/data-access/use-app-auth-state'
 import { hasCompletedOnboarding } from '@/features/organization/feature/organization-feature-active-access'
 
-import ApiStatusIndicator from './api-status-indicator'
-import ThemeToggle from './theme-toggle'
-import UserMenu from './user-menu'
+import { ApiStatusIndicator } from './api-status-indicator'
+import { ThemeToggle } from './theme-toggle'
+import { UserMenu } from './user-menu'
 
-export default function Header() {
+export function Header() {
   const { data } = useAppAuthStateQuery()
   const onboardingStatus: OnboardingStatus | null = data?.onboardingStatus ?? null
   const session = data?.session ?? null

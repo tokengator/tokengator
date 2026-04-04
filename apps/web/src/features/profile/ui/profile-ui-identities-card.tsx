@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
+import { UiListCard, UiListCardHeader, UiListCardMeta } from '@tokengator/ui/components/ui-list-card'
 
 type ProfileIdentity = {
   accountId: string
@@ -45,13 +46,13 @@ export function ProfileUiIdentitiesCard({ identities, isPending = false }: Profi
         ) : null}
         {!isPending
           ? identities.map((identity) => (
-              <div className="grid gap-1 rounded-lg border p-3" key={identity.id}>
-                <div className="flex items-center justify-between gap-3">
+              <UiListCard key={identity.id}>
+                <UiListCardHeader>
                   <p className="font-medium">{formatProviderLabel(identity.providerId)}</p>
-                  <p className="text-muted-foreground text-xs">Connected {formatConnectedDate(identity.createdAt)}</p>
-                </div>
+                  <UiListCardMeta>Connected {formatConnectedDate(identity.createdAt)}</UiListCardMeta>
+                </UiListCardHeader>
                 <p className="font-mono text-xs">{identity.accountId}</p>
-              </div>
+              </UiListCard>
             ))
           : null}
       </CardContent>

@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
+import { UiListCard, UiListCardHeader, UiListCardMeta } from '@tokengator/ui/components/ui-list-card'
 
 type ProfileCommunity = {
   gatedRoles: Array<{
@@ -34,14 +35,14 @@ export function ProfileUiCommunitiesCard({ communities, isPending = false }: Pro
         {!isPending && communities.length === 0 ? <p className="text-muted-foreground">No communities yet.</p> : null}
         {!isPending
           ? communities.map((community) => (
-              <div className="grid gap-1 rounded-lg border p-3" key={community.id}>
-                <div className="flex items-center justify-between gap-3">
+              <UiListCard key={community.id}>
+                <UiListCardHeader>
                   <div className="min-w-0">
                     <p className="truncate font-medium">{community.name}</p>
-                    <p className="text-muted-foreground text-xs">@{community.slug}</p>
+                    <UiListCardMeta>@{community.slug}</UiListCardMeta>
                   </div>
-                  <p className="text-muted-foreground text-xs capitalize">{formatCommunityRole(community.role)}</p>
-                </div>
+                  <UiListCardMeta className="capitalize">{formatCommunityRole(community.role)}</UiListCardMeta>
+                </UiListCardHeader>
                 {community.gatedRoles?.length ? (
                   <div className="flex flex-wrap gap-2">
                     {community.gatedRoles.map((gatedRole) => (
@@ -51,7 +52,7 @@ export function ProfileUiCommunitiesCard({ communities, isPending = false }: Pro
                     ))}
                   </div>
                 ) : null}
-              </div>
+              </UiListCard>
             ))
           : null}
       </CardContent>

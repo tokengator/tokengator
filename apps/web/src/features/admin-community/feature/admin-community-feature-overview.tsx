@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import { UiDetailRow } from '@tokengator/ui/components/ui-detail-row'
-import { formatDateTime } from '@tokengator/ui/util/format-date-time.ts'
+import { formatDateTime } from '@tokengator/ui/util/format-date-time'
 
 import { formatOwnerSummary } from '@/features/admin-community/util/format-owner-summary.tsx'
 import { type AdminCommunityGetResult, useAdminCommunityGetQuery } from '../data-access/use-admin-community-get-query'

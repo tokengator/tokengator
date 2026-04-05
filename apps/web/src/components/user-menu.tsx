@@ -14,7 +14,7 @@ import { Skeleton } from '@tokengator/ui/components/skeleton'
 
 import { authClient } from '@/features/auth/data-access/auth-client'
 import { refreshAppAuthState } from '@/features/auth/data-access/get-app-auth-state'
-import { useAppSession } from '@/features/auth/data-access/use-app-auth-state'
+import { useAppSession } from '@/features/auth/data-access/use-app-session'
 
 export function UserMenu() {
   const navigate = useNavigate()

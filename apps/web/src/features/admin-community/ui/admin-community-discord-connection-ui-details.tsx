@@ -4,7 +4,7 @@ import { Button } from '@tokengator/ui/components/button'
 import { UiDetailRow } from '@tokengator/ui/components/ui-detail-row'
 import { UiStatus, type UiStatusVariants } from '@tokengator/ui/components/ui-status'
 
-import { formatTimestamp } from '@/utils/admin-automation.ts'
+import { formatTimestamp } from '@/utils/admin-automation'
 import type { AdminCommunityDiscordConnection } from '../data-access/use-admin-community-get-query'
 
 function getDiscordConnectionStatusTone(status: AdminCommunityDiscordConnection['status']): UiStatusVariants['tone'] {

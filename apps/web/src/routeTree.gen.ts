@@ -9,13 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as OnboardRouteImport } from './routes/onboard'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthCallbackRouteImport } from './routes/auth-callback'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as ProfileRouteRouteImport } from './routes/profile/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ProfileIndexRouteImport } from './routes/profile/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as ProfileSettingsRouteImport } from './routes/profile/settings'
+import { Route as ProfileIdentitiesRouteImport } from './routes/profile/identities'
+import { Route as ProfileAssetsRouteImport } from './routes/profile/assets'
 import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
 import { Route as AdminCommunitiesIndexRouteImport } from './routes/admin/communities/index'
 import { Route as AdminAssetsIndexRouteImport } from './routes/admin/assets/index'
@@ -33,11 +37,6 @@ import { Route as AdminCommunitiesOrganizationIdDiscordRouteImport } from './rou
 import { Route as AdminAssetsAssetGroupIdSettingsRouteImport } from './routes/admin/assets/$assetGroupId/settings'
 import { Route as AdminAssetsAssetGroupIdAssetsRouteImport } from './routes/admin/assets/$assetGroupId/assets'
 
-const ProfileRoute = ProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const OnboardRoute = OnboardRouteImport.update({
   id: '/onboard',
   path: '/onboard',
@@ -58,15 +57,40 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileRouteRoute = ProfileRouteRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileIndexRoute = ProfileIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProfileRouteRoute,
+} as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRoute,
+} as any)
+const ProfileSettingsRoute = ProfileSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => ProfileRouteRoute,
+} as any)
+const ProfileIdentitiesRoute = ProfileIdentitiesRouteImport.update({
+  id: '/identities',
+  path: '/identities',
+  getParentRoute: () => ProfileRouteRoute,
+} as any)
+const ProfileAssetsRoute = ProfileAssetsRouteImport.update({
+  id: '/assets',
+  path: '/assets',
+  getParentRoute: () => ProfileRouteRoute,
 } as any)
 const AdminDashboardRoute = AdminDashboardRouteImport.update({
   id: '/dashboard',
@@ -163,13 +187,17 @@ const AdminAssetsAssetGroupIdAssetsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/profile': typeof ProfileRouteRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
   '/auth-callback': typeof AuthCallbackRoute
   '/login': typeof LoginRoute
   '/onboard': typeof OnboardRoute
-  '/profile': typeof ProfileRoute
   '/admin/dashboard': typeof AdminDashboardRoute
+  '/profile/assets': typeof ProfileAssetsRoute
+  '/profile/identities': typeof ProfileIdentitiesRoute
+  '/profile/settings': typeof ProfileSettingsRoute
   '/admin/': typeof AdminIndexRoute
+  '/profile/': typeof ProfileIndexRoute
   '/admin/assets/$assetGroupId': typeof AdminAssetsAssetGroupIdRouteRouteWithChildren
   '/admin/communities/$organizationId': typeof AdminCommunitiesOrganizationIdRouteRouteWithChildren
   '/admin/assets/create': typeof AdminAssetsCreateRoute
@@ -191,9 +219,12 @@ export interface FileRoutesByTo {
   '/auth-callback': typeof AuthCallbackRoute
   '/login': typeof LoginRoute
   '/onboard': typeof OnboardRoute
-  '/profile': typeof ProfileRoute
   '/admin/dashboard': typeof AdminDashboardRoute
+  '/profile/assets': typeof ProfileAssetsRoute
+  '/profile/identities': typeof ProfileIdentitiesRoute
+  '/profile/settings': typeof ProfileSettingsRoute
   '/admin': typeof AdminIndexRoute
+  '/profile': typeof ProfileIndexRoute
   '/admin/assets/create': typeof AdminAssetsCreateRoute
   '/admin/assets': typeof AdminAssetsIndexRoute
   '/admin/communities': typeof AdminCommunitiesIndexRoute
@@ -211,13 +242,17 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/profile': typeof ProfileRouteRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
   '/auth-callback': typeof AuthCallbackRoute
   '/login': typeof LoginRoute
   '/onboard': typeof OnboardRoute
-  '/profile': typeof ProfileRoute
   '/admin/dashboard': typeof AdminDashboardRoute
+  '/profile/assets': typeof ProfileAssetsRoute
+  '/profile/identities': typeof ProfileIdentitiesRoute
+  '/profile/settings': typeof ProfileSettingsRoute
   '/admin/': typeof AdminIndexRoute
+  '/profile/': typeof ProfileIndexRoute
   '/admin/assets/$assetGroupId': typeof AdminAssetsAssetGroupIdRouteRouteWithChildren
   '/admin/communities/$organizationId': typeof AdminCommunitiesOrganizationIdRouteRouteWithChildren
   '/admin/assets/create': typeof AdminAssetsCreateRoute
@@ -238,13 +273,17 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/profile'
     | '/admin'
     | '/auth-callback'
     | '/login'
     | '/onboard'
-    | '/profile'
     | '/admin/dashboard'
+    | '/profile/assets'
+    | '/profile/identities'
+    | '/profile/settings'
     | '/admin/'
+    | '/profile/'
     | '/admin/assets/$assetGroupId'
     | '/admin/communities/$organizationId'
     | '/admin/assets/create'
@@ -266,9 +305,12 @@ export interface FileRouteTypes {
     | '/auth-callback'
     | '/login'
     | '/onboard'
-    | '/profile'
     | '/admin/dashboard'
+    | '/profile/assets'
+    | '/profile/identities'
+    | '/profile/settings'
     | '/admin'
+    | '/profile'
     | '/admin/assets/create'
     | '/admin/assets'
     | '/admin/communities'
@@ -285,13 +327,17 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/profile'
     | '/admin'
     | '/auth-callback'
     | '/login'
     | '/onboard'
-    | '/profile'
     | '/admin/dashboard'
+    | '/profile/assets'
+    | '/profile/identities'
+    | '/profile/settings'
     | '/admin/'
+    | '/profile/'
     | '/admin/assets/$assetGroupId'
     | '/admin/communities/$organizationId'
     | '/admin/assets/create'
@@ -311,22 +357,15 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ProfileRouteRoute: typeof ProfileRouteRouteWithChildren
   AdminRoute: typeof AdminRouteWithChildren
   AuthCallbackRoute: typeof AuthCallbackRoute
   LoginRoute: typeof LoginRoute
   OnboardRoute: typeof OnboardRoute
-  ProfileRoute: typeof ProfileRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/profile': {
-      id: '/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof ProfileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/onboard': {
       id: '/onboard'
       path: '/onboard'
@@ -355,6 +394,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -362,12 +408,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile/': {
+      id: '/profile/'
+      path: '/'
+      fullPath: '/profile/'
+      preLoaderRoute: typeof ProfileIndexRouteImport
+      parentRoute: typeof ProfileRouteRoute
+    }
     '/admin/': {
       id: '/admin/'
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/profile/settings': {
+      id: '/profile/settings'
+      path: '/settings'
+      fullPath: '/profile/settings'
+      preLoaderRoute: typeof ProfileSettingsRouteImport
+      parentRoute: typeof ProfileRouteRoute
+    }
+    '/profile/identities': {
+      id: '/profile/identities'
+      path: '/identities'
+      fullPath: '/profile/identities'
+      preLoaderRoute: typeof ProfileIdentitiesRouteImport
+      parentRoute: typeof ProfileRouteRoute
+    }
+    '/profile/assets': {
+      id: '/profile/assets'
+      path: '/assets'
+      fullPath: '/profile/assets'
+      preLoaderRoute: typeof ProfileAssetsRouteImport
+      parentRoute: typeof ProfileRouteRoute
     }
     '/admin/dashboard': {
       id: '/admin/dashboard'
@@ -484,6 +558,24 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ProfileRouteRouteChildren {
+  ProfileAssetsRoute: typeof ProfileAssetsRoute
+  ProfileIdentitiesRoute: typeof ProfileIdentitiesRoute
+  ProfileSettingsRoute: typeof ProfileSettingsRoute
+  ProfileIndexRoute: typeof ProfileIndexRoute
+}
+
+const ProfileRouteRouteChildren: ProfileRouteRouteChildren = {
+  ProfileAssetsRoute: ProfileAssetsRoute,
+  ProfileIdentitiesRoute: ProfileIdentitiesRoute,
+  ProfileSettingsRoute: ProfileSettingsRoute,
+  ProfileIndexRoute: ProfileIndexRoute,
+}
+
+const ProfileRouteRouteWithChildren = ProfileRouteRoute._addFileChildren(
+  ProfileRouteRouteChildren,
+)
+
 interface AdminAssetsAssetGroupIdRouteRouteChildren {
   AdminAssetsAssetGroupIdAssetsRoute: typeof AdminAssetsAssetGroupIdAssetsRoute
   AdminAssetsAssetGroupIdSettingsRoute: typeof AdminAssetsAssetGroupIdSettingsRoute
@@ -561,11 +653,11 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ProfileRouteRoute: ProfileRouteRouteWithChildren,
   AdminRoute: AdminRouteWithChildren,
   AuthCallbackRoute: AuthCallbackRoute,
   LoginRoute: LoginRoute,
   OnboardRoute: OnboardRoute,
-  ProfileRoute: ProfileRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

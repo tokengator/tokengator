@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router'
 
 import type { OnboardingStatus } from '@/features/organization/feature/organization-feature-active-access'
-import { useAppAuthStateQuery } from '@/features/auth/data-access/use-app-auth-state'
+import { useAppAuthStateQuery } from '@/features/auth/data-access/use-app-auth-state-query'
 import { hasCompletedOnboarding } from '@/features/organization/feature/organization-feature-active-access'
 
 import { ApiStatusIndicator } from './api-status-indicator'

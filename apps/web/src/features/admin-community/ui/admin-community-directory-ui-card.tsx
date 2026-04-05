@@ -4,7 +4,7 @@ import type { AppSessionUser } from '@/features/auth/data-access/get-app-auth-st
 import { formatOwnerSummary } from '@/features/admin-community/util/format-owner-summary.tsx'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import { UiDetailRow } from '@tokengator/ui/components/ui-detail-row'
-import { formatDate } from '@tokengator/ui/util/format-date.ts'
+import { formatDate } from '@tokengator/ui/util/format-date'
 
 interface AdminCommunityDirectoryUiCardProps {
   createdAt: Date | string

@@ -12,12 +12,3 @@ export function useAppAuthStateQuery() {
     initialData: appAuthState,
   })
 }
-
-export function useAppSession() {
-  const query = useAppAuthStateQuery()
-
-  return {
-    ...query,
-    data: query.data?.session ?? null,
-  }
-}

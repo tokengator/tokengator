@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@toke
 
 import { authClient } from '@/features/auth/data-access/auth-client'
 import { refreshAppAuthState } from '@/features/auth/data-access/get-app-auth-state'
-import { useAppAuthStateQuery } from '@/features/auth/data-access/use-app-auth-state'
+import { useAppAuthStateQuery } from '@/features/auth/data-access/use-app-auth-state-query'
 import { AuthFeatureSolanaActions } from '@/features/auth/feature/auth-feature-solana-actions'
 
 export function OnboardFeatureIndex() {

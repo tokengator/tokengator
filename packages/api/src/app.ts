@@ -87,6 +87,9 @@ export function createApiApp() {
       origin: env.CORS_ORIGINS,
     }),
   )
+  app.get('/', (context) => {
+    return context.text('OK')
+  })
 
   app.post('/api/auth/siws/verify', (context, next) => {
     if (env.BETTER_AUTH_SOLANA_SIGN_IN_ENABLED) {

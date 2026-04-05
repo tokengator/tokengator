@@ -7,10 +7,10 @@ dotenv.config({
   quiet: true,
 })
 
-const { env: discordEnv } = await import('@tokengator/env/discord')
+const { env } = await import('@tokengator/env/discord')
 
-configureAppLogger({ env: discordEnv })
+configureAppLogger({ env })
 
 const { registerDiscordCommands } = await import('@tokengator/discord')
 
-await registerDiscordCommands({ env: discordEnv })
+await registerDiscordCommands({ env })

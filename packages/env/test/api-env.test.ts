@@ -20,6 +20,7 @@ const API_ENV_KEYS = [
   'HELIUS_CLUSTER',
   'LOG_DEBUG_CATEGORIES',
   'NODE_ENV',
+  'SCHEDULER_START',
   'SOLANA_ADMIN_ADDRESSES',
   'SOLANA_CLUSTER',
   'SOLANA_ENDPOINT_PUBLIC',
@@ -134,6 +135,34 @@ describe('env', () => {
       const { env } = await import(`../src/api.ts?test=${Date.now()}-false`)
 
       expect(env.DISCORD_BOT_START).toBe(false)
+    } finally {
+      restoreEnv()
+    }
+  })
+
+  test('defaults SCHEDULER_START to true when unset', async () => {
+    const restoreEnv = withApiEnv({
+      SCHEDULER_START: undefined,
+    })
+
+    try {
+      const { env } = await import(`../src/api.ts?test=${Date.now()}-scheduler-default`)
+
+      expect(env.SCHEDULER_START).toBe(true)
+    } finally {
+      restoreEnv()
+    }
+  })
+
+  test('parses SCHEDULER_START=false', async () => {
+    const restoreEnv = withApiEnv({
+      SCHEDULER_START: 'false',
+    })
+
+    try {
+      const { env } = await import(`../src/api.ts?test=${Date.now()}-scheduler-false`)
+
+      expect(env.SCHEDULER_START).toBe(false)
     } finally {
       restoreEnv()
     }

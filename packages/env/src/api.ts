@@ -62,6 +62,7 @@ export const env = createEnv({
     SCHEDULED_INDEX_INTERVAL_MINUTES: positiveIntegerSchema.default(30),
     SCHEDULED_MEMBERSHIP_SYNC_INTERVAL_MINUTES: positiveIntegerSchema.default(5),
     SCHEDULER_POLL_SECONDS: positiveIntegerSchema.default(60),
+    SCHEDULER_START: envBooleanSchema,
     SOLANA_ADMIN_ADDRESSES: solanaAdminAddressesSchema,
     SOLANA_CLUSTER: solanaClusterSchema,
     SOLANA_ENDPOINT_PUBLIC: z.url(),

@@ -1,18 +1,10 @@
-import { createFileRoute } from '@tanstack/react-router'
-
-import { AdminCommunityFeatureOverview } from '@/features/admin-community/feature/admin-community-feature-overview'
-import { Route as CommunityRoute } from './route'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/admin/communities/$organizationId/')({
-  component: RouteComponent,
+  beforeLoad: async ({ params }) => {
+    throw redirect({
+      params,
+      to: '/admin/communities/$organizationId/overview',
+    })
+  },
 })
-
-function RouteComponent() {
-  const { organization } = CommunityRoute.useRouteContext()
-
-  if (!organization) {
-    return null
-  }
-
-  return <AdminCommunityFeatureOverview initialOrganization={organization} />
-}

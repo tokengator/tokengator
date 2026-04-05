@@ -9,7 +9,7 @@ import { type AdminCommunityGetResult, useAdminCommunityGetQuery } from '../data
 const organizationTabs = [
   {
     label: 'Overview',
-    to: '/admin/communities/$organizationId',
+    to: '/admin/communities/$organizationId/overview',
     value: 'overview',
   },
   {
@@ -23,6 +23,16 @@ const organizationTabs = [
     value: 'roles',
   },
   {
+    label: 'Discord',
+    to: '/admin/communities/$organizationId/discord',
+    value: 'discord',
+  },
+  {
+    label: 'Operations',
+    to: '/admin/communities/$organizationId/operations',
+    value: 'operations',
+  },
+  {
     label: 'Settings',
     to: '/admin/communities/$organizationId/settings',
     value: 'settings',
@@ -34,7 +44,7 @@ function getCurrentTab(pathname: string) {
   const lastSegment = segments.at(-1)
   const activeTab = organizationTabs.find((tab) => tab.value === lastSegment)
 
-  return activeTab?.value ?? 'overview'
+  return activeTab?.value ?? null
 }
 
 export function AdminCommunityFeatureShell({
@@ -46,7 +56,7 @@ export function AdminCommunityFeatureShell({
 }) {
   const location = useLocation()
   const navigate = useNavigate()
-  const currentTab = getCurrentTab(location.pathname)
+  const currentTab = getCurrentTab(location.pathname) ?? organizationTabs[0].value
   const organizationId = initialOrganization?.id ?? ''
   const { data, isPending } = useAdminCommunityGetQuery(organizationId, {
     initialData: initialOrganization ?? undefined,

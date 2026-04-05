@@ -25,8 +25,6 @@ interface AdminCommunityRoleUiCardProps {
   name: string
   onDelete: () => void
   onEdit: () => void
-  previewAddCount: number
-  previewRemoveCount: number
   slug: string
   teamMemberCount: number
   teamName: string
@@ -44,8 +42,6 @@ export function AdminCommunityRoleUiCard(props: AdminCommunityRoleUiCardProps) {
     name,
     onDelete,
     onEdit,
-    previewAddCount,
-    previewRemoveCount,
     slug,
     teamMemberCount,
     teamName,
@@ -72,16 +68,10 @@ export function AdminCommunityRoleUiCard(props: AdminCommunityRoleUiCardProps) {
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-3 text-sm">
-        <div className="grid gap-2 md:grid-cols-3">
+        <div className="grid gap-2 md:grid-cols-2">
           <div className="rounded-lg border p-3">
             <div className="text-muted-foreground">Current Team Members</div>
             <div>{teamMemberCount}</div>
-          </div>
-          <div className="rounded-lg border p-3">
-            <div className="text-muted-foreground">Preview Diff</div>
-            <div>
-              +{previewAddCount} / -{previewRemoveCount}
-            </div>
           </div>
           <div className="rounded-lg border p-3">
             <div className="text-muted-foreground">Discord Mapping</div>

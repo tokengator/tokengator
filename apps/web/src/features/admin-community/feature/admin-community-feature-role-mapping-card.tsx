@@ -90,11 +90,8 @@ interface AdminCommunityFeatureRoleMappingCardProps {
   hasDiscordGuildRolesError: boolean
   isDiscordGuildRolesPending: boolean
   onDelete: () => void
-  onDiscordSyncResultReset: () => void
   onEdit: () => void
   organizationId: string
-  previewAddCount: number
-  previewRemoveCount: number
 }
 
 export function AdminCommunityFeatureRoleMappingCard(props: AdminCommunityFeatureRoleMappingCardProps) {
@@ -105,11 +102,8 @@ export function AdminCommunityFeatureRoleMappingCard(props: AdminCommunityFeatur
     hasDiscordGuildRolesError,
     isDiscordGuildRolesPending,
     onDelete,
-    onDiscordSyncResultReset,
     onEdit,
     organizationId,
-    previewAddCount,
-    previewRemoveCount,
   } = props
   const [discordRoleDraftOverride, setDiscordRoleDraftOverride] = useState<string | null>(null)
   const setDiscordRoleMapping = useAdminCommunityDiscordRoleMappingSet(organizationId)
@@ -178,7 +172,6 @@ export function AdminCommunityFeatureRoleMappingCard(props: AdminCommunityFeatur
         communityRoleId: communityRole.id,
         discordRoleId: null,
       })
-      onDiscordSyncResultReset()
       setDiscordRoleDraftOverride('')
     } catch {}
   }
@@ -189,7 +182,6 @@ export function AdminCommunityFeatureRoleMappingCard(props: AdminCommunityFeatur
         communityRoleId: communityRole.id,
         discordRoleId: currentDiscordRoleDraft,
       })
-      onDiscordSyncResultReset()
       setDiscordRoleDraftOverride(null)
     } catch {}
   }
@@ -270,8 +262,6 @@ export function AdminCommunityFeatureRoleMappingCard(props: AdminCommunityFeatur
       name={communityRole.name}
       onDelete={onDelete}
       onEdit={onEdit}
-      previewAddCount={previewAddCount}
-      previewRemoveCount={previewRemoveCount}
       slug={communityRole.slug}
       teamMemberCount={communityRole.teamMemberCount}
       teamName={communityRole.teamName}

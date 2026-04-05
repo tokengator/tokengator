@@ -13,7 +13,6 @@ import {
 
 import { useAdminAssetGroupListQuery } from '@/features/admin-asset/data-access/use-admin-asset-group-list-query'
 
-import type { AdminCommunityMembershipSyncResult } from '../data-access/admin-community-role-types'
 import { useAdminCommunityDiscordGuildRolesQuery } from '../data-access/use-admin-community-discord-guild-roles-query'
 import { useAdminCommunityRoleCreate } from '../data-access/use-admin-community-role-create'
 import { useAdminCommunityRoleDelete } from '../data-access/use-admin-community-role-delete'
@@ -28,14 +27,11 @@ import {
 import { AdminCommunityFeatureRoleMappingCard } from './admin-community-feature-role-mapping-card'
 
 interface AdminCommunityFeatureRoleCatalogProps {
-  membershipSyncResult: AdminCommunityMembershipSyncResult | null
-  onDiscordSyncResultReset: () => void
-  onMembershipSyncResultReset: () => void
   organizationId: string
 }
 
 export function AdminCommunityFeatureRoleCatalog(props: AdminCommunityFeatureRoleCatalogProps) {
-  const { membershipSyncResult, onDiscordSyncResultReset, onMembershipSyncResultReset, organizationId } = props
+  const { organizationId } = props
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [deletePendingRole, setDeletePendingRole] = useState<{ id: string; name: string } | null>(null)
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null)
@@ -59,11 +55,6 @@ export function AdminCommunityFeatureRoleCatalog(props: AdminCommunityFeatureRol
     })) ?? []
   const editingRole = communityRoles.find((communityRole) => communityRole.id === editingRoleId) ?? null
 
-  function resetPreviewState() {
-    onDiscordSyncResultReset()
-    onMembershipSyncResultReset()
-  }
-
   async function handleCreateRole(values: AdminCommunityRoleUiFormSubmitValues) {
     try {
       await createCommunityRole.mutateAsync({
@@ -71,7 +62,6 @@ export function AdminCommunityFeatureRoleCatalog(props: AdminCommunityFeatureRol
         organizationId,
       })
       setCreateDialogOpen(false)
-      resetPreviewState()
     } catch {}
   }
 
@@ -85,7 +75,6 @@ export function AdminCommunityFeatureRoleCatalog(props: AdminCommunityFeatureRol
         communityRoleId: deletePendingRole.id,
       })
       setDeletePendingRole(null)
-      resetPreviewState()
     } catch {}
   }
 
@@ -100,7 +89,6 @@ export function AdminCommunityFeatureRoleCatalog(props: AdminCommunityFeatureRol
         data: values,
       })
       setEditingRoleId(null)
-      resetPreviewState()
     } catch {}
   }
 
@@ -147,8 +135,6 @@ export function AdminCommunityFeatureRoleCatalog(props: AdminCommunityFeatureRol
             <p className="text-muted-foreground text-sm">No token-gated roles yet.</p>
           ) : null}
           {communityRoles.map((communityRole) => {
-            const previewRole = membershipSyncResult?.roles.find((role) => role.id === communityRole.id)
-
             return (
               <AdminCommunityFeatureRoleMappingCard
                 communityRole={communityRole}
@@ -163,11 +149,8 @@ export function AdminCommunityFeatureRoleCatalog(props: AdminCommunityFeatureRol
                     name: communityRole.name,
                   })
                 }
-                onDiscordSyncResultReset={onDiscordSyncResultReset}
                 onEdit={() => setEditingRoleId(communityRole.id)}
                 organizationId={organizationId}
-                previewAddCount={previewRole?.addCount ?? 0}
-                previewRemoveCount={previewRole?.removeCount ?? 0}
               />
             )
           })}

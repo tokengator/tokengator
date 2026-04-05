@@ -12,13 +12,22 @@ export function useAdminCommunityDiscordConnectionDelete(organizationId: string)
         toast.error(error.message)
       },
       onSuccess: async () => {
-        await queryClient.invalidateQueries({
-          queryKey: orpc.adminOrganization.get.key({
-            input: {
-              organizationId,
-            },
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: orpc.adminCommunityRole.listDiscordGuildRoles.key({
+              input: {
+                organizationId,
+              },
+            }),
           }),
-        })
+          queryClient.invalidateQueries({
+            queryKey: orpc.adminOrganization.get.key({
+              input: {
+                organizationId,
+              },
+            }),
+          }),
+        ])
         toast.success('Discord server disconnected.')
       },
     }),

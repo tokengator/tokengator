@@ -1,7 +1,5 @@
-import type { ReactNode } from 'react'
 import { Loader2, Plus } from 'lucide-react'
 import { useState } from 'react'
-import type { UiStatusVariants } from '@tokengator/ui/components/ui-status'
 import { Button } from '@tokengator/ui/components/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import {
@@ -15,33 +13,21 @@ import {
 
 import { useAdminAssetGroupListQuery } from '@/features/admin-asset/data-access/use-admin-asset-group-list-query'
 
-import type {
-  AdminCommunityMembershipSyncResult,
-  AdminCommunityRoleRecord,
-} from '../data-access/admin-community-role-types'
+import type { AdminCommunityMembershipSyncResult } from '../data-access/admin-community-role-types'
+import { useAdminCommunityDiscordGuildRolesQuery } from '../data-access/use-admin-community-discord-guild-roles-query'
 import { useAdminCommunityRoleCreate } from '../data-access/use-admin-community-role-create'
 import { useAdminCommunityRoleDelete } from '../data-access/use-admin-community-role-delete'
+import { useAdminCommunityRoleListQuery } from '../data-access/use-admin-community-role-list-query'
 import { useAdminCommunityRoleUpdate } from '../data-access/use-admin-community-role-update'
-import { AdminCommunityRoleUiCard } from '../ui/admin-community-role-ui-card'
 import { AdminCommunityRoleUiDeleteDialog } from '../ui/admin-community-role-ui-delete-dialog'
 import {
   AdminCommunityRoleUiForm,
   getAdminCommunityRoleUiDefaultValues,
   type AdminCommunityRoleUiFormSubmitValues,
 } from '../ui/admin-community-role-ui-form'
-
-export interface AdminCommunityRoleMappingPresentation {
-  discordMappingLabel: string
-  discordMappingTone: UiStatusVariants['tone']
-  discordMappingStatusLabel: string
-  mappingContent: ReactNode
-}
+import { AdminCommunityFeatureRoleMappingCard } from './admin-community-feature-role-mapping-card'
 
 interface AdminCommunityFeatureRoleCatalogProps {
-  communityRoles: AdminCommunityRoleRecord[]
-  errorMessage: string | null
-  getRoleMappingPresentation: (communityRole: AdminCommunityRoleRecord) => AdminCommunityRoleMappingPresentation
-  isPending: boolean
   membershipSyncResult: AdminCommunityMembershipSyncResult | null
   onDiscordSyncResultReset: () => void
   onMembershipSyncResultReset: () => void
@@ -49,25 +35,21 @@ interface AdminCommunityFeatureRoleCatalogProps {
 }
 
 export function AdminCommunityFeatureRoleCatalog(props: AdminCommunityFeatureRoleCatalogProps) {
-  const {
-    communityRoles,
-    errorMessage,
-    getRoleMappingPresentation,
-    isPending,
-    membershipSyncResult,
-    onDiscordSyncResultReset,
-    onMembershipSyncResultReset,
-    organizationId,
-  } = props
+  const { membershipSyncResult, onDiscordSyncResultReset, onMembershipSyncResultReset, organizationId } = props
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [deletePendingRole, setDeletePendingRole] = useState<{ id: string; name: string } | null>(null)
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null)
   const assetGroups = useAdminAssetGroupListQuery({
     limit: 100,
   })
+  const discordGuildRolesQuery = useAdminCommunityDiscordGuildRolesQuery(organizationId)
+  const communityRolesQuery = useAdminCommunityRoleListQuery(organizationId)
   const createCommunityRole = useAdminCommunityRoleCreate(organizationId)
   const deleteCommunityRole = useAdminCommunityRoleDelete(organizationId)
   const updateCommunityRole = useAdminCommunityRoleUpdate(organizationId)
+  const communityRoles = communityRolesQuery.data?.communityRoles ?? []
+  const discordGuildRoles = discordGuildRolesQuery.data
+  const errorMessage = communityRolesQuery.error?.message ?? null
   const assetGroupOptions =
     assetGroups.data?.assetGroups.map((assetGroup) => ({
       enabled: assetGroup.enabled,
@@ -154,43 +136,38 @@ export function AdminCommunityFeatureRoleCatalog(props: AdminCommunityFeatureRol
           </Dialog>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
-          {assetGroups.isPending || isPending ? (
+          {assetGroups.isPending || communityRolesQuery.isPending ? (
             <div className="text-muted-foreground flex items-center gap-2 text-sm">
               <Loader2 className="size-4 animate-spin" />
               Loading community roles...
             </div>
           ) : null}
           {errorMessage ? <div className="text-destructive text-sm">{errorMessage}</div> : null}
-          {!isPending && !communityRoles.length ? (
+          {!communityRolesQuery.isPending && !communityRoles.length ? (
             <p className="text-muted-foreground text-sm">No token-gated roles yet.</p>
           ) : null}
           {communityRoles.map((communityRole) => {
-            const mappingPresentation = getRoleMappingPresentation(communityRole)
             const previewRole = membershipSyncResult?.roles.find((role) => role.id === communityRole.id)
 
             return (
-              <AdminCommunityRoleUiCard
-                conditions={communityRole.conditions}
-                discordMappingLabel={mappingPresentation.discordMappingLabel}
-                discordMappingStatusLabel={mappingPresentation.discordMappingStatusLabel}
-                discordMappingTone={mappingPresentation.discordMappingTone}
-                enabled={communityRole.enabled}
+              <AdminCommunityFeatureRoleMappingCard
+                communityRole={communityRole}
+                communityRoles={communityRoles}
+                discordGuildRoles={discordGuildRoles}
+                hasDiscordGuildRolesError={Boolean(discordGuildRolesQuery.error)}
+                isDiscordGuildRolesPending={discordGuildRolesQuery.isPending}
                 key={communityRole.id}
-                mappingContent={mappingPresentation.mappingContent}
-                matchMode={communityRole.matchMode}
-                name={communityRole.name}
                 onDelete={() =>
                   setDeletePendingRole({
                     id: communityRole.id,
                     name: communityRole.name,
                   })
                 }
+                onDiscordSyncResultReset={onDiscordSyncResultReset}
                 onEdit={() => setEditingRoleId(communityRole.id)}
+                organizationId={organizationId}
                 previewAddCount={previewRole?.addCount ?? 0}
                 previewRemoveCount={previewRole?.removeCount ?? 0}
-                slug={communityRole.slug}
-                teamMemberCount={communityRole.teamMemberCount}
-                teamName={communityRole.teamName}
               />
             )
           })}

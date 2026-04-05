@@ -6,6 +6,7 @@ const DISCORD_ENV_KEYS = [
   'DISCORD_BOT_TOKEN',
   'DISCORD_CLIENT_ID',
   'DISCORD_GUILD_ID',
+  'LOG_DEBUG_CATEGORIES',
   'NODE_ENV',
   'WEB_URL',
 ] as const
@@ -62,6 +63,7 @@ describe('discord env', () => {
       expect(env.DISCORD_BOT_TOKEN).toBeUndefined()
       expect(env.DISCORD_CLIENT_ID).toBeUndefined()
       expect(env.DISCORD_GUILD_ID).toBeUndefined()
+      expect(env.LOG_DEBUG_CATEGORIES).toEqual([])
       expect(env.WEB_URL).toBeUndefined()
     } finally {
       restoreEnv()
@@ -93,6 +95,20 @@ describe('discord env', () => {
 
       expect(env.BETTER_AUTH_URL).toBe('https://auth.example.com')
       expect(env.WEB_URL).toBe('https://app.example.com')
+    } finally {
+      restoreEnv()
+    }
+  })
+
+  test('parses LOG_DEBUG_CATEGORIES', async () => {
+    const restoreEnv = withDiscordEnv({
+      LOG_DEBUG_CATEGORIES: 'indexer,asset-index',
+    })
+
+    try {
+      const { env } = await import(`../src/discord.ts?test=${Date.now()}-debug-categories`)
+
+      expect(env.LOG_DEBUG_CATEGORIES).toEqual(['asset-index', 'indexer'])
     } finally {
       restoreEnv()
     }

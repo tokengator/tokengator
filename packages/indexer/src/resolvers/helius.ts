@@ -1,3 +1,5 @@
+import { getAppLogger } from '@tokengator/logger'
+
 import type { ResolverContext, ResolverResult } from '../types'
 import { ProviderError } from '../errors'
 import { defineResolver, type ResolverDefinition } from '../resolver'
@@ -34,6 +36,7 @@ export const RESOLVER_KINDS = [HELIUS_COLLECTION_ASSETS, HELIUS_TOKEN_ACCOUNTS] 
 export type ResolverKind = (typeof RESOLVER_KINDS)[number]
 
 const DEFAULT_PAGE_LIMIT = 1000
+const logger = getAppLogger('indexer', 'helius-resolver')
 
 export function createHeliusResolvers(adapter: HeliusAdapter): ResolverDefinition[] {
   return [
@@ -98,7 +101,11 @@ async function paginateWithCursor(input: {
   while (true) {
     assertNotAborted(input.context.signal)
 
-    input.context.logger?.debug?.(`[${resolverLabel}] fetching page=${page} cursor=${cursor ?? 'none'}`)
+    logger.debug('[{resolverLabel}] fetching page={page} cursor={cursor}', {
+      cursor: cursor ?? 'none',
+      page,
+      resolverLabel,
+    })
 
     const response = await input.fetchPage({
       cursor,
@@ -108,7 +115,10 @@ async function paginateWithCursor(input: {
 
     const items = response.items ?? []
     if (items.length === 0) {
-      input.context.logger?.debug?.(`[${resolverLabel}] stopping: empty page ${page}`)
+      logger.debug('[{resolverLabel}] stopping: empty page {page}', {
+        page,
+        resolverLabel,
+      })
       break
     }
 
@@ -123,7 +133,10 @@ async function paginateWithCursor(input: {
     total += items.length
 
     if (!shouldContinue) {
-      input.context.logger?.debug?.(`[${resolverLabel}] stopping: onPage returned false at page ${page}`)
+      logger.debug('[{resolverLabel}] stopping: onPage returned false at page {page}', {
+        page,
+        resolverLabel,
+      })
       break
     }
 
@@ -132,7 +145,10 @@ async function paginateWithCursor(input: {
     const hasNextPage = !response.cursor && items.length >= input.limit
 
     if (!hasNextCursor && !hasNextPage) {
-      input.context.logger?.debug?.(`[${resolverLabel}] stopping: cursor/limit boundary at page ${page}`)
+      logger.debug('[{resolverLabel}] stopping: cursor/limit boundary at page {page}', {
+        page,
+        resolverLabel,
+      })
       break
     }
 

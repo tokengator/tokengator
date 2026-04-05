@@ -20,6 +20,8 @@
     "test": "bun test ./test"
   },
   "dependencies": {
+    "@logtape/hono": "catalog:",
+    "@logtape/logtape": "catalog:",
     "@orpc/client": "catalog:",
     "@orpc/openapi": "catalog:",
     "@orpc/server": "catalog:",
@@ -29,6 +31,7 @@
     "@tokengator/discord": "workspace:*",
     "@tokengator/env": "workspace:*",
     "@tokengator/indexer": "workspace:*",
+    "@tokengator/logger": "workspace:*",
     "dotenv": "catalog:",
     "drizzle-orm": "catalog:",
     "hono": "catalog:",

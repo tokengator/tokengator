@@ -1,5 +1,4 @@
 export interface ResolverContext {
-  logger?: Partial<Pick<Console, 'debug' | 'error' | 'info' | 'warn'>>
   signal?: AbortSignal
 }
 

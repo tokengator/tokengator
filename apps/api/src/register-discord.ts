@@ -1,14 +1,16 @@
 import dotenv from 'dotenv'
 import { resolve } from 'node:path'
+import { configureAppLogger } from '@tokengator/logger'
 
 dotenv.config({
   path: resolve(import.meta.dir, '../.env'),
   quiet: true,
 })
 
-const [{ registerDiscordCommands }, { env: discordEnv }] = await Promise.all([
-  import('@tokengator/discord'),
-  import('@tokengator/env/discord'),
-])
+const { env: discordEnv } = await import('@tokengator/env/discord')
+
+configureAppLogger({ env: discordEnv })
+
+const { registerDiscordCommands } = await import('@tokengator/discord')
 
 await registerDiscordCommands({ env: discordEnv })

@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import { APP_DEBUG_CATEGORY_VALUES } from '@tokengator/logger/debug-categories'
 
 import { parseStringList } from '../src/lib/server-env-list'
 
@@ -17,7 +18,7 @@ const API_ENV_KEYS = [
   'DISCORD_GUILD_ID',
   'HELIUS_API_KEY',
   'HELIUS_CLUSTER',
-  'INDEXER_DEBUG',
+  'LOG_DEBUG_CATEGORIES',
   'NODE_ENV',
   'SOLANA_ADMIN_ADDRESSES',
   'SOLANA_CLUSTER',
@@ -45,6 +46,7 @@ function withApiEnv(overrides: Partial<Record<(typeof API_ENV_KEYS)[number], str
     DISCORD_CLIENT_SECRET: 'discord-client-secret',
     HELIUS_API_KEY: 'helius-api-key',
     HELIUS_CLUSTER: 'devnet',
+    LOG_DEBUG_CATEGORIES: '',
     NODE_ENV: 'test',
     SOLANA_ADMIN_ADDRESSES: '',
     SOLANA_CLUSTER: 'devnet',
@@ -85,6 +87,10 @@ describe('parseStringList', () => {
         '  vote111111111111111111111111111111111111111, So11111111111111111111111111111111111111112, vote111111111111111111111111111111111111111  ',
       ),
     ).toEqual(['So11111111111111111111111111111111111111112', 'vote111111111111111111111111111111111111111'])
+  })
+
+  test('trims, dedupes, and sorts LOG_DEBUG_CATEGORIES values', () => {
+    expect(parseStringList('  indexer, asset-index, indexer  ')).toEqual(['asset-index', 'indexer'])
   })
 })
 
@@ -128,6 +134,20 @@ describe('env', () => {
       const { env } = await import(`../src/api.ts?test=${Date.now()}-false`)
 
       expect(env.DISCORD_BOT_START).toBe(false)
+    } finally {
+      restoreEnv()
+    }
+  })
+
+  test('parses LOG_DEBUG_CATEGORIES into a sorted list of allowed values', async () => {
+    const restoreEnv = withApiEnv({
+      LOG_DEBUG_CATEGORIES: 'indexer, all, asset-index, indexer',
+    })
+
+    try {
+      const { env } = await import(`../src/api.ts?test=${Date.now()}-debug-categories`)
+
+      expect(env.LOG_DEBUG_CATEGORIES).toEqual([...APP_DEBUG_CATEGORY_VALUES])
     } finally {
       restoreEnv()
     }

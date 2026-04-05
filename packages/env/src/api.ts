@@ -2,6 +2,7 @@ import 'dotenv/config'
 import { createEnv } from '@t3-oss/env-core'
 import { z } from 'zod'
 
+import { logDebugCategoriesSchema } from './lib/log-debug-categories'
 import { createEnvBooleanSchema } from './lib/server-env-boolean'
 import { parseStringList } from './lib/server-env-list'
 
@@ -32,7 +33,6 @@ const solanaAdminAddressesSchema = z
   .pipe(z.array(z.string().min(1)))
 
 const envBooleanSchema = createEnvBooleanSchema(true)
-const envBooleanDisabledSchema = createEnvBooleanSchema(false)
 
 const heliusClusterSchema = z.enum(['devnet', 'mainnet'])
 const positiveIntegerSchema = z.coerce.number().int().positive()
@@ -56,7 +56,7 @@ export const env = createEnv({
     DISCORD_GUILD_ID: z.string().min(1).optional(),
     HELIUS_API_KEY: z.string().min(1),
     HELIUS_CLUSTER: heliusClusterSchema,
-    INDEXER_DEBUG: envBooleanDisabledSchema,
+    LOG_DEBUG_CATEGORIES: logDebugCategoriesSchema,
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
     SCHEDULED_DISCORD_SYNC_INTERVAL_MINUTES: positiveIntegerSchema.default(1),
     SCHEDULED_INDEX_INTERVAL_MINUTES: positiveIntegerSchema.default(30),

@@ -1,5 +1,6 @@
 import { type Database } from '@tokengator/db'
 import { env } from '@tokengator/env/api'
+import { formatLogError, getAppLogger } from '@tokengator/logger'
 
 import {
   listEnabledAssetGroupsDueForScheduledIndexing,
@@ -13,11 +14,7 @@ import {
 } from './lib/admin-community-role-sync'
 import { getSchedulerPollMs } from './lib/automation-config'
 
-export interface ScheduledJobsLogger {
-  error?: (message?: unknown, ...optionalParams: unknown[]) => void
-  info?: (message?: unknown, ...optionalParams: unknown[]) => void
-  warn?: (message?: unknown, ...optionalParams: unknown[]) => void
-}
+const logger = getAppLogger('api', 'scheduled-jobs')
 
 export interface ScheduledJobsDependencies {
   listEnabledAssetGroupsDueForScheduledIndexing?: typeof listEnabledAssetGroupsDueForScheduledIndexing
@@ -44,7 +41,6 @@ export type ScheduledJobsPassResult = {
 async function runScheduledAssetGroupIndexPass(input: {
   database?: Database
   dependencies?: ScheduledJobsDependencies
-  logger: ScheduledJobsLogger
   now?: () => Date
 }) {
   const listDue =
@@ -62,7 +58,6 @@ async function runScheduledAssetGroupIndexPass(input: {
         apiKey: env.HELIUS_API_KEY,
         assetGroup,
         database: input.database,
-        debug: env.INDEXER_DEBUG,
         heliusCluster: env.HELIUS_CLUSTER,
         now: input.now,
       })
@@ -72,10 +67,10 @@ async function runScheduledAssetGroupIndexPass(input: {
         status: result ? 'succeeded' : 'locked',
       })
     } catch (error) {
-      input.logger.error?.(
-        `[scheduled-jobs:index] assetGroupId=${assetGroup.id} failed`,
-        error instanceof Error ? error : new Error('Asset group indexing failed.'),
-      )
+      logger.error('[scheduled-jobs:index] assetGroupId={assetGroupId} failed error={error}', {
+        assetGroupId: assetGroup.id,
+        error: formatLogError(error),
+      })
       results.push({
         assetGroupId: assetGroup.id,
         status: 'failed',
@@ -89,7 +84,6 @@ async function runScheduledAssetGroupIndexPass(input: {
 async function runScheduledCommunityMembershipPass(input: {
   database?: Database
   dependencies?: ScheduledJobsDependencies
-  logger: ScheduledJobsLogger
   now?: () => Date
 }) {
   const listDue =
@@ -110,9 +104,10 @@ async function runScheduledCommunityMembershipPass(input: {
     })
 
     if (result.status === 'failed') {
-      input.logger.error?.(
-        `[scheduled-jobs:membership] organizationId=${organizationId} failed${result.errorMessage ? ` error=${result.errorMessage}` : ''}`,
-      )
+      logger.error('[scheduled-jobs:membership] organizationId={organizationId} failed error={error}', {
+        error: result.errorMessage ?? 'unknown',
+        organizationId,
+      })
     }
 
     results.push(result)
@@ -124,7 +119,6 @@ async function runScheduledCommunityMembershipPass(input: {
 async function runScheduledCommunityDiscordPass(input: {
   database?: Database
   dependencies?: ScheduledJobsDependencies
-  logger: ScheduledJobsLogger
   membershipResults: Awaited<ReturnType<typeof runScheduledCommunityRoleSync>>[]
   now?: () => Date
 }) {
@@ -151,9 +145,10 @@ async function runScheduledCommunityDiscordPass(input: {
     })
 
     if (result.status === 'failed') {
-      input.logger.error?.(
-        `[scheduled-jobs:discord] organizationId=${organizationId} failed${result.errorMessage ? ` error=${result.errorMessage}` : ''}`,
-      )
+      logger.error('[scheduled-jobs:discord] organizationId={organizationId} failed error={error}', {
+        error: result.errorMessage ?? 'unknown',
+        organizationId,
+      })
     }
 
     results.push(result)
@@ -165,35 +160,32 @@ async function runScheduledCommunityDiscordPass(input: {
 export async function runScheduledJobsPass(input?: {
   database?: Database
   dependencies?: ScheduledJobsDependencies
-  logger?: ScheduledJobsLogger
   now?: () => Date
 }) {
-  const logger = input?.logger ?? console
   const startedAt = input?.now?.() ?? new Date()
   const assetGroupResults = await runScheduledAssetGroupIndexPass({
     database: input?.database,
     dependencies: input?.dependencies,
-    logger,
     now: input?.now,
   })
   const communityMembershipResults = await runScheduledCommunityMembershipPass({
     database: input?.database,
     dependencies: input?.dependencies,
-    logger,
     now: input?.now,
   })
   const communityDiscordResults = await runScheduledCommunityDiscordPass({
     database: input?.database,
     dependencies: input?.dependencies,
-    logger,
     membershipResults: communityMembershipResults,
     now: input?.now,
   })
   const finishedAt = input?.now?.() ?? new Date()
 
-  logger.info?.(
-    `[scheduled-jobs] completed assetGroups=${assetGroupResults.length} membership=${communityMembershipResults.length} discord=${communityDiscordResults.length}`,
-  )
+  logger.info('[scheduled-jobs] completed assetGroups={assetGroups} membership={membership} discord={discord}', {
+    assetGroups: assetGroupResults.length,
+    discord: communityDiscordResults.length,
+    membership: communityMembershipResults.length,
+  })
 
   return {
     assetGroupResults,
@@ -207,11 +199,9 @@ export async function runScheduledJobsPass(input?: {
 export async function runScheduledJobsLoop(input?: {
   database?: Database
   dependencies?: ScheduledJobsDependencies
-  logger?: ScheduledJobsLogger
   now?: () => Date
   signal?: AbortSignal
 }) {
-  const logger = input?.logger ?? console
   const signal = input?.signal
   let stopLogged = false
 
@@ -221,7 +211,7 @@ export async function runScheduledJobsLoop(input?: {
     }
 
     stopLogged = true
-    logger.info?.('[scheduled-jobs] stopping')
+    logger.info('[scheduled-jobs] stopping')
   }
 
   async function waitForNextPass() {
@@ -272,14 +262,12 @@ export async function runScheduledJobsLoop(input?: {
       await runScheduledJobsPass({
         database: input?.database,
         dependencies: input?.dependencies,
-        logger,
         now: input?.now,
       })
     } catch (error) {
-      logger.error?.(
-        '[scheduled-jobs] pass failed',
-        error instanceof Error ? error : new Error('Scheduled jobs pass failed.'),
-      )
+      logger.error('[scheduled-jobs] pass failed error={error}', {
+        error: formatLogError(error),
+      })
     }
 
     if (signal?.aborted) {

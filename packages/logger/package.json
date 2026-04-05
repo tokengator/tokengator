@@ -1,5 +1,5 @@
 {
-  "name": "@tokengator/indexer",
+  "name": "@tokengator/logger",
   "type": "module",
   "exports": {
     ".": {
@@ -10,12 +10,10 @@
     }
   },
   "scripts": {
-    "check-types": "tsc -b",
-    "test": "bun test ./test"
+    "check-types": "tsc -b"
   },
   "dependencies": {
-    "@tokengator/logger": "workspace:*",
-    "helius-sdk": "^2.2.2"
+    "@logtape/logtape": "catalog:"
   },
   "devDependencies": {
     "@tokengator/config": "workspace:*",

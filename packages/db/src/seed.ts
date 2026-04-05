@@ -1,5 +1,6 @@
 import dotenv from 'dotenv'
 import { resolve } from 'node:path'
+import { configureAppLogger, getAppLogger } from '@tokengator/logger'
 
 import { alice, bob, createDevSeedUsers } from './dev-seed-users'
 import { isLocalDatabaseUrl } from './lib/local-database-url'
@@ -17,6 +18,7 @@ dotenv.config({
 const DEV_PRIMARY_ORGANIZATION_SLUG = 'acme'
 const DEV_SEED_NAMESPACE = 'dev'
 const SEED_SKIPPED_MESSAGE = 'Skipping local development seed because existing user or organization data was found.'
+const logger = getAppLogger('db', 'seed')
 const devSeedUsers = createDevSeedUsers()
 const devSeedAssetGroups = [
   {
@@ -578,14 +580,16 @@ export async function seedDatabase(): Promise<SeedResult> {
 }
 
 if (import.meta.main) {
+  configureAppLogger({ env: process.env })
+
   const summary = await seedDatabase()
 
   if (summary.skipped) {
-    console.log(SEED_SKIPPED_MESSAGE)
+    logger.info(SEED_SKIPPED_MESSAGE)
     process.exit(0)
   }
 
-  console.log(
+  logger.info(
     [
       'Seeded local development data.',
       `Users: ${devSeed.users.map((user) => `${user.name} (@${user.username})`).join(', ')}`,

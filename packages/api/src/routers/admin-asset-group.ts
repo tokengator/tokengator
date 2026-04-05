@@ -183,7 +183,6 @@ export const adminAssetGroupRouter = {
             id: existingAssetGroup.id,
             type: existingAssetGroup.type,
           },
-          debug: env.INDEXER_DEBUG,
           heliusCluster: env.HELIUS_CLUSTER,
           signal: context.requestSignal,
         })

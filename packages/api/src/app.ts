@@ -1,3 +1,4 @@
+import { honoLogger } from '@logtape/hono'
 import { OpenAPIHandler } from '@orpc/openapi/fetch'
 import { OpenAPIReferencePlugin } from '@orpc/openapi/plugins'
 import { onError } from '@orpc/server'
@@ -5,12 +6,14 @@ import { RPCHandler } from '@orpc/server/fetch'
 import { ZodToJsonSchemaConverter } from '@orpc/zod/zod4'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { logger } from 'hono/logger'
 import { auth } from '@tokengator/auth'
 import { env } from '@tokengator/env/api'
+import { formatLogError, getAppLogger } from '@tokengator/logger'
 
 import { createContext } from './context'
 import { appRouter } from './router'
+
+const logger = getAppLogger('api', 'server')
 
 function mergeHeaders(target: Headers, source?: Headers | null) {
   if (!source) {
@@ -49,7 +52,9 @@ export function createApiApp() {
   const apiHandler = new OpenAPIHandler(appRouter, {
     interceptors: [
       onError((error) => {
-        console.error(error)
+        logger.error('Unhandled API reference error: {error}', {
+          error: formatLogError(error),
+        })
       }),
     ],
     plugins: [
@@ -61,12 +66,18 @@ export function createApiApp() {
   const rpcHandler = new RPCHandler(appRouter, {
     interceptors: [
       onError((error) => {
-        console.error(error)
+        logger.error('Unhandled RPC error: {error}', {
+          error: formatLogError(error),
+        })
       }),
     ],
   })
 
-  app.use(logger())
+  app.use(
+    honoLogger({
+      category: ['tokengator', 'api', 'http'],
+    }),
+  )
   app.use(
     '/*',
     cors({

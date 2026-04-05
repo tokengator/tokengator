@@ -1,9 +1,12 @@
 import { createHelius, type HeliusRpcOptions } from 'helius-sdk'
+import { getAppLogger } from '@tokengator/logger'
 
 import type { HeliusAdapter } from '../resolvers/helius'
 import { ProviderError, type ProviderErrorCode } from '../errors'
 
-export interface CreateHeliusSdkAdapterOptions extends HeliusRequestLimiterOptions, HeliusRequestDebugOptions {
+const logger = getAppLogger('indexer', 'helius-adapter')
+
+export interface CreateHeliusSdkAdapterOptions extends HeliusRequestLimiterOptions {
   apiKey: string
   baseUrl?: HeliusRpcOptions['baseUrl']
   network?: HeliusRpcOptions['network']
@@ -29,11 +32,6 @@ export interface HeliusClientSubset {
   }): Promise<{ cursor?: string; token_accounts?: unknown[] }>
 }
 
-export interface HeliusRequestDebugOptions {
-  debugRequests?: boolean
-  logger?: Partial<Pick<Console, 'debug' | 'error' | 'info' | 'warn'>>
-}
-
 export interface HeliusRequestLimiterOptions {
   rpsLimit?: number
 }
@@ -46,15 +44,13 @@ export interface HeliusRetryOptions {
 }
 
 interface AdapterRuntimeOptions {
-  debugRequests: boolean
-  logger: Partial<Pick<Console, 'debug' | 'error' | 'info' | 'warn'>>
   random: () => number
   retry: Required<HeliusRetryOptions>
   sleep: (ms: number) => Promise<void>
   waitForRateLimit: () => Promise<void>
 }
 
-interface CreateHeliusAdapterFromClientOptions extends HeliusRequestLimiterOptions, HeliusRequestDebugOptions {
+interface CreateHeliusAdapterFromClientOptions extends HeliusRequestLimiterOptions {
   random?: () => number
   retry?: HeliusRetryOptions
   sleep?: (ms: number) => Promise<void>
@@ -86,8 +82,6 @@ export function createHeliusSdkAdapter(options: CreateHeliusSdkAdapterOptions): 
   const client = createHelius(options)
 
   return createHeliusAdapterFromClient(client, {
-    debugRequests: options.debugRequests,
-    logger: options.logger,
     retry: options.retry,
     rpsLimit: options.rpsLimit,
   })
@@ -238,8 +232,6 @@ function createRuntimeOptions(options: CreateHeliusAdapterFromClientOptions): Ad
   }
 
   return {
-    debugRequests: options.debugRequests ?? false,
-    logger: options.logger ?? console,
     random: options.random ?? Math.random,
     retry: {
       attempts: Math.max(1, Math.floor(attempts)),
@@ -404,19 +396,23 @@ async function performRequest<T>(
   try {
     const response = await request()
 
-    if (runtime.debugRequests) {
-      runtime.logger.info?.(
-        `[helius-adapter] method=${method} durationMs=${Date.now() - startedAt} outcome=success params=${safeJson(params)}`,
-      )
-    }
+    logger.debug('[helius-adapter] method={method} durationMs={durationMs} outcome=success params={params}', () => ({
+      durationMs: Date.now() - startedAt,
+      method,
+      params: safeJson(params),
+    }))
 
     return response
   } catch (error) {
-    if (runtime.debugRequests) {
-      runtime.logger.warn?.(
-        `[helius-adapter] method=${method} durationMs=${Date.now() - startedAt} outcome=failure params=${safeJson(params)} error=${formatMessage(error, 'unknown error')}`,
-      )
-    }
+    logger.debug(
+      '[helius-adapter] method={method} durationMs={durationMs} outcome=failure params={params} error={error}',
+      () => ({
+        durationMs: Date.now() - startedAt,
+        error: formatMessage(error, 'unknown error'),
+        method,
+        params: safeJson(params),
+      }),
+    )
 
     throw error
   }

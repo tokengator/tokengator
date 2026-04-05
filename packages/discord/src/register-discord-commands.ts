@@ -1,8 +1,11 @@
 import { REST, Routes } from 'discord.js'
+import { formatLogError, getAppLogger } from '@tokengator/logger'
 
 import type { DiscordContext } from './discord-context'
 import { discordChatInputCommands } from './commands'
 import { getDiscordBotToken, getDiscordClientId, getDiscordGuildId } from './discord-env'
+
+const logger = getAppLogger('discord', 'register-commands')
 
 export interface RegisterDiscordCommandsOptions {
   clientId?: string
@@ -24,9 +27,14 @@ export async function registerDiscordCommands(
       body: discordChatInputCommands.map((command) => command.data),
     })
 
-    console.info(`[discord] Registered ${discordChatInputCommands.length} guild command(s) for guild ${guildId}.`)
+    logger.info('Registered {count} guild command(s) for guild {guildId}.', {
+      count: discordChatInputCommands.length,
+      guildId,
+    })
   } catch (error) {
-    console.error('[discord] Failed to register guild commands.', error)
+    logger.error('Failed to register guild commands: {error}', {
+      error: formatLogError(error),
+    })
     throw error
   }
 }

@@ -16,6 +16,7 @@
   "dependencies": {
     "@tokengator/db": "workspace:*",
     "@tokengator/env": "workspace:*",
+    "@tokengator/logger": "workspace:*",
     "discord.js": "catalog:"
   },
   "devDependencies": {

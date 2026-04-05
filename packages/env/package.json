@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@t3-oss/env-core": "^0.13.1",
+    "@tokengator/logger": "workspace:*",
     "dotenv": "catalog:",
     "zod": "catalog:"
   },

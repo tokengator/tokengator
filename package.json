@@ -10,6 +10,8 @@
     ],
     "catalog": {
       "@libsql/client": "0.17.2",
+      "@logtape/hono": "^2.0.5",
+      "@logtape/logtape": "^2.0.5",
       "@orpc/client": "^1.13.13",
       "@orpc/openapi": "^1.13.13",
       "@orpc/server": "^1.13.13",

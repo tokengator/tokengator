@@ -1,9 +1,12 @@
 import { Client, Events, GatewayIntentBits } from 'discord.js'
 import { once } from 'node:events'
+import { formatLogError, getAppLogger } from '@tokengator/logger'
 
 import type { DiscordContext } from './discord-context'
 import { discordChatInputCommandMap } from './commands'
 import { getDiscordBotToken } from './discord-env'
+
+const logger = getAppLogger('discord', 'bot')
 
 export interface DiscordBotRuntime {
   stop(): Promise<void>
@@ -23,7 +26,10 @@ export async function startDiscordBot(
   })
 
   client.once(Events.ClientReady, (readyClient) => {
-    console.info(`[discord] Logged in as ${readyClient.user.tag} across ${readyClient.guilds.cache.size} guild(s).`)
+    logger.info('Logged in as {tag} across {guildCount} guild(s).', {
+      guildCount: readyClient.guilds.cache.size,
+      tag: readyClient.user.tag,
+    })
   })
 
   client.on(Events.InteractionCreate, async (interaction) => {
@@ -45,7 +51,10 @@ export async function startDiscordBot(
     try {
       await command.execute(ctx, interaction)
     } catch (error) {
-      console.error(`[discord] Failed to execute /${interaction.commandName}.`, error)
+      logger.error('Failed to execute /{commandName}: {error}', {
+        commandName: interaction.commandName,
+        error: formatLogError(error),
+      })
 
       try {
         if (interaction.deferred || interaction.replied) {
@@ -62,7 +71,10 @@ export async function startDiscordBot(
           ephemeral: true,
         })
       } catch (replyError) {
-        console.error(`[discord] Failed to report interaction error for /${interaction.commandName}.`, replyError)
+        logger.error('Failed to report interaction error for /{commandName}: {error}', {
+          commandName: interaction.commandName,
+          error: formatLogError(replyError),
+        })
       }
     }
   })

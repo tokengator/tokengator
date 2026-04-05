@@ -1,4 +1,5 @@
-import { beforeAll, beforeEach, describe, expect, test } from 'bun:test'
+import { configureSync, resetSync, type LogRecord } from '@logtape/logtape'
+import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 
 type RunScheduledCommunityRoleDiscordSyncResult = Awaited<
   ReturnType<(typeof import('../src/lib/admin-community-role-sync'))['runScheduledCommunityRoleDiscordSync']>
@@ -12,6 +13,7 @@ let discordOrganizationsDue: string[] = []
 let membershipOrganizationsDue: string[] = []
 let scheduledJobs: typeof import('../src/scheduled-jobs')
 let assetGroupsDue: Array<{ address: string; id: string; type: 'collection' | 'mint' }> = []
+let logRecords: LogRecord[] = []
 let assetGroupRunResults = new Map<
   string,
   null | {
@@ -28,6 +30,31 @@ let assetGroupRunResults = new Map<
 
 const communityDiscordResults = new Map<string, RunScheduledCommunityRoleDiscordSyncResult>()
 const communityMembershipResults = new Map<string, RunScheduledCommunityRoleSyncResult>()
+
+function configureTestLogging(onRecord?: (record: LogRecord) => void) {
+  logRecords = []
+  resetSync()
+  configureSync({
+    loggers: [
+      {
+        category: ['logtape'],
+        lowestLevel: 'error',
+        sinks: ['buffer'],
+      },
+      {
+        category: ['tokengator'],
+        lowestLevel: 'info',
+        sinks: ['buffer'],
+      },
+    ],
+    sinks: {
+      buffer(record) {
+        logRecords.push(record)
+        onRecord?.(record)
+      },
+    },
+  })
+}
 
 beforeAll(async () => {
   process.env.BETTER_AUTH_SECRET = '12345678901234567890123456789012'
@@ -60,6 +87,11 @@ beforeEach(() => {
   communityMembershipResults.clear()
   discordOrganizationsDue = []
   membershipOrganizationsDue = []
+  configureTestLogging()
+})
+
+afterEach(() => {
+  resetSync()
 })
 
 describe('runScheduledJobsPass', () => {
@@ -140,7 +172,6 @@ describe('runScheduledJobsPass', () => {
           )
         },
       },
-      logger: {},
       now: () => new Date('2026-04-01T00:00:00.000Z'),
     })
 
@@ -181,8 +212,6 @@ describe('runScheduledJobsPass', () => {
   })
 
   test('logs scheduled sync failure messages with error context', async () => {
-    const errorMessages: string[] = []
-
     membershipOrganizationsDue = ['org-membership']
     communityMembershipResults.set('org-membership', {
       errorMessage: 'Membership blew up.',
@@ -228,15 +257,10 @@ describe('runScheduledJobsPass', () => {
           )
         },
       },
-      logger: {
-        error: (message?: unknown) => {
-          errorMessages.push(String(message))
-        },
-      },
       now: () => new Date('2026-04-01T00:00:00.000Z'),
     })
 
-    expect(errorMessages).toEqual([
+    expect(logRecords.filter((record) => record.level === 'error').map((record) => record.message.join(''))).toEqual([
       '[scheduled-jobs:membership] organizationId=org-membership failed error=Membership blew up.',
       '[scheduled-jobs:discord] organizationId=org-discord failed error=Discord blew up.',
     ])
@@ -246,8 +270,17 @@ describe('runScheduledJobsPass', () => {
 describe('runScheduledJobsLoop', () => {
   test('stops gracefully when the shutdown signal is triggered', async () => {
     const controller = new AbortController()
-    const infoMessages: string[] = []
     let passCount = 0
+
+    configureTestLogging((record) => {
+      if (record.level !== 'info') {
+        return
+      }
+
+      if (record.message.join('').startsWith('[scheduled-jobs] completed')) {
+        controller.abort()
+      }
+    })
 
     await scheduledJobs.runScheduledJobsLoop({
       dependencies: {
@@ -268,20 +301,11 @@ describe('runScheduledJobsLoop', () => {
           throw new Error('Unexpected membership execution.')
         },
       },
-      logger: {
-        info: (message?: unknown) => {
-          infoMessages.push(String(message))
-
-          if (String(message).startsWith('[scheduled-jobs] completed')) {
-            controller.abort()
-          }
-        },
-      },
       signal: controller.signal,
     })
 
     expect(passCount).toBe(1)
-    expect(infoMessages).toEqual([
+    expect(logRecords.filter((record) => record.level === 'info').map((record) => record.message.join(''))).toEqual([
       '[scheduled-jobs] completed assetGroups=0 membership=0 discord=0',
       '[scheduled-jobs] stopping',
     ])

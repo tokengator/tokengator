@@ -13,6 +13,7 @@ import {
   type ResolverInput,
   type ResolverKind,
 } from '@tokengator/indexer'
+import { getAppLogger } from '@tokengator/logger'
 
 import {
   AUTOMATION_LOCK_TIMEOUT_MS,
@@ -74,13 +75,6 @@ class AssetGroupIndexExecutionError extends Error {
   }
 }
 
-export interface AssetGroupIndexLogger {
-  debug?: (message?: unknown, ...optionalParams: unknown[]) => void
-  error?: (message?: unknown, ...optionalParams: unknown[]) => void
-  info?: (message?: unknown, ...optionalParams: unknown[]) => void
-  warn?: (message?: unknown, ...optionalParams: unknown[]) => void
-}
-
 export interface AssetGroupRecordForIndexing {
   address: string
   id: string
@@ -117,9 +111,7 @@ export interface IndexAssetGroupOptions {
   apiKey: string
   assetGroup: AssetGroupRecordForIndexing
   database?: Database
-  debug?: boolean
   heliusCluster: 'devnet' | 'mainnet'
-  logger?: AssetGroupIndexLogger
   now?: () => Date
   signal?: AbortSignal
 }
@@ -165,6 +157,7 @@ const HELIUS_NETWORK_BY_CLUSTER = {
   devnet: 'devnet',
   mainnet: 'mainnet',
 } as const
+const logger = getAppLogger('api', 'asset-group-index')
 
 function buildAssetGroupIndexLockKey(assetGroupId: string) {
   return `asset-group-index:${assetGroupId}`
@@ -314,15 +307,6 @@ function getUpsertSet() {
   }
 }
 
-function createRuntimeLogger(input: { debug: boolean; logger: AssetGroupIndexLogger }): AssetGroupIndexLogger {
-  return {
-    debug: input.debug && input.logger.debug ? (...args) => input.logger.debug?.(...args) : undefined,
-    error: input.logger.error ? (...args) => input.logger.error?.(...args) : undefined,
-    info: input.logger.info ? (...args) => input.logger.info?.(...args) : undefined,
-    warn: input.logger.warn ? (...args) => input.logger.warn?.(...args) : undefined,
-  }
-}
-
 function toAssetGroupIndexRunRecord(row: {
   assetGroupId: string
   deletedCount: number
@@ -364,18 +348,11 @@ async function executeAssetGroupIndex(
   },
 ): Promise<IndexAssetGroupResult> {
   const database = options.database ?? db
-  const debug = options.debug ?? false
-  const logger = createRuntimeLogger({
-    debug,
-    logger: options.logger ?? console,
-  })
   const resolver = getResolverInput(options.assetGroup)
   const adapter =
     options.adapter ??
     createHeliusSdkAdapter({
       apiKey: options.apiKey,
-      debugRequests: debug,
-      logger,
       network: getSupportedHeliusNetwork(options.heliusCluster),
     })
   const indexer = createIndexer({
@@ -390,8 +367,15 @@ async function executeAssetGroupIndex(
     updated: 0,
   }
 
-  logger.debug?.(
-    `[asset-group-index:${resolver.kind}:${options.assetGroup.id}] started address=${options.assetGroup.address} heliusCluster=${options.heliusCluster} startedAt=${options.startedAt.toISOString()}`,
+  logger.debug(
+    '[asset-group-index:{resolverKind}:{assetGroupId}] started address={address} heliusCluster={heliusCluster} startedAt={startedAt}',
+    {
+      address: options.assetGroup.address,
+      assetGroupId: options.assetGroup.id,
+      heliusCluster: options.heliusCluster,
+      resolverKind: resolver.kind,
+      startedAt: options.startedAt.toISOString(),
+    },
   )
 
   await options.leaseController.ensureOwned()
@@ -405,7 +389,6 @@ async function executeAssetGroupIndex(
   try {
     const result = await indexer.resolveOne({
       context: {
-        logger,
         signal: options.signal,
       },
       input: resolver,
@@ -449,8 +432,18 @@ async function executeAssetGroupIndex(
 
         const rows = [...pageRows.values()]
 
-        logger.debug?.(
-          `[asset-group-index:${resolver.kind}:${options.assetGroup.id}] page=${page.page} fetched=${page.items.length} normalized=${normalizedRows.length} stored=${rows.length} skipped=${skippedRows} duplicates=${duplicateRows}`,
+        logger.debug(
+          '[asset-group-index:{resolverKind}:{assetGroupId}] page={page} fetched={fetched} normalized={normalized} stored={stored} skipped={skipped} duplicates={duplicates}',
+          {
+            assetGroupId: options.assetGroup.id,
+            duplicates: duplicateRows,
+            fetched: page.items.length,
+            normalized: normalizedRows.length,
+            page: page.page,
+            resolverKind: resolver.kind,
+            skipped: skippedRows,
+            stored: rows.length,
+          },
         )
 
         if (!rows.length) {
@@ -489,8 +482,16 @@ async function executeAssetGroupIndex(
           })
         }
 
-        logger.debug?.(
-          `[asset-group-index:${resolver.kind}:${options.assetGroup.id}] page=${page.page} inserted=${pageInserted} updated=${pageUpdated} upserted=${rows.length}`,
+        logger.debug(
+          '[asset-group-index:{resolverKind}:{assetGroupId}] page={page} inserted={inserted} updated={updated} upserted={upserted}',
+          {
+            assetGroupId: options.assetGroup.id,
+            inserted: pageInserted,
+            page: page.page,
+            resolverKind: resolver.kind,
+            updated: pageUpdated,
+            upserted: rows.length,
+          },
         )
 
         return true
@@ -512,8 +513,17 @@ async function executeAssetGroupIndex(
     progress.deleted = deletedRowCount?.count ?? 0
     progress.pages = result.pages
 
-    logger.debug?.(
-      `[asset-group-index:${resolver.kind}:${options.assetGroup.id}] completed pages=${result.pages} total=${result.total} inserted=${progress.inserted} updated=${progress.updated} deleted=${progress.deleted}`,
+    logger.debug(
+      '[asset-group-index:{resolverKind}:{assetGroupId}] completed pages={pages} total={total} inserted={inserted} updated={updated} deleted={deleted}',
+      {
+        assetGroupId: options.assetGroup.id,
+        deleted: progress.deleted,
+        inserted: progress.inserted,
+        pages: result.pages,
+        resolverKind: resolver.kind,
+        total: result.total,
+        updated: progress.updated,
+      },
     )
 
     return {

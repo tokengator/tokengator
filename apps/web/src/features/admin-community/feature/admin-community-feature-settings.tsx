@@ -27,7 +27,7 @@ export function AdminCommunityFeatureSettings(props: AdminCommunityFeatureSettin
       await deleteCommunity.mutateAsync({
         organizationId: organization.id,
       })
-      await navigate({ to: '/admin/communities' })
+      void navigate({ to: '/admin/communities' })
 
       return true
     } catch {

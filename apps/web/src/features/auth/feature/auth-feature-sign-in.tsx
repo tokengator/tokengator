@@ -44,9 +44,7 @@ export function AuthFeatureSignIn() {
         <AuthFeatureSolanaActions
           action="verify"
           onSuccess={() => {
-            navigate({
-              to: '/onboard',
-            })
+            void navigate({ to: '/onboard' })
             toast.success('Sign in successful')
           }}
         />

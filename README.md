@@ -97,6 +97,55 @@ Useful `tmux` shortcuts with the default setup:
 - `tmux attach -t tokengator-dev`: reattach to the session
 - `tmux kill-session -t tokengator-dev`: stop the whole session
 
+## Docker and Dokploy
+
+A minimal production container setup is included for Dokploy-style deployments.
+
+### Services
+
+- `web` on internal port `3001`
+- `api` on internal port `3000`
+- `libsql` on internal port `8080` (internal only, via `ghcr.io/beeman/libsql-server-healthcheck:latest`)
+
+The root `Dockerfile` has separate `api` and `web` targets, and `compose.yml` wires the three services together.
+
+### Local container run
+
+The compose file reads its env values from `apps/api/.env`. For local use, copy `apps/api/.env.example` to `apps/api/.env`, update the values you need, create the Dokploy network once, then run:
+
+```bash
+docker network create dokploy-network
+bun run docker:up
+```
+
+The default host port mappings are:
+
+- Web: `3001`
+- API: `3000`
+
+For browser traffic, `VITE_API_URL` must be a host the browser can actually reach, such as `http://localhost:3000` locally or your public API domain in Dokploy.
+
+Override them with `WEB_PORT` and `API_PORT` if needed.
+
+### Dokploy notes
+
+- Route the web service to container port `3001`
+- Route the api service to container port `3000`
+- Keep `libsql` internal only
+- The API container waits for the libsql healthcheck, then runs `bun run db:push` and starts
+- Keep both `default` and `dokploy-network` attached for `web` and `api`
+
+## Published container images
+
+GitHub Actions publishes container images to GHCR on pushes to `main`, while pull requests build the Docker targets without pushing.
+
+Published images:
+
+- `ghcr.io/tokengator/tokengator-api:latest`
+- `ghcr.io/tokengator/tokengator-web:latest`
+
+The workflow also produces branch, pull request, and `sha-*` tags so Dokploy or other deployers can pin preview and immutable image versions when needed.
+
 ## UI Customization
 
 React web apps in this project share shadcn/ui primitives through `packages/ui`.
@@ -162,6 +211,7 @@ tokengator/
 - `bun run dev:api`: Start only the API
 - `bun run dev:local`: Start the local database, apply schema/seed, and open API/web in `tmux`
 - `bun run dev:web`: Start only the web application
+- `bun run docker:up`: Build and start the local Docker stack with env from `apps/api/.env`
 - `bun run lint`: Run Oxlint and Oxfmt in check mode
 - `bun run lint:fix`: Run Oxlint and Oxfmt with auto-fixing
 - `bun run setup`: Create local env files and generate placeholder secrets

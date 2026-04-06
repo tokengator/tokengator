@@ -1,0 +1,68 @@
+services:
+  api:
+    build:
+      context: .
+      target: api
+    depends_on:
+      libsql:
+        condition: service_healthy
+    environment:
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_SOLANA_SIGN_IN_ENABLED: ${BETTER_AUTH_SOLANA_SIGN_IN_ENABLED:-true}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3001}
+      DATABASE_AUTH_TOKEN: ${DATABASE_AUTH_TOKEN:-}
+      DATABASE_URL: ${DATABASE_URL:-http://libsql:8080}
+      DISCORD_ADMIN_IDS: ${DISCORD_ADMIN_IDS:-}
+      DISCORD_BOT_START: ${DISCORD_BOT_START:-false}
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}
+      HELIUS_API_KEY: ${HELIUS_API_KEY}
+      HELIUS_CLUSTER: ${HELIUS_CLUSTER:-mainnet}
+      LOG_DEBUG_CATEGORIES: ${LOG_DEBUG_CATEGORIES:-}
+      SCHEDULED_DISCORD_SYNC_INTERVAL_MINUTES: ${SCHEDULED_DISCORD_SYNC_INTERVAL_MINUTES:-1}
+      SCHEDULED_INDEX_INTERVAL_MINUTES: ${SCHEDULED_INDEX_INTERVAL_MINUTES:-30}
+      SCHEDULED_MEMBERSHIP_SYNC_INTERVAL_MINUTES: ${SCHEDULED_MEMBERSHIP_SYNC_INTERVAL_MINUTES:-5}
+      SCHEDULER_POLL_SECONDS: ${SCHEDULER_POLL_SECONDS:-60}
+      SCHEDULER_START: ${SCHEDULER_START:-true}
+      SOLANA_ADMIN_ADDRESSES: ${SOLANA_ADMIN_ADDRESSES:-}
+      SOLANA_CLUSTER: ${SOLANA_CLUSTER:-mainnet}
+      SOLANA_ENDPOINT_PUBLIC: ${SOLANA_ENDPOINT_PUBLIC:-https://api.mainnet-beta.solana.com}
+      WEB_URL: ${WEB_URL:-http://localhost:3001}
+    networks:
+      - default
+      - dokploy-network
+    ports:
+      - '${API_PORT:-3000}:3000'
+
+  web:
+    build:
+      context: .
+      target: web
+    depends_on:
+      api:
+        condition: service_started
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+    networks:
+      - default
+      - dokploy-network
+    ports:
+      - '${WEB_PORT:-3001}:3001'
+
+  libsql:
+    image: ghcr.io/beeman/libsql-server-healthcheck:latest
+    command: ['sqld', '--http-listen-addr', '0.0.0.0:8080', '--db-path', '/var/lib/sqld']
+    networks:
+      - default
+    volumes:
+      - libsql-data:/var/lib/sqld
+
+networks:
+  dokploy-network:
+    external: true
+
+volumes:
+  libsql-data:

@@ -12,38 +12,16 @@ import {
 import { UiStatus } from '@tokengator/ui/components/ui-status'
 import { formatDateTime } from '@tokengator/ui/util/format-date-time'
 
+import type { AdminAssetListSearch } from '@/features/admin-asset/util/admin-asset-list-search'
 import { getFreshnessTone } from '@/features/admin/util/get-freshness-tone'
 import { orpc } from '@/lib/orpc'
+
 import { useAdminAssetDelete } from '../data-access/use-admin-asset-delete'
 import { useAdminAssetGroupGetQuery } from '../data-access/use-admin-asset-group-get-query'
 import { useAdminAssetGroupIndex } from '../data-access/use-admin-asset-group-index'
 import { useAdminAssetListQuery } from '../data-access/use-admin-asset-list-query'
 import { type AdminAssetFiltersValues, AdminAssetUiFilters } from '../ui/admin-asset-ui-filters'
 import { AdminAssetUiTable } from '../ui/admin-asset-ui-table'
-import { parseNonNegativeInteger, parsePositiveInteger } from '../util/admin-asset-search'
-
-const defaultAssetLimit = 50
-
-export interface AdminAssetListSearch {
-  address?: string
-  limit: number
-  offset: number
-  owner?: string
-  resolverKind?: 'helius-collection-assets' | 'helius-token-accounts'
-}
-
-export function validateAdminAssetListSearch(search: Record<string, unknown>): AdminAssetListSearch {
-  return {
-    address: typeof search.address === 'string' ? search.address.trim() || undefined : undefined,
-    limit: parsePositiveInteger(search.limit, defaultAssetLimit),
-    offset: parseNonNegativeInteger(search.offset, 0),
-    owner: typeof search.owner === 'string' ? search.owner.trim() || undefined : undefined,
-    resolverKind:
-      search.resolverKind === 'helius-collection-assets' || search.resolverKind === 'helius-token-accounts'
-        ? search.resolverKind
-        : undefined,
-  }
-}
 
 interface AdminAssetFeatureGroupAssetsProps {
   assetGroupId: string

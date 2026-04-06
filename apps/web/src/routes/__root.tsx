@@ -1,7 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { lazy, Suspense } from 'react'
 import { Toaster } from '@tokengator/ui/components/sonner'
 
 import type { orpc } from '@/lib/orpc'
@@ -13,6 +12,12 @@ import {
 import { AppProviders } from '@/lib/app-providers'
 
 import appCss from '../index.css?url'
+
+const AppDevtools = import.meta.env.DEV
+  ? lazy(async () => ({
+      default: (await import('@/lib/app-devtools')).AppDevtools,
+    }))
+  : null
 
 export interface RouterAppContext {
   orpc: typeof orpc
@@ -69,8 +74,11 @@ function RootDocument() {
             <Outlet />
           </AppShellFeatureFrame>
           <Toaster richColors />
-          <TanStackRouterDevtools position="bottom-left" />
-          <ReactQueryDevtools buttonPosition="bottom-right" position="bottom" />
+          {AppDevtools ? (
+            <Suspense fallback={null}>
+              <AppDevtools />
+            </Suspense>
+          ) : null}
         </AppProviders>
         <Scripts />
       </body>

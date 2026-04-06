@@ -1,25 +1,10 @@
 import { queryOptions, useQuery } from '@tanstack/react-query'
-import { createServerFn } from '@tanstack/react-start'
 
-import { authMiddleware } from '@/features/auth/data-access/auth-middleware'
+import { getAdminCommunity } from '@/features/admin-community/data-access/get-admin-community-fn'
 import { orpc } from '@/lib/orpc'
-import { serverOrpcClient } from '@/lib/orpc-server'
 
 export type AdminCommunityGetResult = Awaited<ReturnType<typeof orpc.adminOrganization.get.call>>
 export type AdminCommunityDiscordConnection = NonNullable<AdminCommunityGetResult['discordConnection']>
-
-interface AdminCommunityGetInput {
-  organizationId: string
-}
-
-export const getAdminCommunity = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
-  .inputValidator((input: AdminCommunityGetInput) => input)
-  .handler(async ({ data }) => {
-    return serverOrpcClient.adminOrganization.get({
-      organizationId: data.organizationId,
-    })
-  })
 
 function isNotFoundError(error: unknown): error is { code: string } {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === 'NOT_FOUND'

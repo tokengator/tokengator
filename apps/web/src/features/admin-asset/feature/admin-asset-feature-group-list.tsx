@@ -2,26 +2,11 @@ import { Link, useNavigate } from '@tanstack/react-router'
 import { Button, buttonVariants } from '@tokengator/ui/components/button'
 import { cn } from '@tokengator/ui/lib/utils'
 
+import type { AdminAssetGroupListSearch } from '@/features/admin-asset/util/admin-asset-group-list-search'
+
 import { useAdminAssetGroupListQuery } from '../data-access/use-admin-asset-group-list-query'
 import { AdminAssetGroupUiFilters } from '../ui/admin-asset-group-ui-filters'
 import { AdminAssetGroupUiTable } from '../ui/admin-asset-group-ui-table'
-import { parseNonNegativeInteger, parsePositiveInteger } from '../util/admin-asset-search'
-
-const defaultAssetGroupLimit = 25
-
-export interface AdminAssetGroupListSearch {
-  limit: number
-  offset: number
-  search?: string
-}
-
-export function validateAdminAssetGroupListSearch(search: Record<string, unknown>): AdminAssetGroupListSearch {
-  return {
-    limit: parsePositiveInteger(search.limit, defaultAssetGroupLimit),
-    offset: parseNonNegativeInteger(search.offset, 0),
-    search: typeof search.search === 'string' ? search.search.trim() || undefined : undefined,
-  }
-}
 
 interface AdminAssetFeatureGroupListProps {
   search: AdminAssetGroupListSearch

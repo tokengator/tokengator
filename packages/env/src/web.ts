@@ -1,11 +1,19 @@
-import { createEnv } from '@t3-oss/env-core'
-import { z } from 'zod'
+function getViteApiUrl() {
+  const value = import.meta.env.VITE_API_URL
 
-export const env = createEnv({
-  client: {
-    VITE_API_URL: z.url(),
-  },
-  clientPrefix: 'VITE_',
-  emptyStringAsUndefined: true,
-  runtimeEnv: (import.meta as any).env,
-})
+  if (!value) {
+    throw new Error('Missing VITE_API_URL')
+  }
+
+  try {
+    new URL(value)
+  } catch {
+    throw new Error('Invalid VITE_API_URL')
+  }
+
+  return value
+}
+
+export const env = {
+  VITE_API_URL: getViteApiUrl(),
+} as const

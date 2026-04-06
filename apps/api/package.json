@@ -24,6 +24,7 @@
     "@tokengator/env": "workspace:*",
     "@tokengator/logger": "workspace:*",
     "better-auth": "catalog:",
+    "discord.js": "catalog:",
     "dotenv": "catalog:",
     "hono": "catalog:",
     "zod": "catalog:"

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@tokengator/ui/components/button'
 import { Skeleton } from '@tokengator/ui/components/skeleton'
 
-export function ThemeToggle() {
+export function AppShellUiThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
@@ -17,8 +17,8 @@ export function ThemeToggle() {
   }
 
   const isDark = resolvedTheme !== 'light'
-  const nextTheme = isDark ? 'light' : 'dark'
   const label = isDark ? 'Switch to light mode' : 'Switch to dark mode'
+  const nextTheme = isDark ? 'light' : 'dark'
 
   return (
     <Button

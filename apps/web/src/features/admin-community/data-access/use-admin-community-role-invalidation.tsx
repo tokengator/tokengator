@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 
-import { orpc } from '@/utils/orpc'
+import { orpc } from '@/lib/orpc'
 import { matchesAdminCommunityListRunsQueryForOrganization } from './admin-community-list-runs-query-predicate'
 
 export function useAdminCommunityRoleInvalidation() {

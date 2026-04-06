@@ -2,8 +2,8 @@ import { queryOptions, useQuery } from '@tanstack/react-query'
 import { createServerFn } from '@tanstack/react-start'
 
 import { authMiddleware } from '@/features/auth/data-access/auth-middleware'
-import { orpc } from '@/utils/orpc'
-import { serverOrpcClient } from '@/utils/orpc-server'
+import { orpc } from '@/lib/orpc'
+import { serverOrpcClient } from '@/lib/orpc-server'
 
 export type AdminCommunityGetResult = Awaited<ReturnType<typeof orpc.adminOrganization.get.call>>
 export type AdminCommunityDiscordConnection = NonNullable<AdminCommunityGetResult['discordConnection']>

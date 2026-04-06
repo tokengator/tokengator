@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 
-import { orpc } from '@/utils/orpc'
+import { orpc } from '@/lib/orpc'
 import { getAdminCommunityGetQueryKey } from './use-admin-community-get-query'
 
 export function useAdminCommunityOrganizationInvalidation() {

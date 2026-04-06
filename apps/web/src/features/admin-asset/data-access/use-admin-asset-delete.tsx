@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
-import { orpc } from '@/utils/orpc'
+import { orpc } from '@/lib/orpc'
 import { useAdminAssetInvalidation } from './use-admin-asset-invalidation'
 
 export function useAdminAssetDelete() {

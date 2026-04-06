@@ -2,7 +2,7 @@ import { useAppSession } from '@/features/auth/data-access/use-app-session'
 import { useProfileListIdentities } from '../data-access/use-profile-list-identities'
 import { useProfileListSolanaWallets } from '../data-access/use-profile-list-solana-wallets'
 import { ProfileUiIdentitiesCard } from '../ui/profile-ui-identities-card'
-import { ProfileUiSolanaCard } from '../ui/profile-ui-solana-card'
+import { ProfileFeatureSolanaCard } from './profile-feature-solana-card'
 
 export function ProfileFeatureIdentities() {
   const { data: session } = useAppSession()
@@ -15,9 +15,10 @@ export function ProfileFeatureIdentities() {
 
   return (
     <div className="grid gap-6">
-      <ProfileUiSolanaCard
+      <ProfileFeatureSolanaCard
         isPending={solanaWallets.isPending}
         solanaWallets={solanaWallets.data?.solanaWallets ?? []}
+        userId={session.user.id}
       />
       <ProfileUiIdentitiesCard identities={identities.data?.identities ?? []} isPending={identities.isPending} />
     </div>

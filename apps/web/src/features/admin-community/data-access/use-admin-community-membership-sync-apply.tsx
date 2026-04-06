@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
-import { orpc } from '@/utils/orpc'
+import { orpc } from '@/lib/orpc'
 import type { AdminCommunityMembershipSyncResult } from './admin-community-role-types'
 import { useAdminCommunityOrganizationInvalidation } from './use-admin-community-organization-invalidation'
 import { useAdminCommunityRoleInvalidation } from './use-admin-community-role-invalidation'

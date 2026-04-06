@@ -1,6 +1,6 @@
 import { queryOptions, useQuery } from '@tanstack/react-query'
 
-import { orpc } from '@/utils/orpc'
+import { orpc } from '@/lib/orpc'
 
 export function getProfileListIdentitiesQueryKey(userId: string) {
   return [...orpc.profile.listIdentities.key(), userId] as const

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 
-import { orpc } from '@/utils/orpc'
+import { orpc } from '@/lib/orpc'
 
 export function useAdminCommunityDiscordGuildRolesQuery(organizationId: string) {
   return useQuery(

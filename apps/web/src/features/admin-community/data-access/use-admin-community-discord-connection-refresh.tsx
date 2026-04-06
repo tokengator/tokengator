@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
-import { orpc } from '@/utils/orpc'
+import { orpc } from '@/lib/orpc'
 import { useAdminCommunityDiscordInvalidation } from './use-admin-community-discord-invalidation'
 
 export function useAdminCommunityDiscordConnectionRefresh(organizationId: string) {

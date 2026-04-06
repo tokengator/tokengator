@@ -2,8 +2,8 @@ import { queryOptions } from '@tanstack/react-query'
 import { createServerFn } from '@tanstack/react-start'
 
 import { authMiddleware } from '@/features/auth/data-access/auth-middleware'
-import { orpc } from '@/utils/orpc'
-import { serverOrpcClient } from '@/utils/orpc-server'
+import { orpc } from '@/lib/orpc'
+import { serverOrpcClient } from '@/lib/orpc-server'
 
 export interface OrganizationListMineOrganization {
   gatedRoles: Array<{

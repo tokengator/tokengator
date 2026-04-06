@@ -1,5 +1,4 @@
-import { useQueryClient } from '@tanstack/react-query'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { Button } from '@tokengator/ui/components/button'
 import {
   DropdownMenu,
@@ -12,15 +11,23 @@ import {
 } from '@tokengator/ui/components/dropdown-menu'
 import { Skeleton } from '@tokengator/ui/components/skeleton'
 
-import { authClient } from '@/features/auth/data-access/auth-client'
-import { refreshAppAuthState } from '@/features/auth/data-access/get-app-auth-state'
-import { useAppSession } from '@/features/auth/data-access/use-app-session'
+import type { AppSession } from '@/features/auth/data-access/get-app-auth-state'
 
-export function UserMenu() {
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const { data: session, isPending } = useAppSession()
+interface AppShellUiUserMenuProps {
+  isPending: boolean
+  onAdminClick: () => void
+  onProfileClick: () => void
+  onSignOut: () => void
+  session: AppSession | null
+}
 
+export function AppShellUiUserMenu({
+  isPending,
+  onAdminClick,
+  onProfileClick,
+  onSignOut,
+  session,
+}: AppShellUiUserMenuProps) {
   if (isPending) {
     return <Skeleton className="h-8 w-24" />
   }
@@ -45,24 +52,10 @@ export function UserMenu() {
             ) : null}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {session.user.role === 'admin' ? (
-            <DropdownMenuItem onClick={() => void navigate({ to: '/admin' })}>Admin</DropdownMenuItem>
-          ) : null}
-          <DropdownMenuItem onClick={() => void navigate({ to: '/profile' })}>Profile</DropdownMenuItem>
+          {session.user.role === 'admin' ? <DropdownMenuItem onClick={onAdminClick}>Admin</DropdownMenuItem> : null}
+          <DropdownMenuItem onClick={onProfileClick}>Profile</DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={() => {
-              authClient.signOut({
-                fetchOptions: {
-                  onSuccess: async () => {
-                    await refreshAppAuthState(queryClient)
-                    void navigate({ to: '/' })
-                  },
-                },
-              })
-            }}
-            variant="destructive"
-          >
+          <DropdownMenuItem onClick={onSignOut} variant="destructive">
             Sign Out
           </DropdownMenuItem>
         </DropdownMenuGroup>

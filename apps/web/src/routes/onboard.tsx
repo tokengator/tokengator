@@ -9,15 +9,11 @@ export const Route = createFileRoute('/onboard')({
     const { onboardingStatus, session } = await context.queryClient.ensureQueryData(getAppAuthStateQueryOptions())
 
     if (!session) {
-      throw redirect({
-        to: '/login',
-      })
+      throw redirect({ to: '/login' })
     }
 
     if (hasCompletedOnboarding(onboardingStatus)) {
-      throw redirect({
-        to: '/profile',
-      })
+      throw redirect({ to: '/profile' })
     }
   },
   component: RouteComponent,

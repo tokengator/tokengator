@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
-import { orpc } from '@/utils/orpc'
+import { orpc } from '@/lib/orpc'
 import { getAdminCommunityGetQueryKey } from './use-admin-community-get-query'
 import { useAdminCommunityOrganizationInvalidation } from './use-admin-community-organization-invalidation'
 

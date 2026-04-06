@@ -4,15 +4,13 @@ import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from '@tanst
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { Toaster } from '@tokengator/ui/components/sonner'
 
-import type { orpc } from '@/utils/orpc'
+import type { orpc } from '@/lib/orpc'
+import { AppShellFeatureFrame } from '@/features/app-shell/feature/app-shell-feature-frame'
 import {
   getAppAuthStateQueryOptions,
   populateAppAuthStateRelatedQueries,
 } from '@/features/auth/data-access/get-app-auth-state'
-
-import { Header } from '../components/header'
-import { SolanaProvider } from '../components/solana/solana-provider'
-import { ThemeProvider } from '../components/theme-provider'
+import { AppProviders } from '@/lib/app-providers'
 
 import appCss from '../index.css?url'
 
@@ -68,19 +66,14 @@ function RootDocument() {
         <HeadContent />
       </head>
       <body>
-        <ThemeProvider>
-          <SolanaProvider appConfig={appConfig}>
-            <div className="grid h-svh min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
-              <Header />
-              <div className="min-h-0 min-w-0 overflow-x-hidden overflow-y-auto">
-                <Outlet />
-              </div>
-            </div>
-          </SolanaProvider>
+        <AppProviders appConfig={appConfig}>
+          <AppShellFeatureFrame>
+            <Outlet />
+          </AppShellFeatureFrame>
           <Toaster richColors />
           <TanStackRouterDevtools position="bottom-left" />
           <ReactQueryDevtools buttonPosition="bottom-right" position="bottom" />
-        </ThemeProvider>
+        </AppProviders>
         <Scripts />
       </body>
     </html>

@@ -4,7 +4,7 @@ import { UiInfoCard, UiInfoCardLabel, UiInfoCardMeta, UiInfoCardValue } from '@t
 import { UiStatus, type UiStatusVariants } from '@tokengator/ui/components/ui-status'
 import { formatDateTime } from '@tokengator/ui/util/format-date-time'
 
-import { getFreshnessTone } from '@/features/admin-shared/util/get-freshness-tone'
+import { getFreshnessTone } from '@/features/admin/util/get-freshness-tone'
 import type {
   AdminCommunityDiscordSyncRunsResult,
   AdminCommunitySyncRunStatus,

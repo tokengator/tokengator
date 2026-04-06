@@ -12,8 +12,8 @@ import {
 import { UiStatus } from '@tokengator/ui/components/ui-status'
 import { formatDateTime } from '@tokengator/ui/util/format-date-time'
 
-import { getFreshnessTone } from '@/features/admin-shared/util/get-freshness-tone'
-import { orpc } from '@/utils/orpc'
+import { getFreshnessTone } from '@/features/admin/util/get-freshness-tone'
+import { orpc } from '@/lib/orpc'
 import { useAdminAssetDelete } from '../data-access/use-admin-asset-delete'
 import { useAdminAssetGroupGetQuery } from '../data-access/use-admin-asset-group-get-query'
 import { useAdminAssetGroupIndex } from '../data-access/use-admin-asset-group-index'

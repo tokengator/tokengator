@@ -1,6 +1,6 @@
 import { queryOptions, useQuery } from '@tanstack/react-query'
 
-import { orpc } from '@/utils/orpc'
+import { orpc } from '@/lib/orpc'
 
 export function getProfileListSolanaWalletsQueryKey(userId: string) {
   return [...orpc.profile.listSolanaWallets.key(), userId] as const

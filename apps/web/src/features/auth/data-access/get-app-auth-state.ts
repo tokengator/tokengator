@@ -4,7 +4,7 @@ import { createServerFn } from '@tanstack/react-start'
 import type { OnboardingStatus } from '@/features/organization/feature/organization-feature-active-access'
 import { getProfileListIdentitiesQueryKey } from '@/features/profile/data-access/use-profile-list-identities'
 import { getProfileListSolanaWalletsQueryKey } from '@/features/profile/data-access/use-profile-list-solana-wallets'
-import { serverOrpcClient } from '@/utils/orpc-server'
+import { serverOrpcClient } from '@/lib/orpc-server'
 
 import { authMiddleware } from './auth-middleware'
 

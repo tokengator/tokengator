@@ -11,7 +11,7 @@ import {
 } from '@tokengator/ui/components/ui-table'
 import { formatDateTime } from '@tokengator/ui/util/format-date-time'
 
-import { getFreshnessTone } from '@/features/admin-shared/util/get-freshness-tone'
+import { getFreshnessTone } from '@/features/admin/util/get-freshness-tone'
 
 interface AdminAssetGroupUiTableAssetGroup {
   address: string

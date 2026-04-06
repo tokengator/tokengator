@@ -42,7 +42,7 @@ function getSuccessMessage(action: 'link' | 'verify') {
   }
 }
 
-export function SolanaWalletActionButton({
+export function AuthFeatureSolanaWalletActionButton({
   action,
   onSuccess,
   wallet,

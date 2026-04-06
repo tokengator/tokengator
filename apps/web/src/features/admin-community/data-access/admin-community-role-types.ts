@@ -1,4 +1,4 @@
-import { orpc } from '@/utils/orpc'
+import { orpc } from '@/lib/orpc'
 
 export type AdminCommunityDiscordGuildRolesResult = Awaited<
   ReturnType<typeof orpc.adminCommunityRole.listDiscordGuildRoles.call>

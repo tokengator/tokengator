@@ -58,15 +58,13 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 })
 
 function RootDocument() {
-  const { appConfig } = Route.useRouteContext()
-
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
       <body>
-        <AppProviders appConfig={appConfig}>
+        <AppProviders>
           <AppShellFeatureFrame>
             <Outlet />
           </AppShellFeatureFrame>

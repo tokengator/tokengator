@@ -7,24 +7,17 @@ import {
   createWalletUiConfig,
   WalletUi,
 } from '@wallet-ui/react'
+import type { AppConfig } from '@tokengator/sdk'
+
+import { Route as RootRoute } from '@/routes/__root'
 
 interface SolanaProviderProps {
-  appConfig: {
-    solanaCluster: 'devnet' | 'localnet' | 'mainnet' | 'testnet'
-    solanaEndpoint: string
-  }
   children: ReactNode
 }
 
 const walletUiConfigByKey = new Map<string, ReturnType<typeof createWalletUiConfig>>()
 
-function createSolanaCluster({
-  solanaCluster,
-  solanaEndpoint,
-}: {
-  solanaCluster: SolanaProviderProps['appConfig']['solanaCluster']
-  solanaEndpoint: string
-}) {
+function createSolanaCluster({ solanaCluster, solanaEndpoint }: Pick<AppConfig, 'solanaCluster' | 'solanaEndpoint'>) {
   switch (solanaCluster) {
     case 'devnet':
       return createSolanaDevnet(solanaEndpoint)
@@ -37,7 +30,8 @@ function createSolanaCluster({
   }
 }
 
-export function SolanaProvider({ appConfig, children }: SolanaProviderProps) {
+export function SolanaProvider({ children }: SolanaProviderProps) {
+  const { appConfig } = RootRoute.useRouteContext()
   const configKey = `${appConfig.solanaCluster}:${appConfig.solanaEndpoint}`
   const config =
     walletUiConfigByKey.get(configKey) ??

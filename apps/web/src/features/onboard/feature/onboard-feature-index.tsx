@@ -10,6 +10,7 @@ import { authClient } from '@/features/auth/data-access/auth-client'
 import { refreshAppAuthState } from '@/features/auth/data-access/get-app-auth-state'
 import { useAppAuthStateQuery } from '@/features/auth/data-access/use-app-auth-state-query'
 import { AuthFeatureSolanaActions } from '@/features/auth/feature/auth-feature-solana-actions'
+import { SolanaProvider } from '@/lib/solana-provider'
 
 export function OnboardFeatureIndex() {
   const navigate = useNavigate({
@@ -136,7 +137,9 @@ export function OnboardFeatureIndex() {
             <p className="text-muted-foreground text-sm">
               TokenGator requires at least one linked Solana wallet to finish onboarding.
             </p>
-            <AuthFeatureSolanaActions action="link" />
+            <SolanaProvider>
+              <AuthFeatureSolanaActions action="link" />
+            </SolanaProvider>
           </CardContent>
         </Card>
       </div>

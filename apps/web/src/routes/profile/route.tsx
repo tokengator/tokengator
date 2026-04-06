@@ -12,6 +12,8 @@ export const Route = createFileRoute('/profile')({
         to: '/login',
       })
     }
+
+    return { session }
   },
   component: RouteComponent,
 })

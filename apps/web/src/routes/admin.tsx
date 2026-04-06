@@ -8,9 +8,7 @@ export const Route = createFileRoute('/admin')({
     const { session } = await context.queryClient.ensureQueryData(getAppAuthStateQueryOptions())
 
     if (!session || session.user.role !== 'admin') {
-      throw redirect({
-        to: session ? '/profile' : '/login',
-      })
+      throw redirect({ to: session ? '/profile' : '/login' })
     }
 
     return { session }

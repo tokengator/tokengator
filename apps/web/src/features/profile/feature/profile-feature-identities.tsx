@@ -1,25 +1,17 @@
-import { useAppSession } from '@/features/auth/data-access/use-app-session'
+import type { AppSession } from '@/features/auth/data-access/get-app-auth-state'
+import { SolanaProvider } from '@/lib/solana-provider'
 import { useProfileListIdentities } from '../data-access/use-profile-list-identities'
-import { useProfileListSolanaWallets } from '../data-access/use-profile-list-solana-wallets'
 import { ProfileUiIdentitiesCard } from '../ui/profile-ui-identities-card'
 import { ProfileFeatureSolanaCard } from './profile-feature-solana-card'
 
-export function ProfileFeatureIdentities() {
-  const { data: session } = useAppSession()
-  const identities = useProfileListIdentities(session?.user.id ?? '')
-  const solanaWallets = useProfileListSolanaWallets(session?.user.id ?? '')
-
-  if (!session) {
-    return null
-  }
+export function ProfileFeatureIdentities({ session }: { session: AppSession }) {
+  const identities = useProfileListIdentities(session.user.id)
 
   return (
     <div className="grid gap-6">
-      <ProfileFeatureSolanaCard
-        isPending={solanaWallets.isPending}
-        solanaWallets={solanaWallets.data?.solanaWallets ?? []}
-        userId={session.user.id}
-      />
+      <SolanaProvider>
+        <ProfileFeatureSolanaCard session={session} />
+      </SolanaProvider>
       <ProfileUiIdentitiesCard identities={identities.data?.identities ?? []} isPending={identities.isPending} />
     </div>
   )

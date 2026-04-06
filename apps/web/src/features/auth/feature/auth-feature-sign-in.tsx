@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 
 import { authClient } from '@/features/auth/data-access/auth-client'
+import { SolanaProvider } from '@/lib/solana-provider'
 
 import { AuthUiSignInForm } from '../ui/auth-ui-sign-in-form'
 import { AuthFeatureSolanaActions } from './auth-feature-solana-actions'
@@ -38,13 +39,15 @@ export function AuthFeatureSignIn() {
         void handleDiscordSignIn()
       }}
       solanaActions={
-        <AuthFeatureSolanaActions
-          action="verify"
-          onSuccess={() => {
-            void navigate({ to: '/onboard' })
-            toast.success('Sign in successful')
-          }}
-        />
+        <SolanaProvider>
+          <AuthFeatureSolanaActions
+            action="verify"
+            onSuccess={() => {
+              void navigate({ to: '/onboard' })
+              toast.success('Sign in successful')
+            }}
+          />
+        </SolanaProvider>
       }
     />
   )

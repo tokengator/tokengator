@@ -9,18 +9,22 @@ import { adminOrganizationRouter } from './admin-organization'
 import { organizationRouter } from './organization'
 import { profileRouter } from './profile'
 
+function getAppConfig() {
+  return {
+    solanaCluster: env.SOLANA_CLUSTER,
+    solanaEndpoint: env.SOLANA_ENDPOINT_PUBLIC,
+    solanaSignInEnabled: env.BETTER_AUTH_SOLANA_SIGN_IN_ENABLED,
+  }
+}
+
+export type AppConfig = ReturnType<typeof getAppConfig>
+
 export const appRouter = {
   adminAsset: adminAssetRouter,
   adminAssetGroup: adminAssetGroupRouter,
   adminCommunityRole: adminCommunityRoleRouter,
   adminOrganization: adminOrganizationRouter,
-  appConfig: publicProcedure.handler(() => {
-    return {
-      solanaCluster: env.SOLANA_CLUSTER,
-      solanaEndpoint: env.SOLANA_ENDPOINT_PUBLIC,
-      solanaSignInEnabled: env.BETTER_AUTH_SOLANA_SIGN_IN_ENABLED,
-    }
-  }),
+  appConfig: publicProcedure.handler(() => getAppConfig()),
   healthCheck: publicProcedure.handler(() => {
     return 'OK'
   }),

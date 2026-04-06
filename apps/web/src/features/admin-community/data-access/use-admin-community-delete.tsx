@@ -3,8 +3,10 @@ import { toast } from 'sonner'
 
 import { orpc } from '@/utils/orpc'
 import { getAdminCommunityGetQueryKey } from './use-admin-community-get-query'
+import { useAdminCommunityOrganizationInvalidation } from './use-admin-community-organization-invalidation'
 
 export function useAdminCommunityDelete() {
+  const organization = useAdminCommunityOrganizationInvalidation()
   const queryClient = useQueryClient()
 
   return useMutation(
@@ -14,9 +16,7 @@ export function useAdminCommunityDelete() {
       },
       onSuccess: async (_, variables) => {
         queryClient.setQueryData(getAdminCommunityGetQueryKey(variables.organizationId), null)
-        await queryClient.invalidateQueries({
-          queryKey: orpc.adminOrganization.list.key(),
-        })
+        await organization.invalidateDirectory()
         toast.success('Community deleted.')
       },
     }),

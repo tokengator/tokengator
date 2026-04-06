@@ -1,10 +1,11 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { orpc } from '@/utils/orpc'
+import { useAdminAssetInvalidation } from './use-admin-asset-invalidation'
 
 export function useAdminAssetDelete() {
-  const queryClient = useQueryClient()
+  const asset = useAdminAssetInvalidation()
 
   return useMutation(
     orpc.adminAsset.delete.mutationOptions({
@@ -12,9 +13,7 @@ export function useAdminAssetDelete() {
         toast.error(error.message)
       },
       onSuccess: async () => {
-        await queryClient.invalidateQueries({
-          queryKey: orpc.adminAsset.list.key(),
-        })
+        await asset.invalidateAssetList()
         toast.success('Asset deleted.')
       },
     }),

@@ -1,12 +1,11 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
-import { getAdminCommunityGetQueryKey } from './use-admin-community-get-query'
-
 import { orpc } from '@/utils/orpc'
+import { useAdminCommunityOrganizationInvalidation } from './use-admin-community-organization-invalidation'
 
 export function useAdminCommunityMemberRoleUpdate(organizationId: string) {
-  const queryClient = useQueryClient()
+  const organization = useAdminCommunityOrganizationInvalidation()
 
   return useMutation(
     orpc.adminOrganization.updateMemberRole.mutationOptions({
@@ -14,14 +13,7 @@ export function useAdminCommunityMemberRoleUpdate(organizationId: string) {
         toast.error(error.message)
       },
       onSuccess: async () => {
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: getAdminCommunityGetQueryKey(organizationId),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: orpc.adminOrganization.list.key(),
-          }),
-        ])
+        await organization.invalidateCommunityAndDirectory(organizationId)
         toast.success('Member role updated.')
       },
     }),

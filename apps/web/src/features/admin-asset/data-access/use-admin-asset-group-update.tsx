@@ -1,10 +1,11 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { orpc } from '@/utils/orpc'
+import { useAdminAssetGroupInvalidation } from './use-admin-asset-group-invalidation'
 
 export function useAdminAssetGroupUpdate() {
-  const queryClient = useQueryClient()
+  const group = useAdminAssetGroupInvalidation()
 
   return useMutation(
     orpc.adminAssetGroup.update.mutationOptions({
@@ -12,18 +13,7 @@ export function useAdminAssetGroupUpdate() {
         toast.error(error.message)
       },
       onSuccess: async (assetGroup) => {
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: orpc.adminAssetGroup.get.key({
-              input: {
-                assetGroupId: assetGroup.id,
-              },
-            }),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: orpc.adminAssetGroup.list.key(),
-          }),
-        ])
+        await group.invalidateGroupAndList(assetGroup.id)
         toast.success('Asset group updated.')
       },
     }),

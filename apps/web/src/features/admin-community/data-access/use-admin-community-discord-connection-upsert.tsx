@@ -1,10 +1,11 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { orpc } from '@/utils/orpc'
+import { useAdminCommunityDiscordInvalidation } from './use-admin-community-discord-invalidation'
 
 export function useAdminCommunityDiscordConnectionUpsert(organizationId: string) {
-  const queryClient = useQueryClient()
+  const discord = useAdminCommunityDiscordInvalidation()
 
   return useMutation(
     orpc.adminOrganization.upsertDiscordConnection.mutationOptions({
@@ -12,22 +13,7 @@ export function useAdminCommunityDiscordConnectionUpsert(organizationId: string)
         toast.error(error.message)
       },
       onSuccess: async () => {
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: orpc.adminCommunityRole.listDiscordGuildRoles.key({
-              input: {
-                organizationId,
-              },
-            }),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: orpc.adminOrganization.get.key({
-              input: {
-                organizationId,
-              },
-            }),
-          }),
-        ])
+        await discord.invalidateConnection(organizationId)
         toast.success('Discord server saved.')
       },
     }),

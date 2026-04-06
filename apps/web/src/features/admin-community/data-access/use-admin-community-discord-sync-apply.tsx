@@ -1,14 +1,14 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { orpc } from '@/utils/orpc'
 import type { AdminCommunityDiscordSyncResult } from './admin-community-role-types'
-import { matchesAdminCommunityListRunsQueryForOrganization } from './admin-community-list-runs-query-predicate'
+import { useAdminCommunityRoleInvalidation } from './use-admin-community-role-invalidation'
 
 export type { AdminCommunityDiscordSyncResult }
 
 export function useAdminCommunityDiscordSyncApply(organizationId: string) {
-  const queryClient = useQueryClient()
+  const role = useAdminCommunityRoleInvalidation()
 
   return useMutation(
     orpc.adminCommunityRole.applyDiscordRoleSync.mutationOptions({
@@ -16,19 +16,7 @@ export function useAdminCommunityDiscordSyncApply(organizationId: string) {
         toast.error(error.message)
       },
       onSuccess: async () => {
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: orpc.adminCommunityRole.getSyncStatus.key({
-              input: {
-                organizationId,
-              },
-            }),
-          }),
-          queryClient.invalidateQueries({
-            predicate: (query) => matchesAdminCommunityListRunsQueryForOrganization(query.queryKey, organizationId),
-            queryKey: orpc.adminCommunityRole.listRuns.key(),
-          }),
-        ])
+        await role.invalidateRoleSyncStatusAndRuns(organizationId)
         toast.success('Discord role reconcile applied.')
       },
     }),

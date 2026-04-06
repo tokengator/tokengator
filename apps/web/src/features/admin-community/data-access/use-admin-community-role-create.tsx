@@ -1,11 +1,11 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { orpc } from '@/utils/orpc'
-import { matchesAdminCommunityListRunsQueryForOrganization } from './admin-community-list-runs-query-predicate'
+import { useAdminCommunityRoleInvalidation } from './use-admin-community-role-invalidation'
 
 export function useAdminCommunityRoleCreate(organizationId: string) {
-  const queryClient = useQueryClient()
+  const role = useAdminCommunityRoleInvalidation()
 
   return useMutation(
     orpc.adminCommunityRole.create.mutationOptions({
@@ -13,26 +13,7 @@ export function useAdminCommunityRoleCreate(organizationId: string) {
         toast.error(error.message)
       },
       onSuccess: async () => {
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: orpc.adminCommunityRole.getSyncStatus.key({
-              input: {
-                organizationId,
-              },
-            }),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: orpc.adminCommunityRole.list.key({
-              input: {
-                organizationId,
-              },
-            }),
-          }),
-          queryClient.invalidateQueries({
-            predicate: (query) => matchesAdminCommunityListRunsQueryForOrganization(query.queryKey, organizationId),
-            queryKey: orpc.adminCommunityRole.listRuns.key(),
-          }),
-        ])
+        await role.invalidateRoleCatalog(organizationId)
         toast.success('Community role created.')
       },
     }),

@@ -1,10 +1,11 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { orpc } from '@/utils/orpc'
+import { useAdminCommunityOrganizationInvalidation } from './use-admin-community-organization-invalidation'
 
 export function useAdminCommunityUpdate() {
-  const queryClient = useQueryClient()
+  const organization = useAdminCommunityOrganizationInvalidation()
 
   return useMutation(
     orpc.adminOrganization.update.mutationOptions({
@@ -12,18 +13,7 @@ export function useAdminCommunityUpdate() {
         toast.error(error.message)
       },
       onSuccess: async (updatedOrganization) => {
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: orpc.adminOrganization.get.key({
-              input: {
-                organizationId: updatedOrganization.id,
-              },
-            }),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: orpc.adminOrganization.list.key(),
-          }),
-        ])
+        await organization.invalidateCommunityAndDirectory(updatedOrganization.id)
         toast.success('Community updated.')
       },
     }),

@@ -1,10 +1,11 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { orpc } from '@/utils/orpc'
+import { useAdminCommunityOrganizationInvalidation } from './use-admin-community-organization-invalidation'
 
 export function useAdminCommunityMemberRemove(organizationId: string) {
-  const queryClient = useQueryClient()
+  const organization = useAdminCommunityOrganizationInvalidation()
 
   return useMutation(
     orpc.adminOrganization.removeMember.mutationOptions({
@@ -12,18 +13,7 @@ export function useAdminCommunityMemberRemove(organizationId: string) {
         toast.error(error.message)
       },
       onSuccess: async () => {
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: orpc.adminOrganization.get.key({
-              input: {
-                organizationId,
-              },
-            }),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: orpc.adminOrganization.list.key(),
-          }),
-        ])
+        await organization.invalidateCommunityAndDirectory(organizationId)
         toast.success('Member removed.')
       },
     }),

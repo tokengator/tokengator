@@ -1,11 +1,13 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { orpc } from '@/utils/orpc'
-import { matchesAdminCommunityListRunsQueryForOrganization } from './admin-community-list-runs-query-predicate'
+import { useAdminCommunityDiscordInvalidation } from './use-admin-community-discord-invalidation'
+import { useAdminCommunityRoleInvalidation } from './use-admin-community-role-invalidation'
 
 export function useAdminCommunityDiscordRoleMappingSet(organizationId: string) {
-  const queryClient = useQueryClient()
+  const discord = useAdminCommunityDiscordInvalidation()
+  const role = useAdminCommunityRoleInvalidation()
 
   return useMutation(
     orpc.adminCommunityRole.setDiscordRoleMapping.mutationOptions({
@@ -13,33 +15,7 @@ export function useAdminCommunityDiscordRoleMappingSet(organizationId: string) {
         toast.error(error.message)
       },
       onSuccess: async (result, variables) => {
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: orpc.adminCommunityRole.getSyncStatus.key({
-              input: {
-                organizationId,
-              },
-            }),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: orpc.adminCommunityRole.list.key({
-              input: {
-                organizationId,
-              },
-            }),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: orpc.adminCommunityRole.listDiscordGuildRoles.key({
-              input: {
-                organizationId,
-              },
-            }),
-          }),
-          queryClient.invalidateQueries({
-            predicate: (query) => matchesAdminCommunityListRunsQueryForOrganization(query.queryKey, organizationId),
-            queryKey: orpc.adminCommunityRole.listRuns.key(),
-          }),
-        ])
+        await Promise.all([discord.invalidateGuildRoles(organizationId), role.invalidateRoleCatalog(organizationId)])
         toast.success(
           result.mapping.status === 'ready'
             ? 'Discord role mapping saved.'

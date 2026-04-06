@@ -1,10 +1,11 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { orpc } from '@/utils/orpc'
+import { useAdminAssetGroupInvalidation } from './use-admin-asset-group-invalidation'
 
 export function useAdminAssetGroupDelete() {
-  const queryClient = useQueryClient()
+  const group = useAdminAssetGroupInvalidation()
 
   return useMutation(
     orpc.adminAssetGroup.delete.mutationOptions({
@@ -12,9 +13,7 @@ export function useAdminAssetGroupDelete() {
         toast.error(error.message)
       },
       onSuccess: async () => {
-        await queryClient.invalidateQueries({
-          queryKey: orpc.adminAssetGroup.list.key(),
-        })
+        await group.invalidateGroupList()
         toast.success('Asset group deleted.')
       },
     }),

@@ -3,8 +3,8 @@ import { Loader2 } from 'lucide-react'
 import { Button } from '@tokengator/ui/components/button'
 import { UiDetailRow } from '@tokengator/ui/components/ui-detail-row'
 import { UiStatus, type UiStatusVariants } from '@tokengator/ui/components/ui-status'
+import { formatDateTime } from '@tokengator/ui/util/format-date-time'
 
-import { formatTimestamp } from '@/utils/admin-automation'
 import type { AdminCommunityDiscordConnection } from '../data-access/use-admin-community-get-query'
 
 function getDiscordConnectionStatusTone(status: AdminCommunityDiscordConnection['status']): UiStatusVariants['tone'] {
@@ -33,7 +33,7 @@ export function AdminCommunityDiscordConnectionUiDetails(props: AdminCommunityDi
             {discordConnection.status === 'connected' ? 'Connected' : 'Needs attention'}
           </UiStatus>
         </UiDetailRow>
-        <UiDetailRow label="Last checked:">{formatTimestamp(discordConnection.lastCheckedAt)}</UiDetailRow>
+        <UiDetailRow label="Last checked:">{formatDateTime(discordConnection.lastCheckedAt)}</UiDetailRow>
         <UiDetailRow label="Manage Roles:">
           {discordConnection.diagnostics == null
             ? 'Unavailable'

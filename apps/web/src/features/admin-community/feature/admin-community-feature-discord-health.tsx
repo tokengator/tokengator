@@ -2,8 +2,9 @@ import { Loader2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import { UiInfoCard, UiInfoCardLabel, UiInfoCardMeta, UiInfoCardValue } from '@tokengator/ui/components/ui-info-card'
 import { UiStatus, type UiStatusVariants } from '@tokengator/ui/components/ui-status'
+import { formatDateTime } from '@tokengator/ui/util/format-date-time'
 
-import { formatTimestamp, getFreshnessTone } from '@/utils/admin-automation'
+import { getFreshnessTone } from '@/features/admin-shared/util/get-freshness-tone'
 import type {
   AdminCommunityDiscordSyncRunsResult,
   AdminCommunitySyncRunStatus,
@@ -57,9 +58,9 @@ export function AdminCommunityFeatureDiscordHealth(props: AdminCommunityFeatureD
   const hasDiscordSyncStatusError = Boolean(communitySyncStatus.error)
   const discordFreshnessStatus = discordStatus?.freshnessStatus ?? 'unknown'
   const discordLastRunStatus = discordStatus ? (discordStatus.lastRun?.status ?? 'Never') : 'Unknown'
-  const discordLastStartedAt = discordStatus ? formatTimestamp(discordStatus.lastRun?.startedAt ?? null) : 'Unknown'
+  const discordLastStartedAt = discordStatus ? formatDateTime(discordStatus.lastRun?.startedAt ?? null) : 'Unknown'
   const discordLastSuccessAt = discordStatus
-    ? formatTimestamp(discordStatus.lastSuccessfulRun?.finishedAt ?? null)
+    ? formatDateTime(discordStatus.lastSuccessfulRun?.finishedAt ?? null)
     : 'Unknown'
   const discordStaleAfter = discordStatus ? `${discordStatus.staleAfterMinutes} minutes` : 'Unknown'
   const discordState = discordStatus ? (discordStatus.isRunning ? 'running' : 'idle') : 'Unknown'
@@ -109,7 +110,7 @@ export function AdminCommunityFeatureDiscordHealth(props: AdminCommunityFeatureD
                 </UiInfoCardValue>
                 <div className="mt-2 flex items-baseline justify-between gap-3">
                   <UiInfoCardLabel>Last checked</UiInfoCardLabel>
-                  <UiInfoCardMeta>{formatTimestamp(discordConnection.lastCheckedAt)}</UiInfoCardMeta>
+                  <UiInfoCardMeta>{formatDateTime(discordConnection.lastCheckedAt)}</UiInfoCardMeta>
                 </div>
               </UiInfoCard>
               <UiInfoCard>
@@ -175,8 +176,8 @@ export function AdminCommunityFeatureDiscordHealth(props: AdminCommunityFeatureD
                       <UiStatus tone={getSyncRunTone(run.status)}>{run.status}</UiStatus>
                       <span className="text-muted-foreground text-xs">{run.triggerSource}</span>
                     </div>
-                    <div className="mt-2">Started: {formatTimestamp(run.startedAt)}</div>
-                    <div className="text-muted-foreground">Finished: {formatTimestamp(run.finishedAt)}</div>
+                    <div className="mt-2">Started: {formatDateTime(run.startedAt)}</div>
+                    <div className="text-muted-foreground">Finished: {formatDateTime(run.finishedAt)}</div>
                     {'appliedGrantCount' in run ? (
                       <>
                         <div className="text-muted-foreground">

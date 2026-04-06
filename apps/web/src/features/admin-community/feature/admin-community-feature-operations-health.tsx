@@ -1,8 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import { UiInfoCard, UiInfoCardError, UiInfoCardLabel, UiInfoCardValue } from '@tokengator/ui/components/ui-info-card'
 import { UiStatus, type UiStatusVariants } from '@tokengator/ui/components/ui-status'
+import { formatDateTime } from '@tokengator/ui/util/format-date-time'
 
-import { formatTimestamp, getFreshnessTone } from '@/utils/admin-automation'
+import { getFreshnessTone } from '@/features/admin-shared/util/get-freshness-tone'
 import type {
   AdminCommunityMembershipSyncRunsResult,
   AdminCommunitySyncRunStatus,
@@ -69,7 +70,7 @@ export function AdminCommunityFeatureOperationsHealth(props: AdminCommunityFeatu
             <div className="flex items-baseline justify-between gap-3">
               <UiInfoCardLabel>Last success</UiInfoCardLabel>
               <UiInfoCardValue>
-                {formatTimestamp(membershipStatus.lastSuccessfulRun?.finishedAt ?? null)}
+                {formatDateTime(membershipStatus.lastSuccessfulRun?.finishedAt ?? null)}
               </UiInfoCardValue>
             </div>
             <div className="flex items-baseline justify-between gap-3">
@@ -77,7 +78,7 @@ export function AdminCommunityFeatureOperationsHealth(props: AdminCommunityFeatu
               <UiInfoCardValue>{membershipStatus.lastRun?.status ?? 'Never'}</UiInfoCardValue>
             </div>
             <div className="text-muted-foreground text-xs">
-              {formatTimestamp(membershipStatus.lastRun?.startedAt ?? null)}
+              {formatDateTime(membershipStatus.lastRun?.startedAt ?? null)}
             </div>
             <div className="flex items-baseline justify-between gap-3">
               <UiInfoCardLabel>State</UiInfoCardLabel>
@@ -114,7 +115,7 @@ export function AdminCommunityFeatureOperationsHealth(props: AdminCommunityFeatu
                     {assetGroup.type} · {assetGroup.address}
                   </div>
                   <div className="text-muted-foreground">
-                    Last success: {formatTimestamp(assetGroup.indexingStatus.lastSuccessfulRun?.finishedAt ?? null)}
+                    Last success: {formatDateTime(assetGroup.indexingStatus.lastSuccessfulRun?.finishedAt ?? null)}
                   </div>
                   {!assetGroup.enabled ? (
                     <div className="text-muted-foreground text-xs">Disabled asset group</div>
@@ -140,8 +141,8 @@ export function AdminCommunityFeatureOperationsHealth(props: AdminCommunityFeatu
                   <UiStatus tone={getSyncRunTone(run.status)}>{run.status}</UiStatus>
                   <span className="text-muted-foreground text-xs">{run.triggerSource}</span>
                 </div>
-                <div className="mt-2">Started: {formatTimestamp(run.startedAt)}</div>
-                <div className="text-muted-foreground">Finished: {formatTimestamp(run.finishedAt)}</div>
+                <div className="mt-2">Started: {formatDateTime(run.startedAt)}</div>
+                <div className="text-muted-foreground">Finished: {formatDateTime(run.finishedAt)}</div>
                 <div className="text-muted-foreground">{`Qualified ${run.qualifiedUserCount} · Changed ${run.usersChangedCount}`}</div>
                 <div className="text-muted-foreground">
                   {`Org +${run.addToOrganizationCount} / -${run.removeFromOrganizationCount} · Teams +${run.addToTeamCount} / -${run.removeFromTeamCount}`}

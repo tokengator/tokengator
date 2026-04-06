@@ -10,8 +10,9 @@ import {
   UiInfoCardValue,
 } from '@tokengator/ui/components/ui-info-card'
 import { UiStatus } from '@tokengator/ui/components/ui-status'
+import { formatDateTime } from '@tokengator/ui/util/format-date-time'
 
-import { formatTimestamp, getFreshnessTone } from '@/utils/admin-automation'
+import { getFreshnessTone } from '@/features/admin-shared/util/get-freshness-tone'
 import { orpc } from '@/utils/orpc'
 import { useAdminAssetDelete } from '../data-access/use-admin-asset-delete'
 import { useAdminAssetGroupGetQuery } from '../data-access/use-admin-asset-group-get-query'
@@ -95,12 +96,12 @@ export function AdminAssetFeatureGroupAssets(props: AdminAssetFeatureGroupAssets
             </UiInfoCard>
             <UiInfoCard>
               <UiInfoCardLabel>Last Success</UiInfoCardLabel>
-              <UiInfoCardValue>{formatTimestamp(indexingStatus.lastSuccessfulRun?.finishedAt ?? null)}</UiInfoCardValue>
+              <UiInfoCardValue>{formatDateTime(indexingStatus.lastSuccessfulRun?.finishedAt ?? null)}</UiInfoCardValue>
             </UiInfoCard>
             <UiInfoCard>
               <UiInfoCardLabel>Last Run</UiInfoCardLabel>
               <UiInfoCardValue>{indexingStatus.lastRun?.status ?? 'Never'}</UiInfoCardValue>
-              <UiInfoCardMeta>{formatTimestamp(indexingStatus.lastRun?.startedAt ?? null)}</UiInfoCardMeta>
+              <UiInfoCardMeta>{formatDateTime(indexingStatus.lastRun?.startedAt ?? null)}</UiInfoCardMeta>
             </UiInfoCard>
             <UiInfoCard>
               <UiInfoCardLabel>Execution</UiInfoCardLabel>
@@ -187,11 +188,11 @@ export function AdminAssetFeatureGroupAssets(props: AdminAssetFeatureGroupAssets
                 </div>
                 <div>
                   <div className="text-muted-foreground">Started</div>
-                  <div>{formatTimestamp(run.startedAt)}</div>
+                  <div>{formatDateTime(run.startedAt)}</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">Finished</div>
-                  <div>{formatTimestamp(run.finishedAt)}</div>
+                  <div>{formatDateTime(run.finishedAt)}</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">Counts</div>

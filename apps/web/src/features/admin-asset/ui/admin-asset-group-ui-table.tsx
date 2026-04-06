@@ -9,8 +9,9 @@ import {
   UiTableHeaderCell,
   UiTableRow,
 } from '@tokengator/ui/components/ui-table'
+import { formatDateTime } from '@tokengator/ui/util/format-date-time'
 
-import { formatTimestamp, getFreshnessTone } from '@/utils/admin-automation'
+import { getFreshnessTone } from '@/features/admin-shared/util/get-freshness-tone'
 
 interface AdminAssetGroupUiTableAssetGroup {
   address: string
@@ -84,7 +85,7 @@ export function AdminAssetGroupUiTable(props: AdminAssetGroupUiTableProps) {
                     ) : null}
                   </div>
                   <div className="text-muted-foreground text-xs">
-                    Last success: {formatTimestamp(assetGroup.indexingStatus.lastSuccessfulRun?.finishedAt ?? null)}
+                    Last success: {formatDateTime(assetGroup.indexingStatus.lastSuccessfulRun?.finishedAt ?? null)}
                   </div>
                   <div className="text-muted-foreground text-xs">
                     Stale after: {assetGroup.indexingStatus.staleAfterMinutes}m

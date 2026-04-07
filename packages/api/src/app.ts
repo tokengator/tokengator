@@ -87,7 +87,7 @@ export function createApiApp() {
       origin: env.CORS_ORIGINS,
     }),
   )
-  app.get('/', (context) => {
+  app.get('/api/health', (context) => {
     return context.text('OK')
   })
 

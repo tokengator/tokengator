@@ -1,4 +1,7 @@
-function getViteApiUrl() {
+function getApiUrl() {
+  if (typeof window !== 'undefined') {
+    return window.location.origin
+  }
   const value = import.meta.env.VITE_API_URL
 
   if (!value) {
@@ -15,5 +18,5 @@ function getViteApiUrl() {
 }
 
 export const env = {
-  VITE_API_URL: getViteApiUrl(),
+  VITE_API_URL: getApiUrl(),
 } as const

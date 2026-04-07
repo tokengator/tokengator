@@ -78,6 +78,8 @@ export function getAppLogger(...segments: string[]) {
   return getLogger([...DEFAULT_ROOT_CATEGORY, ...segments])
 }
 
+export type Logger = ReturnType<typeof getAppLogger>
+
 export function formatLogError(error: unknown) {
   if (error instanceof Error) {
     return error.stack ?? error.message

@@ -1,4 +1,5 @@
 {
+  "compilerOptions": { "lib": ["DOM", "ES2022"] },
   "extends": "@tokengator/config/tsconfig.base.json",
   "include": ["src", "test", "test-e2e", "test-integration"]
 }

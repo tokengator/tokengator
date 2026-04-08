@@ -17,14 +17,12 @@ export function OnboardFeatureIndex() {
     from: '/onboard',
   })
   const queryClient = useQueryClient()
-  const appAuthState = useAppAuthStateQuery()
+  const { data } = useAppAuthStateQuery()
   const [isDiscordPending, setIsDiscordPending] = useState(false)
-  const hasDiscordAccount = appAuthState.data?.onboardingStatus?.hasDiscordAccount ?? false
-  const hasRequirementsError = appAuthState.isError
-  const hasSolanaWallet = appAuthState.data?.onboardingStatus?.hasSolanaWallet ?? false
-  const hasUsername = appAuthState.data?.onboardingStatus?.hasUsername ?? false
-  const isLoadingRequirements = appAuthState.isPending
-  const isOnboardingComplete = appAuthState.data?.onboardingStatus?.isComplete ?? false
+  const hasDiscordAccount = data?.onboardingStatus?.hasDiscordAccount ?? false
+  const hasSolanaWallet = data?.onboardingStatus?.hasSolanaWallet ?? false
+  const hasUsername = data?.onboardingStatus?.hasUsername ?? false
+  const isOnboardingComplete = data?.isOnboardingComplete ?? false
 
   useEffect(() => {
     if (!isOnboardingComplete) {
@@ -62,40 +60,12 @@ export function OnboardFeatureIndex() {
     }
   }
 
-  if (isLoadingRequirements) {
-    return (
-      <div className="flex min-h-full items-center justify-center px-4 py-10">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Checking your account setup</CardTitle>
-            <CardDescription>We&apos;re loading the required onboarding steps.</CardDescription>
-          </CardHeader>
-          <CardContent className="text-muted-foreground flex items-center gap-2 text-sm">
-            <Loader2 className="size-4 animate-spin" />
-            Loading onboarding requirements
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  if (hasRequirementsError) {
-    return (
-      <div className="flex min-h-full items-center justify-center px-4 py-10">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>We couldn&apos;t load your onboarding steps</CardTitle>
-            <CardDescription>Try again to continue setting up your account.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-muted-foreground text-sm">There was a problem checking your Discord or Solana setup.</p>
-            <Button onClick={() => void refreshAppAuthState(queryClient)} variant="outline">
-              Retry
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
+  async function handleUsernameRefresh() {
+    try {
+      await refreshAppAuthState(queryClient)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to refresh account setup')
+    }
   }
 
   if (!hasDiscordAccount) {
@@ -158,7 +128,7 @@ export function OnboardFeatureIndex() {
             <p className="text-muted-foreground text-sm">
               Refresh this page if your Discord username does not appear automatically after linking.
             </p>
-            <Button onClick={() => void refreshAppAuthState(queryClient)} type="button" variant="outline">
+            <Button onClick={() => void handleUsernameRefresh()} type="button" variant="outline">
               Refresh
             </Button>
           </CardContent>

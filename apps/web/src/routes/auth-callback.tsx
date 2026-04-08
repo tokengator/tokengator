@@ -4,11 +4,9 @@ import { AuthFeatureCallbackPending } from '@/features/auth/feature/auth-feature
 
 export const Route = createFileRoute('/auth-callback')({
   beforeLoad: async ({ context }) => {
-    const { onboardingStatus, session } = context.appAuthState
+    const { authenticatedHomePath, session } = context.appAuthState
 
-    throw redirect({
-      to: !session ? '/login' : onboardingStatus?.isComplete ? '/profile' : '/onboard',
-    })
+    throw redirect({ to: session ? authenticatedHomePath : '/login' })
   },
   component: RoutePendingComponent,
   pendingComponent: RoutePendingComponent,

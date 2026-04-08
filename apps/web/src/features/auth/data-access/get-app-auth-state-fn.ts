@@ -43,7 +43,9 @@ export const getAppAuthState = createServerFn({ method: 'GET' })
 
     if (!session) {
       return {
+        authenticatedHomePath: '/onboard',
         identities: null,
+        isOnboardingComplete: false,
         onboardingStatus: null,
         session: null,
         solanaWallets: null,
@@ -73,14 +75,18 @@ export const getAppAuthState = createServerFn({ method: 'GET' })
           },
         }
       : session
+    const onboardingStatus = buildOnboardingStatus({
+      hasDiscordAccount,
+      hasSolanaWallet,
+      hasUsername,
+    })
+    const isOnboardingComplete = onboardingStatus.isComplete
 
     return {
+      authenticatedHomePath: isOnboardingComplete ? '/profile' : '/onboard',
       identities,
-      onboardingStatus: buildOnboardingStatus({
-        hasDiscordAccount,
-        hasSolanaWallet,
-        hasUsername,
-      }),
+      isOnboardingComplete,
+      onboardingStatus,
       session: nextSession,
       solanaWallets,
     } satisfies AppAuthState

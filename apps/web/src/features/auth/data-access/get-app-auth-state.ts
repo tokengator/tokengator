@@ -18,8 +18,12 @@ export interface AppSession {
   user: AppSessionUser
 }
 
+export type AuthenticatedHomePath = '/onboard' | '/profile'
+
 export interface AppAuthState {
+  authenticatedHomePath: AuthenticatedHomePath
   identities: Awaited<ReturnType<typeof serverOrpcClient.profile.listIdentities>> | null
+  isOnboardingComplete: boolean
   onboardingStatus: OnboardingStatus | null
   session: AppSession | null
   solanaWallets: Awaited<ReturnType<typeof serverOrpcClient.profile.listSolanaWallets>> | null

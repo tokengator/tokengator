@@ -1,10 +1,7 @@
 import { cn } from '@tokengator/ui/lib/utils'
+import type { HealthCheckStatus } from '../data-access/use-shell-health-check-status.tsx'
 
-interface ShellUiStatusIndicatorProps {
-  status: 'connected' | 'disconnected' | 'loading'
-}
-
-export function ShellUiStatusIndicator({ status }: ShellUiStatusIndicatorProps) {
+export function ShellUiStatusIndicator({ status }: { status: HealthCheckStatus }) {
   const label =
     status === 'loading' ? 'Checking API status' : status === 'connected' ? 'API connected' : 'API disconnected'
 

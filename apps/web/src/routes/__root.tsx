@@ -4,11 +4,11 @@ import { lazy, Suspense } from 'react'
 import { Toaster } from '@tokengator/ui/components/sonner'
 
 import type { orpc } from '@/lib/orpc'
-import { AppShellFeatureFrame } from '@/features/app-shell/feature/app-shell-feature-frame'
 import {
   getAppAuthStateQueryOptions,
   populateAppAuthStateRelatedQueries,
 } from '@/features/auth/data-access/get-app-auth-state'
+import { ShellFeatureFrame } from '@/features/shell/feature/shell-feature-frame'
 import { AppProviders } from '@/lib/app-providers'
 
 import appCss from '../index.css?url'
@@ -70,9 +70,9 @@ function RootDocument() {
       </head>
       <body>
         <AppProviders>
-          <AppShellFeatureFrame>
+          <ShellFeatureFrame>
             <Outlet />
-          </AppShellFeatureFrame>
+          </ShellFeatureFrame>
           <Toaster richColors />
           {AppDevtools ? (
             <Suspense fallback={null}>

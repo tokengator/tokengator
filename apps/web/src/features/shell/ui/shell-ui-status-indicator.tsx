@@ -1,10 +1,10 @@
 import { cn } from '@tokengator/ui/lib/utils'
 
-interface AppShellUiStatusIndicatorProps {
+interface ShellUiStatusIndicatorProps {
   status: 'connected' | 'disconnected' | 'loading'
 }
 
-export function AppShellUiStatusIndicator({ status }: AppShellUiStatusIndicatorProps) {
+export function ShellUiStatusIndicator({ status }: ShellUiStatusIndicatorProps) {
   const label =
     status === 'loading' ? 'Checking API status' : status === 'connected' ? 'API connected' : 'API disconnected'
 

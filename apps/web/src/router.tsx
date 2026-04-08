@@ -1,7 +1,7 @@
 import { QueryClientProvider } from '@tanstack/react-query'
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
 
-import { AppShellUiLoading } from '@/features/app-shell/ui/app-shell-ui-loading'
+import { ShellUiLoading } from '@/features/shell/ui/shell-ui-loading'
 
 import { getQueryClient, orpc } from './lib/orpc'
 import { routeTree } from './routeTree.gen'
@@ -12,7 +12,7 @@ export const getRouter = () => {
   return createTanStackRouter({
     context: { orpc, queryClient },
     defaultNotFoundComponent: () => <div>Not Found</div>,
-    defaultPendingComponent: () => <AppShellUiLoading />,
+    defaultPendingComponent: () => <ShellUiLoading />,
     defaultPreloadStaleTime: 0,
     routeTree,
     scrollRestoration: true,

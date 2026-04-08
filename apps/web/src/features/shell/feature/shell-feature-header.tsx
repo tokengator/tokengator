@@ -2,16 +2,16 @@ import type { OnboardingStatus } from '@/features/organization/feature/organizat
 import { useAppAuthStateQuery } from '@/features/auth/data-access/use-app-auth-state-query'
 import { hasCompletedOnboarding } from '@/features/organization/feature/organization-feature-active-access'
 
-import { useAppShellHealthCheckQuery } from '../data-access/use-app-shell-health-check-query'
-import { AppShellUiHeader } from '../ui/app-shell-ui-header'
-import { AppShellUiStatusIndicator } from '../ui/app-shell-ui-status-indicator'
-import { AppShellUiThemeToggle } from '../ui/app-shell-ui-theme-toggle'
+import { useShellHealthCheckQuery } from '../data-access/use-shell-health-check-query'
+import { ShellUiHeader } from '../ui/shell-ui-header'
+import { ShellUiStatusIndicator } from '../ui/shell-ui-status-indicator'
+import { ShellUiThemeToggle } from '../ui/shell-ui-theme-toggle'
 
-import { AppShellFeatureUserMenu } from './app-shell-feature-user-menu'
+import { ShellFeatureUserMenu } from './shell-feature-user-menu'
 
-export function AppShellFeatureHeader() {
+export function ShellFeatureHeader() {
   const { data } = useAppAuthStateQuery()
-  const healthCheck = useAppShellHealthCheckQuery()
+  const healthCheck = useShellHealthCheckQuery()
   const onboardingStatus: OnboardingStatus | null = data?.onboardingStatus ?? null
   const session = data?.session ?? null
   const isOnboarded = hasCompletedOnboarding(onboardingStatus)
@@ -25,12 +25,12 @@ export function AppShellFeatureHeader() {
         : 'disconnected'
 
   return (
-    <AppShellUiHeader
+    <ShellUiHeader
       actions={
         <>
-          <AppShellUiStatusIndicator status={status} />
-          <AppShellUiThemeToggle />
-          <AppShellFeatureUserMenu />
+          <ShellUiStatusIndicator status={status} />
+          <ShellUiThemeToggle />
+          <ShellFeatureUserMenu />
         </>
       }
       homeLink={homeLink}

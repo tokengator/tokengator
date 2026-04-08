@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 
-interface AppShellUiHeaderProps {
+interface ShellUiHeaderProps {
   actions: ReactNode
   homeLink: '/' | '/onboard' | '/profile'
 }
 
-export function AppShellUiHeader({ actions, homeLink }: AppShellUiHeaderProps) {
+export function ShellUiHeader({ actions, homeLink }: ShellUiHeaderProps) {
   return (
     <header className="border-b">
       <div className="flex min-h-14 w-full flex-wrap items-center justify-between gap-3 px-4 py-2">

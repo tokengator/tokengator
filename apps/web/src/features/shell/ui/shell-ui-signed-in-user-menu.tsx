@@ -11,19 +11,19 @@ import {
 
 import type { AppSession } from '@/features/auth/data-access/get-app-auth-state'
 
-interface AppShellUiSignedInUserMenuProps {
+interface ShellUiSignedInUserMenuProps {
   onAdminClick: () => void
   onProfileClick: () => void
   onSignOut: () => void
   session: AppSession
 }
 
-export function AppShellUiSignedInUserMenu({
+export function ShellUiSignedInUserMenu({
   onAdminClick,
   onProfileClick,
   onSignOut,
   session,
-}: AppShellUiSignedInUserMenuProps) {
+}: ShellUiSignedInUserMenuProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button variant="outline" />}>{session.user.name}</DropdownMenuTrigger>

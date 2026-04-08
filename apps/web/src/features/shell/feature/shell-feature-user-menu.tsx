@@ -6,15 +6,15 @@ import { authClient } from '@/features/auth/data-access/auth-client'
 import { refreshAppAuthState } from '@/features/auth/data-access/get-app-auth-state'
 import { useAppSession } from '@/features/auth/data-access/use-app-session'
 
-import { AppShellUiUserMenu } from '../ui/app-shell-ui-user-menu'
+import { ShellUiUserMenu } from '../ui/shell-ui-user-menu'
 
-export function AppShellFeatureUserMenu() {
+export function ShellFeatureUserMenu() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { data: session, isPending } = useAppSession()
 
   return (
-    <AppShellUiUserMenu
+    <ShellUiUserMenu
       isPending={isPending}
       onAdminClick={() => void navigate({ to: '/admin' })}
       onProfileClick={() => void navigate({ to: '/profile' })}

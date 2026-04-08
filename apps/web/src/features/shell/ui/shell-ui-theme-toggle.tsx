@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@tokengator/ui/components/button'
 import { Skeleton } from '@tokengator/ui/components/skeleton'
 
-export function AppShellUiThemeToggle() {
+export function ShellUiThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 

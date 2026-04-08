@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react'
 
-interface AppShellUiFrameProps {
+interface ShellUiFrameProps {
   children: ReactNode
   header: ReactNode
 }
 
-export function AppShellUiFrame({ children, header }: AppShellUiFrameProps) {
+export function ShellUiFrame({ children, header }: ShellUiFrameProps) {
   return (
     <div className="grid h-svh min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
       {header}

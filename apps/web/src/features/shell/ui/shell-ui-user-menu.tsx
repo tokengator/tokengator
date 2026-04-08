@@ -5,11 +5,11 @@ import { Skeleton } from '@tokengator/ui/components/skeleton'
 
 import type { AppSession } from '@/features/auth/data-access/get-app-auth-state'
 
-const AppShellUiSignedInUserMenu = lazy(async () => ({
-  default: (await import('./app-shell-ui-signed-in-user-menu')).AppShellUiSignedInUserMenu,
+const ShellUiSignedInUserMenu = lazy(async () => ({
+  default: (await import('./shell-ui-signed-in-user-menu')).ShellUiSignedInUserMenu,
 }))
 
-interface AppShellUiUserMenuProps {
+interface ShellUiUserMenuProps {
   isPending: boolean
   onAdminClick: () => void
   onProfileClick: () => void
@@ -17,13 +17,7 @@ interface AppShellUiUserMenuProps {
   session: AppSession | null
 }
 
-export function AppShellUiUserMenu({
-  isPending,
-  onAdminClick,
-  onProfileClick,
-  onSignOut,
-  session,
-}: AppShellUiUserMenuProps) {
+export function ShellUiUserMenu({ isPending, onAdminClick, onProfileClick, onSignOut, session }: ShellUiUserMenuProps) {
   if (isPending) {
     return <Skeleton className="h-8 w-24" />
   }
@@ -44,7 +38,7 @@ export function AppShellUiUserMenu({
         </Button>
       }
     >
-      <AppShellUiSignedInUserMenu
+      <ShellUiSignedInUserMenu
         onAdminClick={onAdminClick}
         onProfileClick={onProfileClick}
         onSignOut={onSignOut}

@@ -97,6 +97,54 @@ Useful `tmux` shortcuts with the default setup:
 - `tmux attach -t tokengator-dev`: reattach to the session
 - `tmux kill-session -t tokengator-dev`: stop the whole session
 
+## Docker
+
+TokenGator can run as a single container where the API also serves the built frontend.
+
+### Local Compose Stack
+
+1. Prepare `apps/api/.env` with the values you need.
+   `bun run setup` is the fastest way to generate a local file with a real `BETTER_AUTH_SECRET`.
+2. `apps/api/.env.docker` overrides the local topology for the Compose stack.
+   This keeps `apps/api/.env` free to point at `turso dev` or split-origin local URLs.
+3. Start the stack:
+
+```bash
+bun run docker:up
+```
+
+Equivalent Compose command:
+
+```bash
+docker compose --env-file apps/api/.env --env-file apps/api/.env.docker up --build
+```
+
+This brings up:
+
+- `app` on `http://localhost:3000`
+- `libsql` as an internal sidecar on `http://libsql:8080`
+
+The Docker override file pins the Compose stack to a single public origin:
+
+- `BETTER_AUTH_URL=http://localhost:3000`
+- `CORS_ORIGINS=http://localhost:3000`
+- `WEB_URL=http://localhost:3000`
+- `DATABASE_URL=http://libsql:8080`
+
+On startup the app container runs `db:push` and then starts the API/frontend server.
+
+### Split-Origin Override
+
+If you still need the frontend to call a separate API origin, set `VITE_API_URL` for the app container.
+Server-rendered web requests use `VITE_API_URL` when present and otherwise fall back to `BETTER_AUTH_URL`.
+Browser requests use `window.location.origin`.
+
+### Images
+
+The supported image target is `app`, published to:
+
+- `ghcr.io/tokengator/tokengator:latest`
+
 ## UI Customization
 
 React web apps in this project share shadcn/ui primitives through `packages/ui`.

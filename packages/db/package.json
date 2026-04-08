@@ -24,13 +24,13 @@
     "@tokengator/env": "workspace:*",
     "@tokengator/logger": "workspace:*",
     "dotenv": "catalog:",
+    "drizzle-kit": "^0.31.8",
     "drizzle-orm": "catalog:",
     "libsql": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@tokengator/config": "workspace:*",
-    "drizzle-kit": "^0.31.8",
     "typescript": "^5"
   }
 }

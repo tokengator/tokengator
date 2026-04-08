@@ -46,7 +46,7 @@ export const env = createEnv({
     BETTER_AUTH_SOLANA_SIGN_IN_ENABLED: envBooleanSchema,
     BETTER_AUTH_URL: z.url(),
     CORS_ORIGINS: corsOriginsSchema,
-    DATABASE_AUTH_TOKEN: z.string().min(1),
+    DATABASE_AUTH_TOKEN: z.string().min(1).optional(),
     DATABASE_URL: z.string().min(1),
     DISCORD_ADMIN_IDS: discordAdminIdsSchema,
     DISCORD_BOT_START: envBooleanSchema,

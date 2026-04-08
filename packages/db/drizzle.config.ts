@@ -8,7 +8,7 @@ dotenv.config({
 
 export default defineConfig({
   dbCredentials: {
-    authToken: process.env.DATABASE_AUTH_TOKEN,
+    authToken: process.env.DATABASE_AUTH_TOKEN?.trim() || undefined,
     url: process.env.DATABASE_URL || '',
   },
   dialect: 'turso',

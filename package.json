@@ -53,6 +53,8 @@
     "dev:api": "bun --bun run --cwd apps/api dev",
     "dev:local": "bun run ./scripts/dev-local.ts",
     "dev:web": "bun --bun run --cwd apps/web dev",
+    "docker:build": "docker build --target app -t tokengator-app:test .",
+    "docker:up": "docker compose --env-file apps/api/.env --env-file apps/api/.env.docker up --build",
     "lint": "oxlint && oxfmt --check",
     "lint:fix": "oxlint --fix && oxfmt --write",
     "prestart:api": "bun run build && bun db:push",

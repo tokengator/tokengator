@@ -50,3 +50,6 @@ coverage
 tmp
 temp
 local.db*
+*.bun-build
+*.js.map
+apps/api/api

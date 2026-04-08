@@ -1,0 +1,13 @@
+**/.env
+**/.env.*
+!**/.env.example
+**/.turbo
+**/dist
+**/node_modules
+.git
+.github
+.env
+.env.*
+compose*.yml
+Dockerfile*
+README.md

@@ -5,13 +5,13 @@ import { formatLogError, getAppLogger } from '@tokengator/logger'
 import {
   listEnabledAssetGroupsDueForScheduledIndexing,
   runScheduledAssetGroupIndex,
-} from './lib/admin-asset-group-index'
+} from './features/asset-group-index'
 import {
   listOrganizationsDueForScheduledCommunityDiscordSync,
   listOrganizationsDueForScheduledCommunityMembershipSync,
   runScheduledCommunityRoleDiscordSync,
   runScheduledCommunityRoleSync,
-} from './lib/admin-community-role-sync'
+} from './features/community-role-sync'
 import { getSchedulerPollMs } from './lib/automation-config'
 
 const logger = getAppLogger('api', 'scheduled-jobs')

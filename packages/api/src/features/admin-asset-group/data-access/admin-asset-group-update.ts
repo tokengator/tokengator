@@ -1,0 +1,34 @@
+import { eq } from 'drizzle-orm'
+import { db } from '@tokengator/db'
+import { assetGroup } from '@tokengator/db/schema/asset'
+
+import type { AdminAssetGroupUpdateInput } from './admin-asset-group-update-input'
+import type { AdminAssetGroupEntity } from './admin-asset-group.entity'
+
+export async function adminAssetGroupUpdate(input: {
+  assetGroupId: string
+  data: AdminAssetGroupUpdateInput['data']
+  existingAssetGroup: AdminAssetGroupEntity
+}) {
+  const updatedAt = new Date()
+
+  await db
+    .update(assetGroup)
+    .set({
+      address: input.data.address,
+      enabled: input.data.enabled,
+      label: input.data.label,
+      type: input.data.type,
+      updatedAt,
+    })
+    .where(eq(assetGroup.id, input.assetGroupId))
+
+  return {
+    ...input.existingAssetGroup,
+    address: input.data.address,
+    enabled: input.data.enabled,
+    label: input.data.label,
+    type: input.data.type,
+    updatedAt,
+  }
+}

@@ -2,10 +2,10 @@ import { configureSync, resetSync, type LogRecord } from '@logtape/logtape'
 import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 
 type RunScheduledCommunityRoleDiscordSyncResult = Awaited<
-  ReturnType<(typeof import('../src/lib/admin-community-role-sync'))['runScheduledCommunityRoleDiscordSync']>
+  ReturnType<(typeof import('../src/features/community-role-sync'))['runScheduledCommunityRoleDiscordSync']>
 >
 type RunScheduledCommunityRoleSyncResult = Awaited<
-  ReturnType<(typeof import('../src/lib/admin-community-role-sync'))['runScheduledCommunityRoleSync']>
+  ReturnType<(typeof import('../src/features/community-role-sync'))['runScheduledCommunityRoleSync']>
 >
 
 let callOrder: string[] = []

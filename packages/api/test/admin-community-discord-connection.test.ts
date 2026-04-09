@@ -9,15 +9,15 @@ type AuthSchema = typeof import('@tokengator/db/schema/auth')
 type CommunityRoleSchema = typeof import('@tokengator/db/schema/community-role')
 type DatabaseClient = (typeof import('@tokengator/db'))['db']
 type DeleteCommunityDiscordConnectionByOrganizationId =
-  (typeof import('../src/lib/admin-community-discord-connection'))['deleteCommunityDiscordConnectionByOrganizationId']
+  (typeof import('../src/features/community-discord-connection'))['deleteCommunityDiscordConnectionByOrganizationId']
 type GetCommunityDiscordConnectionByOrganizationId =
-  (typeof import('../src/lib/admin-community-discord-connection'))['getCommunityDiscordConnectionByOrganizationId']
+  (typeof import('../src/features/community-discord-connection'))['getCommunityDiscordConnectionByOrganizationId']
 type InspectDiscordGuildConnectionResult =
   import('@tokengator/discord/inspect-discord-guild-connection').InspectDiscordGuildConnectionResult
 type RefreshCommunityDiscordConnection =
-  (typeof import('../src/lib/admin-community-discord-connection'))['refreshCommunityDiscordConnection']
+  (typeof import('../src/features/community-discord-connection'))['refreshCommunityDiscordConnection']
 type UpsertCommunityDiscordConnection =
-  (typeof import('../src/lib/admin-community-discord-connection'))['upsertCommunityDiscordConnection']
+  (typeof import('../src/features/community-discord-connection'))['upsertCommunityDiscordConnection']
 
 const DB_PACKAGE_DIR = resolve(import.meta.dir, '..', '..', 'db')
 const TEST_DATABASE_DIR = resolve(tmpdir(), 'tokengator-api-tests')
@@ -140,7 +140,7 @@ beforeAll(async () => {
     getCommunityDiscordConnectionByOrganizationId,
     refreshCommunityDiscordConnection,
     upsertCommunityDiscordConnection,
-  } = await import('../src/lib/admin-community-discord-connection'))
+  } = await import('../src/features/community-discord-connection'))
 }, 15_000)
 
 beforeEach(async () => {

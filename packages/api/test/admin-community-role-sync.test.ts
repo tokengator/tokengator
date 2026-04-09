@@ -10,17 +10,17 @@ type AuthSchema = typeof import('@tokengator/db/schema/auth')
 type AutomationSchema = typeof import('@tokengator/db/schema/automation')
 type CommunityRoleSchema = typeof import('@tokengator/db/schema/community-role')
 type DatabaseClient = (typeof import('@tokengator/db'))['db']
-type ApplyCommunityRoleSync = (typeof import('../src/lib/admin-community-role-sync'))['applyCommunityRoleSync']
-type EvaluateCommunityRoles = (typeof import('../src/lib/admin-community-role-sync'))['evaluateCommunityRoles']
-type GetCommunityRoleSyncStatus = (typeof import('../src/lib/admin-community-role-sync'))['getCommunityRoleSyncStatus']
+type ApplyCommunityRoleSync = (typeof import('../src/features/community-role-sync'))['applyCommunityRoleSync']
+type EvaluateCommunityRoles = (typeof import('../src/features/community-role-sync'))['evaluateCommunityRoles']
+type GetCommunityRoleSyncStatus = (typeof import('../src/features/community-role-sync'))['getCommunityRoleSyncStatus']
 type ListCommunityMembershipSyncRuns =
-  (typeof import('../src/lib/admin-community-role-sync'))['listCommunityMembershipSyncRuns']
+  (typeof import('../src/features/community-role-sync'))['listCommunityMembershipSyncRuns']
 type ListOrganizationsDueForScheduledCommunityMembershipSync =
-  (typeof import('../src/lib/admin-community-role-sync'))['listOrganizationsDueForScheduledCommunityMembershipSync']
-type PreviewCommunityRoleSync = (typeof import('../src/lib/admin-community-role-sync'))['previewCommunityRoleSync']
-type RemoveCommunityRoleById = (typeof import('../src/lib/admin-community-role-sync'))['removeCommunityRoleById']
+  (typeof import('../src/features/community-role-sync'))['listOrganizationsDueForScheduledCommunityMembershipSync']
+type PreviewCommunityRoleSync = (typeof import('../src/features/community-role-sync'))['previewCommunityRoleSync']
+type RemoveCommunityRoleById = (typeof import('../src/features/community-role-sync'))['removeCommunityRoleById']
 type RunScheduledCommunityRoleSync =
-  (typeof import('../src/lib/admin-community-role-sync'))['runScheduledCommunityRoleSync']
+  (typeof import('../src/features/community-role-sync'))['runScheduledCommunityRoleSync']
 
 const DB_PACKAGE_DIR = resolve(import.meta.dir, '..', '..', 'db')
 const TEST_DATABASE_DIR = resolve(tmpdir(), 'tokengator-api-tests')
@@ -327,7 +327,7 @@ beforeAll(async () => {
     previewCommunityRoleSync,
     removeCommunityRoleById,
     runScheduledCommunityRoleSync,
-  } = await import('../src/lib/admin-community-role-sync'))
+  } = await import('../src/features/community-role-sync'))
 }, 15_000)
 
 beforeEach(async () => {

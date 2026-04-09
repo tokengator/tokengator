@@ -10,14 +10,15 @@ type AuthSchema = typeof import('@tokengator/db/schema/auth')
 type AutomationSchema = typeof import('@tokengator/db/schema/automation')
 type CommunityRoleSchema = typeof import('@tokengator/db/schema/community-role')
 type DatabaseClient = (typeof import('@tokengator/db'))['db']
-type AdminCommunityRoleRouter = typeof import('../src/routers/admin-community-role').adminCommunityRoleRouter
-type GetCommunityRoleSyncStatus = (typeof import('../src/lib/admin-community-role-sync'))['getCommunityRoleSyncStatus']
+type AdminCommunityRoleRouter =
+  typeof import('../src/features/admin-community-role/feature/admin-community-role-router').adminCommunityRoleRouter
+type GetCommunityRoleSyncStatus = (typeof import('../src/features/community-role-sync'))['getCommunityRoleSyncStatus']
 type ListCommunityDiscordSyncRuns =
-  (typeof import('../src/lib/admin-community-role-sync'))['listCommunityDiscordSyncRuns']
+  (typeof import('../src/features/community-role-sync'))['listCommunityDiscordSyncRuns']
 type ListOrganizationsDueForScheduledCommunityDiscordSync =
-  (typeof import('../src/lib/admin-community-role-sync'))['listOrganizationsDueForScheduledCommunityDiscordSync']
+  (typeof import('../src/features/community-role-sync'))['listOrganizationsDueForScheduledCommunityDiscordSync']
 type RunScheduledCommunityRoleDiscordSync =
-  (typeof import('../src/lib/admin-community-role-sync'))['runScheduledCommunityRoleDiscordSync']
+  (typeof import('../src/features/community-role-sync'))['runScheduledCommunityRoleDiscordSync']
 
 const DB_PACKAGE_DIR = resolve(import.meta.dir, '..', '..', 'db')
 const TEST_DATABASE_DIR = resolve(tmpdir(), 'tokengator-api-tests')
@@ -633,8 +634,9 @@ beforeAll(async () => {
     listCommunityDiscordSyncRuns,
     listOrganizationsDueForScheduledCommunityDiscordSync,
     runScheduledCommunityRoleDiscordSync,
-  } = await import('../src/lib/admin-community-role-sync'))
-  ;({ adminCommunityRoleRouter } = await import('../src/routers/admin-community-role'))
+  } = await import('../src/features/community-role-sync'))
+  ;({ adminCommunityRoleRouter } =
+    await import('../src/features/admin-community-role/feature/admin-community-role-router'))
 }, 15_000)
 
 beforeEach(async () => {

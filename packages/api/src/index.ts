@@ -1,39 +1,6 @@
-import { ORPCError, os } from '@orpc/server'
-
-import type { Context } from './context'
-
-export const o = os.$context<Context>()
-
-export const publicProcedure = o
-
-const requireAuth = o.middleware(async ({ context, next }) => {
-  if (!context.session?.user) {
-    throw new ORPCError('UNAUTHORIZED')
-  }
-
-  return next({
-    context: {
-      ...context,
-      session: context.session,
-    },
-  })
-})
-
-export const protectedProcedure = publicProcedure.use(requireAuth)
-
-const requireAdmin = o.middleware(async ({ context, next }) => {
-  const session = context.session!
-
-  if (session.user.role !== 'admin') {
-    throw new ORPCError('FORBIDDEN')
-  }
-
-  return next({
-    context: {
-      ...context,
-      session,
-    },
-  })
-})
-
-export const adminProcedure = protectedProcedure.use(requireAdmin)
+export * from './features/admin-asset'
+export * from './features/admin-asset-group'
+export * from './features/admin-community-role'
+export * from './features/admin-organization'
+export * from './features/organization'
+export * from './features/profile'

@@ -10,8 +10,8 @@ import { auth } from '@tokengator/auth'
 import { env } from '@tokengator/env/api'
 import { formatLogError, getAppLogger } from '@tokengator/logger'
 
-import { createContext } from './context'
-import { appRouter } from './router'
+import { appRouter } from './app-router'
+import { createContext } from './lib/context'
 
 const logger = getAppLogger('api', 'server')
 

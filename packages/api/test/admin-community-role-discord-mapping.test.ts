@@ -8,7 +8,8 @@ import { pathToFileURL } from 'node:url'
 type AuthSchema = typeof import('@tokengator/db/schema/auth')
 type CommunityRoleSchema = typeof import('@tokengator/db/schema/community-role')
 type DatabaseClient = (typeof import('@tokengator/db'))['db']
-type AdminCommunityRoleRouter = typeof import('../src/routers/admin-community-role').adminCommunityRoleRouter
+type AdminCommunityRoleRouter =
+  typeof import('../src/features/admin-community-role/feature/admin-community-role-router').adminCommunityRoleRouter
 type InspectDiscordGuildRolesResult =
   import('@tokengator/discord/inspect-discord-guild-roles').InspectDiscordGuildRolesResult
 
@@ -205,7 +206,8 @@ beforeAll(async () => {
   ;({ db: database } = await import('@tokengator/db'))
   authSchema = await import('@tokengator/db/schema/auth')
   communityRoleSchema = await import('@tokengator/db/schema/community-role')
-  ;({ adminCommunityRoleRouter } = await import('../src/routers/admin-community-role'))
+  ;({ adminCommunityRoleRouter } =
+    await import('../src/features/admin-community-role/feature/admin-community-role-router'))
 }, 15_000)
 
 beforeEach(async () => {

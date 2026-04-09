@@ -14,12 +14,12 @@ type CreateAutomationLockLeaseController =
 type ReleaseAutomationLock = (typeof import('../src/lib/automation-lock'))['releaseAutomationLock']
 type RenewAutomationLock = (typeof import('../src/lib/automation-lock'))['renewAutomationLock']
 type GetAssetGroupIndexStatusSummaries =
-  (typeof import('../src/lib/admin-asset-group-index'))['getAssetGroupIndexStatusSummaries']
-type IndexAssetGroup = (typeof import('../src/lib/admin-asset-group-index'))['indexAssetGroup']
-type ListAssetGroupIndexRuns = (typeof import('../src/lib/admin-asset-group-index'))['listAssetGroupIndexRuns']
+  (typeof import('../src/features/asset-group-index'))['getAssetGroupIndexStatusSummaries']
+type IndexAssetGroup = (typeof import('../src/features/asset-group-index'))['indexAssetGroup']
+type ListAssetGroupIndexRuns = (typeof import('../src/features/asset-group-index'))['listAssetGroupIndexRuns']
 type ListEnabledAssetGroupsDueForScheduledIndexing =
-  (typeof import('../src/lib/admin-asset-group-index'))['listEnabledAssetGroupsDueForScheduledIndexing']
-type RunScheduledAssetGroupIndex = (typeof import('../src/lib/admin-asset-group-index'))['runScheduledAssetGroupIndex']
+  (typeof import('../src/features/asset-group-index'))['listEnabledAssetGroupsDueForScheduledIndexing']
+type RunScheduledAssetGroupIndex = (typeof import('../src/features/asset-group-index'))['runScheduledAssetGroupIndex']
 
 const DB_PACKAGE_DIR = resolve(import.meta.dir, '..', '..', 'db')
 const TEST_DATABASE_DIR = resolve(tmpdir(), 'tokengator-api-tests')
@@ -251,7 +251,7 @@ beforeAll(async () => {
     listAssetGroupIndexRuns,
     listEnabledAssetGroupsDueForScheduledIndexing,
     runScheduledAssetGroupIndex,
-  } = await import('../src/lib/admin-asset-group-index'))
+  } = await import('../src/features/asset-group-index'))
 }, 15_000)
 
 beforeEach(async () => {

@@ -12,7 +12,7 @@ export { APP_DEBUG_CATEGORY_VALUES, type AppDebugCategory } from './debug-catego
 
 export interface AppLoggerEnv {
   LOG_DEBUG_CATEGORIES?: AppDebugCategory[] | string
-  NODE_ENV?: string
+  LOG_JSON: boolean
 }
 
 function isAppDebugCategory(value: string): value is AppDebugCategory {
@@ -31,18 +31,10 @@ function normalizeDebugCategories(value: AppLoggerEnv['LOG_DEBUG_CATEGORIES']) {
   return [...new Set(categories)].sort((left, right) => left.localeCompare(right))
 }
 
-function normalizeNodeEnv(value: AppLoggerEnv['NODE_ENV']) {
-  if (value === 'development' || value === 'production' || value === 'test') {
-    return value
-  }
-
-  return 'development'
-}
-
 export function configureAppLogger(options: { env: AppLoggerEnv }) {
   const debugCategories = normalizeDebugCategories(options.env.LOG_DEBUG_CATEGORIES)
   const debugAll = debugCategories.includes('all')
-  const formatter = normalizeNodeEnv(options.env.NODE_ENV) === 'development' ? ansiColorFormatter : jsonLinesFormatter
+  const formatter = options.env.LOG_JSON ? jsonLinesFormatter : ansiColorFormatter
 
   configureSync({
     loggers: [

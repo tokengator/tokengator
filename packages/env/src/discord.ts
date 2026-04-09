@@ -21,6 +21,7 @@ export const env = createEnv({
     DISCORD_CLIENT_ID: z.string().min(1).optional(),
     DISCORD_GUILD_ID: z.string().min(1).optional(),
     LOG_DEBUG_CATEGORIES: logDebugCategoriesSchema,
+    LOG_JSON: envBooleanSchema,
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
     WEB_URL: z.url().optional(),
   },

@@ -13,6 +13,7 @@ const baseEnv = {
   DISCORD_CLIENT_ID: 'client-id',
   DISCORD_GUILD_ID: 'guild-id',
   LOG_DEBUG_CATEGORIES: [],
+  LOG_JSON: false,
   NODE_ENV: 'development',
   WEB_URL: 'https://app.example.com',
 } satisfies DiscordEnv

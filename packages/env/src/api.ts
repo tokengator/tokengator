@@ -57,6 +57,7 @@ export const env = createEnv({
     HELIUS_API_KEY: z.string().min(1),
     HELIUS_CLUSTER: heliusClusterSchema,
     LOG_DEBUG_CATEGORIES: logDebugCategoriesSchema,
+    LOG_JSON: envBooleanSchema,
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
     SCHEDULED_DISCORD_SYNC_INTERVAL_MINUTES: positiveIntegerSchema.default(1),
     SCHEDULED_INDEX_INTERVAL_MINUTES: positiveIntegerSchema.default(30),

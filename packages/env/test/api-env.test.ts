@@ -19,6 +19,7 @@ const API_ENV_KEYS = [
   'HELIUS_API_KEY',
   'HELIUS_CLUSTER',
   'LOG_DEBUG_CATEGORIES',
+  'LOG_JSON',
   'NODE_ENV',
   'SCHEDULER_START',
   'SOLANA_ADMIN_ADDRESSES',
@@ -168,6 +169,20 @@ describe('env', () => {
     }
   })
 
+  test('defaults LOG_JSON to true when unset', async () => {
+    const restoreEnv = withApiEnv({
+      LOG_JSON: undefined,
+    })
+
+    try {
+      const { env } = await import(`../src/api.ts?test=${Date.now()}-log-json-default`)
+
+      expect(env.LOG_JSON).toBe(true)
+    } finally {
+      restoreEnv()
+    }
+  })
+
   test('parses LOG_DEBUG_CATEGORIES into a sorted list of allowed values', async () => {
     const restoreEnv = withApiEnv({
       LOG_DEBUG_CATEGORIES: 'indexer, all, asset-index, indexer',
@@ -177,6 +192,20 @@ describe('env', () => {
       const { env } = await import(`../src/api.ts?test=${Date.now()}-debug-categories`)
 
       expect(env.LOG_DEBUG_CATEGORIES).toEqual([...APP_DEBUG_CATEGORY_VALUES])
+    } finally {
+      restoreEnv()
+    }
+  })
+
+  test('parses LOG_JSON=false', async () => {
+    const restoreEnv = withApiEnv({
+      LOG_JSON: 'false',
+    })
+
+    try {
+      const { env } = await import(`../src/api.ts?test=${Date.now()}-log-json-false`)
+
+      expect(env.LOG_JSON).toBe(false)
     } finally {
       restoreEnv()
     }

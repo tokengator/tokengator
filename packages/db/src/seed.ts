@@ -608,7 +608,9 @@ export async function seedDatabase(): Promise<SeedResult> {
 }
 
 if (import.meta.main) {
-  configureAppLogger({ env: process.env })
+  const { env } = await import('@tokengator/env/api')
+
+  configureAppLogger({ env })
 
   const summary = await seedDatabase()
 

@@ -7,6 +7,7 @@ const DISCORD_ENV_KEYS = [
   'DISCORD_CLIENT_ID',
   'DISCORD_GUILD_ID',
   'LOG_DEBUG_CATEGORIES',
+  'LOG_JSON',
   'NODE_ENV',
   'WEB_URL',
 ] as const
@@ -64,6 +65,7 @@ describe('discord env', () => {
       expect(env.DISCORD_CLIENT_ID).toBeUndefined()
       expect(env.DISCORD_GUILD_ID).toBeUndefined()
       expect(env.LOG_DEBUG_CATEGORIES).toEqual([])
+      expect(env.LOG_JSON).toBe(true)
       expect(env.WEB_URL).toBeUndefined()
     } finally {
       restoreEnv()
@@ -109,6 +111,20 @@ describe('discord env', () => {
       const { env } = await import(`../src/discord.ts?test=${Date.now()}-debug-categories`)
 
       expect(env.LOG_DEBUG_CATEGORIES).toEqual(['asset-index', 'indexer'])
+    } finally {
+      restoreEnv()
+    }
+  })
+
+  test('parses LOG_JSON=false', async () => {
+    const restoreEnv = withDiscordEnv({
+      LOG_JSON: 'false',
+    })
+
+    try {
+      const { env } = await import(`../src/discord.ts?test=${Date.now()}-log-json-false`)
+
+      expect(env.LOG_JSON).toBe(false)
     } finally {
       restoreEnv()
     }

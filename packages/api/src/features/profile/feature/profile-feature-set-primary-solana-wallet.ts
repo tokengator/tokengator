@@ -1,6 +1,6 @@
 import { ORPCError } from '@orpc/server'
 
-import { protectedProcedure } from '../../../lib/prodecures'
+import { protectedProcedure } from '../../../lib/procedures'
 import { profileSolanaWalletSetPrimary as profileSolanaWalletSetPrimaryDataAccess } from '../data-access/profile-solana-wallet-set-primary'
 import { profileSolanaWalletSetPrimaryInputSchema } from '../data-access/profile-solana-wallet-set-primary-input-schema'
 

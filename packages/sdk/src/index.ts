@@ -7,7 +7,6 @@ import { resolveRpcUrl } from './lib/rpc-url'
 
 export type OrpcClientFetch = (input: Request | URL | string, init?: RequestInit) => Promise<Response>
 export type * from '@tokengator/api'
-export type { AppConfig } from '@tokengator/api/router'
 
 export type CreateOrpcClientOptions = {
   baseUrl: string

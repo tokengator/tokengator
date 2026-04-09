@@ -1,6 +1,6 @@
 import { ORPCError } from '@orpc/server'
 
-import { adminProcedure } from '../../../lib/prodecures'
+import { adminProcedure } from '../../../lib/procedures'
 
 import { adminAssetGroupCreate as adminAssetGroupCreateDataAccess } from '../data-access/admin-asset-group-create'
 

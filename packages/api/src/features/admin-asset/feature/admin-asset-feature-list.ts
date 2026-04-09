@@ -1,7 +1,7 @@
 import { ORPCError } from '@orpc/server'
 import { db } from '@tokengator/db'
 
-import { adminProcedure } from '../../../lib/prodecures'
+import { adminProcedure } from '../../../lib/procedures'
 import { adminAssetList as adminAssetListDataAccess } from '../data-access/admin-asset-list'
 import { adminAssetListInputSchema } from '../data-access/admin-asset-list-input-schema'
 

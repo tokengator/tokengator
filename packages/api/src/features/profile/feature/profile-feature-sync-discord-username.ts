@@ -1,4 +1,4 @@
-import { protectedProcedure } from '../../../lib/prodecures'
+import { protectedProcedure } from '../../../lib/procedures'
 
 import { profileDiscordUsernameSync as profileDiscordUsernameSyncDataAccess } from '../data-access/profile-discord-username-sync'
 

@@ -1,4 +1,4 @@
-import { adminProcedure } from '../../../lib/prodecures'
+import { adminProcedure } from '../../../lib/procedures'
 
 import { adminAssetGroupList as adminAssetGroupListDataAccess } from '../data-access/admin-asset-group-list'
 import { adminAssetGroupListInputSchema } from '../data-access/admin-asset-group-list-input-schema'

@@ -1,6 +1,6 @@
 import { ORPCError } from '@orpc/server'
 
-import { adminProcedure } from '../../../lib/prodecures'
+import { adminProcedure } from '../../../lib/procedures'
 
 import { adminOrganizationDeleteDiscordConnection as adminOrganizationDeleteDiscordConnectionDataAccess } from '../data-access/admin-organization-delete-discord-connection'
 import { adminOrganizationDeleteDiscordConnectionInputSchema } from '../data-access/admin-organization-delete-discord-connection-input-schema'

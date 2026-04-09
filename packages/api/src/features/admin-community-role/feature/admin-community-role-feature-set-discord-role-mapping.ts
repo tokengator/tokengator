@@ -1,6 +1,6 @@
 import { ORPCError } from '@orpc/server'
 
-import { adminProcedure } from '../../../lib/prodecures'
+import { adminProcedure } from '../../../lib/procedures'
 import { adminCommunityRoleSetDiscordRoleMapping as adminCommunityRoleSetDiscordRoleMappingDataAccess } from '../data-access/admin-community-role-set-discord-role-mapping'
 import { adminCommunityRoleSetDiscordRoleMappingInputSchema } from '../data-access/admin-community-role-set-discord-role-mapping-input-schema'
 import { adminCommunityRoleDiscordGuildRoleInspectionCheckMessages } from '../util/admin-community-role-discord-mapping-status'

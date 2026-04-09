@@ -1,6 +1,6 @@
 import { ORPCError } from '@orpc/server'
 
-import { adminProcedure } from '../../../lib/prodecures'
+import { adminProcedure } from '../../../lib/procedures'
 import { adminCommunityRoleDelete as adminCommunityRoleDeleteDataAccess } from '../data-access/admin-community-role-delete'
 import { adminCommunityRoleDeleteInputSchema } from '../data-access/admin-community-role-delete-input-schema'
 

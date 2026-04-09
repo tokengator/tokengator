@@ -1,6 +1,6 @@
 import { ORPCError } from '@orpc/server'
 
-import { adminProcedure } from '../../../lib/prodecures'
+import { adminProcedure } from '../../../lib/procedures'
 
 import { adminOrganizationUpdate as adminOrganizationUpdateDataAccess } from '../data-access/admin-organization-update'
 import { adminOrganizationUpdateInputSchema } from '../data-access/admin-organization-update-input-schema'

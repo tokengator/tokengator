@@ -1,6 +1,6 @@
 import { ORPCError } from '@orpc/server'
 
-import { adminProcedure } from '../../../lib/prodecures'
+import { adminProcedure } from '../../../lib/procedures'
 
 import { adminOrganizationDelete as adminOrganizationDeleteDataAccess } from '../data-access/admin-organization-delete'
 import { adminOrganizationDeleteInputSchema } from '../data-access/admin-organization-delete-input-schema'

@@ -1,6 +1,6 @@
 import { ORPCError } from '@orpc/server'
 
-import { adminProcedure } from '../../../lib/prodecures'
+import { adminProcedure } from '../../../lib/procedures'
 
 import { adminAssetDelete as adminAssetDeleteDataAccess } from '../data-access/admin-asset-delete'
 import { adminAssetDeleteInputSchema } from '../data-access/admin-asset-delete-input-schema'

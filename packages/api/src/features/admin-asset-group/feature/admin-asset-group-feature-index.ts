@@ -2,7 +2,7 @@ import { ORPCError } from '@orpc/server'
 
 import { AssetGroupIndexConfigError } from '../../../features/asset-group-index'
 import { AutomationLockConflictError } from '../../../lib/automation-lock'
-import { adminProcedure } from '../../../lib/prodecures'
+import { adminProcedure } from '../../../lib/procedures'
 
 import { adminAssetGroupGet as adminAssetGroupGetDataAccess } from '../data-access/admin-asset-group-get'
 import { adminAssetGroupIndex as adminAssetGroupIndexDataAccess } from '../data-access/admin-asset-group-index'

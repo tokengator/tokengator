@@ -1,7 +1,7 @@
 import { ORPCError } from '@orpc/server'
 
 import { AutomationLockConflictError } from '../../../lib/automation-lock'
-import { adminProcedure } from '../../../lib/prodecures'
+import { adminProcedure } from '../../../lib/procedures'
 import { adminCommunityRoleApplySync as adminCommunityRoleApplySyncDataAccess } from '../data-access/admin-community-role-apply-sync'
 import { adminCommunityRoleApplySyncInputSchema } from '../data-access/admin-community-role-apply-sync-input-schema'
 

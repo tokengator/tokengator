@@ -1,6 +1,6 @@
 import { ORPCError } from '@orpc/server'
 
-import { adminProcedure } from '../../../lib/prodecures'
+import { adminProcedure } from '../../../lib/procedures'
 import { adminCommunityRoleGetSyncStatus as adminCommunityRoleGetSyncStatusDataAccess } from '../data-access/admin-community-role-get-sync-status'
 import { adminCommunityRoleGetSyncStatusInputSchema } from '../data-access/admin-community-role-get-sync-status-input-schema'
 

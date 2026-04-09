@@ -1,6 +1,6 @@
 import { ORPCError } from '@orpc/server'
 
-import { adminProcedure } from '../../../lib/prodecures'
+import { adminProcedure } from '../../../lib/procedures'
 import { adminCommunityRolePreviewSync as adminCommunityRolePreviewSyncDataAccess } from '../data-access/admin-community-role-preview-sync'
 import { adminCommunityRolePreviewSyncInputSchema } from '../data-access/admin-community-role-preview-sync-input-schema'
 

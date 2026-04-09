@@ -1,4 +1,4 @@
-import { protectedProcedure } from '../../../lib/prodecures'
+import { protectedProcedure } from '../../../lib/procedures'
 
 import { profileIdentitiesList as profileIdentitiesListDataAccess } from '../data-access/profile-identities-list'
 

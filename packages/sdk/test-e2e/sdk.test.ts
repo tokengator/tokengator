@@ -470,7 +470,7 @@ afterAll(() => {
 
 describe('createOrpcClient e2e', () => {
   test('health check succeeds', async () => {
-    await expect(anonymousClient.healthCheck()).resolves.toBe('OK')
+    await expect(anonymousClient.core.healthCheck()).resolves.toBe('OK')
   })
 
   test('preserves the base URL pathname when deriving the RPC endpoint', async () => {
@@ -484,15 +484,8 @@ describe('createOrpcClient e2e', () => {
       },
     })
 
-    await expect(client.healthCheck()).rejects.toThrow('stop')
-    expect(requestedUrl).toBe('https://example.com/app/rpc/healthCheck')
-  })
-
-  test('anonymous access to privateData is rejected', async () => {
-    await expectORPCError(anonymousClient.privateData(), {
-      code: 'UNAUTHORIZED',
-      status: 401,
-    })
+    await expect(client.core.healthCheck()).rejects.toThrow('stop')
+    expect(requestedUrl).toBe('https://example.com/app/rpc/core/healthCheck')
   })
 
   test('session includes username and credential auth endpoints are disabled', async () => {
@@ -585,13 +578,6 @@ describe('createOrpcClient e2e', () => {
         },
       },
       error: null,
-    })
-    await expect(session.client.privateData()).resolves.toMatchObject({
-      message: 'This is private',
-      user: {
-        id: existingUserId,
-        username: userRecord.username,
-      },
     })
     await expect(session.client.profile.listSolanaWallets()).resolves.toEqual({
       solanaWallets: [

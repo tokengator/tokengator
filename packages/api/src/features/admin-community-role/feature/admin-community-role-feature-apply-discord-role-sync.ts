@@ -2,7 +2,7 @@ import { ORPCError } from '@orpc/server'
 import { DiscordGuildMemberLookupError } from '@tokengator/discord'
 
 import { AutomationLockConflictError } from '../../../lib/automation-lock'
-import { adminProcedure } from '../../../lib/prodecures'
+import { adminProcedure } from '../../../lib/procedures'
 import { adminCommunityRoleApplyDiscordRoleSync as adminCommunityRoleApplyDiscordRoleSyncDataAccess } from '../data-access/admin-community-role-apply-discord-role-sync'
 import { adminCommunityRoleApplyDiscordRoleSyncInputSchema } from '../data-access/admin-community-role-apply-discord-role-sync-input-schema'
 

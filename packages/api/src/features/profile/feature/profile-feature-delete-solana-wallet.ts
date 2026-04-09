@@ -1,6 +1,6 @@
 import { ORPCError } from '@orpc/server'
 
-import { protectedProcedure } from '../../../lib/prodecures'
+import { protectedProcedure } from '../../../lib/procedures'
 import { profileSolanaWalletDelete as profileSolanaWalletDeleteDataAccess } from '../data-access/profile-solana-wallet-delete'
 import { profileSolanaWalletDeleteInputSchema } from '../data-access/profile-solana-wallet-delete-input-schema'
 

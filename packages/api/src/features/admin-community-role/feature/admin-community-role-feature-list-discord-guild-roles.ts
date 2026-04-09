@@ -1,6 +1,6 @@
 import { ORPCError } from '@orpc/server'
 
-import { adminProcedure } from '../../../lib/prodecures'
+import { adminProcedure } from '../../../lib/procedures'
 import { adminCommunityRoleListDiscordGuildRoles as adminCommunityRoleListDiscordGuildRolesDataAccess } from '../data-access/admin-community-role-list-discord-guild-roles'
 import { adminCommunityRoleListDiscordGuildRolesInputSchema } from '../data-access/admin-community-role-list-discord-guild-roles-input-schema'
 

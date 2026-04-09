@@ -1,6 +1,6 @@
 import { ORPCError } from '@orpc/server'
 
-import { adminProcedure } from '../../../lib/prodecures'
+import { adminProcedure } from '../../../lib/procedures'
 import { adminCommunityRoleList as adminCommunityRoleListDataAccess } from '../data-access/admin-community-role-list'
 import { adminCommunityRoleListInputSchema } from '../data-access/admin-community-role-list-input-schema'
 

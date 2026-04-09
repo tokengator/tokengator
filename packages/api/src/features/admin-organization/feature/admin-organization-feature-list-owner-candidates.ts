@@ -1,4 +1,4 @@
-import { adminProcedure } from '../../../lib/prodecures'
+import { adminProcedure } from '../../../lib/procedures'
 
 import { adminOrganizationListOwnerCandidates as adminOrganizationListOwnerCandidatesDataAccess } from '../data-access/admin-organization-list-owner-candidates'
 import { adminOrganizationListOwnerCandidatesInputSchema } from '../data-access/admin-organization-list-owner-candidates-input-schema'

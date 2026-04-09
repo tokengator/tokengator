@@ -1,4 +1,4 @@
-import { protectedProcedure } from '../../../lib/prodecures'
+import { protectedProcedure } from '../../../lib/procedures'
 
 import { organizationListMine as organizationListMineDataAccess } from '../data-access/organization-list-mine'
 

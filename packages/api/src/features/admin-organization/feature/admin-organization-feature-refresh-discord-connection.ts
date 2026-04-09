@@ -1,6 +1,6 @@
 import { ORPCError } from '@orpc/server'
 
-import { adminProcedure } from '../../../lib/prodecures'
+import { adminProcedure } from '../../../lib/procedures'
 
 import { adminOrganizationRefreshDiscordConnection as adminOrganizationRefreshDiscordConnectionDataAccess } from '../data-access/admin-organization-refresh-discord-connection'
 import { adminOrganizationRefreshDiscordConnectionInputSchema } from '../data-access/admin-organization-refresh-discord-connection-input-schema'

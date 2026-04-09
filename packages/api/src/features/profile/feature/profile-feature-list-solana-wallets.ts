@@ -1,4 +1,4 @@
-import { protectedProcedure } from '../../../lib/prodecures'
+import { protectedProcedure } from '../../../lib/procedures'
 
 import { profileSolanaWalletList as profileSolanaWalletListDataAccess } from '../data-access/profile-solana-wallet-list'
 

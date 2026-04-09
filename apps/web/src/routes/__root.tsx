@@ -28,7 +28,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
   beforeLoad: async ({ context }) => {
     const [appAuthState, appConfig] = await Promise.all([
       context.queryClient.ensureQueryData(getAppAuthStateQueryOptions()),
-      context.queryClient.ensureQueryData(context.orpc.appConfig.queryOptions()),
+      context.queryClient.ensureQueryData(context.orpc.core.appConfig.queryOptions()),
     ])
 
     populateAppAuthStateRelatedQueries({

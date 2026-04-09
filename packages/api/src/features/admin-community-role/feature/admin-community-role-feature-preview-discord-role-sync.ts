@@ -1,7 +1,7 @@
 import { ORPCError } from '@orpc/server'
 import { DiscordGuildMemberLookupError } from '@tokengator/discord'
 
-import { adminProcedure } from '../../../lib/prodecures'
+import { adminProcedure } from '../../../lib/procedures'
 import { adminCommunityRolePreviewDiscordRoleSync as adminCommunityRolePreviewDiscordRoleSyncDataAccess } from '../data-access/admin-community-role-preview-discord-role-sync'
 import { adminCommunityRolePreviewDiscordRoleSyncInputSchema } from '../data-access/admin-community-role-preview-discord-role-sync-input-schema'
 

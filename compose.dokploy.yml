@@ -1,0 +1,58 @@
+# Dokploy-specific compose file.
+# Keep the shared compose.yml generic for local Docker usage.
+# Dokploy attaches the public app service to dokploy-network for Traefik,
+# while libsql still needs the default compose network for service discovery.
+services:
+  app:
+    build:
+      context: .
+      target: app
+    depends_on:
+      libsql:
+        condition: service_healthy
+    environment:
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_SOLANA_SIGN_IN_ENABLED: ${BETTER_AUTH_SOLANA_SIGN_IN_ENABLED:-true}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      DATABASE_AUTH_TOKEN: ${DATABASE_AUTH_TOKEN:-}
+      DATABASE_URL: ${DATABASE_URL:-http://libsql:8080}
+      DISCORD_ADMIN_IDS: ${DISCORD_ADMIN_IDS:-}
+      DISCORD_BOT_START: ${DISCORD_BOT_START:-false}
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:-}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:-}
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}
+      HELIUS_API_KEY: ${HELIUS_API_KEY:-}
+      HELIUS_CLUSTER: ${HELIUS_CLUSTER:-devnet}
+      LOG_DEBUG_CATEGORIES: ${LOG_DEBUG_CATEGORIES:-}
+      SCHEDULED_DISCORD_SYNC_INTERVAL_MINUTES: ${SCHEDULED_DISCORD_SYNC_INTERVAL_MINUTES:-1}
+      SCHEDULED_INDEX_INTERVAL_MINUTES: ${SCHEDULED_INDEX_INTERVAL_MINUTES:-30}
+      SCHEDULED_MEMBERSHIP_SYNC_INTERVAL_MINUTES: ${SCHEDULED_MEMBERSHIP_SYNC_INTERVAL_MINUTES:-5}
+      SCHEDULER_POLL_SECONDS: ${SCHEDULER_POLL_SECONDS:-60}
+      SCHEDULER_START: ${SCHEDULER_START:-true}
+      SOLANA_ADMIN_ADDRESSES: ${SOLANA_ADMIN_ADDRESSES:-}
+      SOLANA_CLUSTER: ${SOLANA_CLUSTER:-devnet}
+      SOLANA_ENDPOINT_PUBLIC: ${SOLANA_ENDPOINT_PUBLIC:-https://api.devnet.solana.com}
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+      WEB_URL: ${WEB_URL:-http://localhost:3000}
+    ports:
+      - '${APP_PORT:-3000}:3000'
+    networks:
+      - default
+      - dokploy-network
+
+  libsql:
+    command: ['sqld', '--db-path', '/var/lib/sqld', '--http-listen-addr', '0.0.0.0:8080']
+    image: ghcr.io/beeman/libsql-server-healthcheck:latest
+    networks:
+      - default
+    volumes:
+      - libsql-data:/var/lib/sqld
+
+volumes:
+  libsql-data:
+
+networks:
+  dokploy-network:
+    external: true

@@ -43,6 +43,11 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
   head: () => ({
     links: [
       {
+        href: '/brand/icon.svg',
+        rel: 'icon',
+        type: 'image/svg+xml',
+      },
+      {
         href: appCss,
         rel: 'stylesheet',
       },
@@ -52,11 +57,11 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
         charSet: 'utf-8',
       },
       {
-        content: 'width=device-width, initial-scale=1, viewport-fit=cover',
-        name: 'viewport',
+        title: 'TokenGator',
       },
       {
-        title: 'TokenGator',
+        content: 'width=device-width, initial-scale=1, viewport-fit=cover',
+        name: 'viewport',
       },
     ],
   }),

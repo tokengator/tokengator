@@ -384,11 +384,34 @@ function createSeedSolanaWalletValues(seedUsers: readonly SeedUser[], usersByEma
 
       return {
         address: seedUser.solana.publicKey,
+        createdAt: new Date(),
+        id: crypto.randomUUID(),
         isPrimary: true,
         userId: user.id,
       }
     })
     .sort((left, right) => left.address.localeCompare(right.address))
+}
+
+function createSeedIdentityValues(seedSolanaWalletValues: ReturnType<typeof createSeedSolanaWalletValues>) {
+  return seedSolanaWalletValues
+    .map((seedSolanaWallet) => ({
+      createdAt: new Date(),
+      displayName: `${seedSolanaWallet.address.slice(0, 6)}…${seedSolanaWallet.address.slice(-6)}`,
+      id: crypto.randomUUID(),
+      isPrimary: seedSolanaWallet.isPrimary,
+      lastSyncedAt: new Date(),
+      linkedAt: seedSolanaWallet.createdAt,
+      profile: null,
+      provider: 'solana' as const,
+      providerId: seedSolanaWallet.address,
+      referenceId: seedSolanaWallet.id,
+      referenceType: 'solana_wallet' as const,
+      updatedAt: new Date(),
+      userId: seedSolanaWallet.userId,
+      username: null,
+    }))
+    .sort((left, right) => left.providerId.localeCompare(right.providerId))
 }
 
 async function createSeedUsers(db: RuntimeModules['db']) {
@@ -414,8 +437,9 @@ async function createSeedUsers(db: RuntimeModules['db']) {
     })
   }
 
-  const seedSiwsAccountValues = createSeedSiwsAccountValues(devSeed.users, usersByEmail)
   const seedSolanaWalletValues = createSeedSolanaWalletValues(devSeed.users, usersByEmail)
+  const seedIdentityValues = createSeedIdentityValues(seedSolanaWalletValues)
+  const seedSiwsAccountValues = createSeedSiwsAccountValues(devSeed.users, usersByEmail)
 
   if (seedSiwsAccountValues.length) {
     await db.insert(authSchema.account).values(seedSiwsAccountValues)
@@ -423,6 +447,10 @@ async function createSeedUsers(db: RuntimeModules['db']) {
 
   if (seedSolanaWalletValues.length) {
     await db.insert(authSchema.solanaWallet).values(seedSolanaWalletValues)
+  }
+
+  if (seedIdentityValues.length) {
+    await db.insert(authSchema.identity).values(seedIdentityValues)
   }
 
   return usersByEmail

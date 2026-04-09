@@ -71,12 +71,12 @@ describe('/whoami reply helpers', () => {
     const reply = whoamiModule.createKnownWhoamiReply({
       identities: [
         {
-          accountId: '1234567890',
-          providerId: 'discord',
+          provider: 'discord',
+          providerId: '1234567890',
         },
         {
-          accountId: 'So11111111111111111111111111111111111111112',
-          providerId: 'siws',
+          provider: 'solana',
+          providerId: 'So11111111111111111111111111111111111111112',
         },
       ],
       manageProfileUrl: 'https://app.example.com/profile',
@@ -164,8 +164,8 @@ describe('/whoami reply helpers', () => {
   test('long identity and wallet lists are truncated to fit Discord embed field limits', () => {
     const reply = whoamiModule.createKnownWhoamiReply({
       identities: Array.from({ length: 80 }, (_, index) => ({
-        accountId: `identity-${index.toString().padStart(3, '0')}-12345678901234567890`,
-        providerId: index % 2 === 0 ? 'discord' : 'siws',
+        provider: index % 2 === 0 ? 'discord' : 'solana',
+        providerId: `identity-${index.toString().padStart(3, '0')}-12345678901234567890`,
       })),
       manageProfileUrl: 'https://app.example.com/profile',
       solanaWallets: Array.from({ length: 80 }, (_, index) => ({
@@ -194,8 +194,8 @@ describe('/whoami reply helpers', () => {
   test('truncation keeps the hidden-item count accurate after removing displayed lines', () => {
     const reply = whoamiModule.createKnownWhoamiReply({
       identities: Array.from({ length: 4 }, (_, index) => ({
-        accountId: `${index.toString()}-${'x'.repeat(500)}`,
-        providerId: 'test',
+        provider: 'test',
+        providerId: `${index.toString()}-${'x'.repeat(500)}`,
       })),
       manageProfileUrl: 'https://app.example.com/profile',
       solanaWallets: [],

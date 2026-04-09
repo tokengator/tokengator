@@ -201,14 +201,75 @@ async function insertAccount(input: {
   providerId?: string
   userId: string
 }) {
+  const createdAt = input.createdAt ?? new Date('2026-04-02T12:00:00.000Z')
+  const id = input.id ?? crypto.randomUUID()
+  const providerId = input.providerId ?? 'discord'
+
   await database.insert(authSchema.account).values({
     accountId: input.accountId,
-    createdAt: input.createdAt ?? new Date('2026-04-02T12:00:00.000Z'),
-    id: input.id ?? crypto.randomUUID(),
-    providerId: input.providerId ?? 'discord',
+    createdAt,
+    id,
+    providerId,
     updatedAt: new Date('2026-04-02T12:00:00.000Z'),
     userId: input.userId,
   })
+
+  if (providerId !== 'discord') {
+    return
+  }
+
+  const discordIdentityRows = await database
+    .select({
+      id: authSchema.identity.id,
+    })
+    .from(authSchema.identity)
+    .where(sql`${authSchema.identity.provider} = 'discord' and ${authSchema.identity.userId} = ${input.userId}`)
+    .orderBy(authSchema.identity.linkedAt, authSchema.identity.id)
+
+  await database.insert(authSchema.identity).values({
+    avatarUrl: null,
+    createdAt,
+    displayName: null,
+    email: null,
+    id: crypto.randomUUID(),
+    isPrimary: discordIdentityRows.length === 0,
+    lastSyncedAt: createdAt,
+    linkedAt: createdAt,
+    profile: null,
+    provider: 'discord',
+    providerId: input.accountId,
+    referenceId: id,
+    referenceType: 'account',
+    updatedAt: createdAt,
+    userId: input.userId,
+    username: null,
+  })
+
+  const canonicalIdentityRows = await database
+    .select({
+      id: authSchema.identity.id,
+    })
+    .from(authSchema.identity)
+    .where(sql`${authSchema.identity.provider} = 'discord' and ${authSchema.identity.userId} = ${input.userId}`)
+    .orderBy(authSchema.identity.linkedAt, authSchema.identity.id)
+
+  await database
+    .update(authSchema.identity)
+    .set({
+      isPrimary: false,
+    })
+    .where(sql`${authSchema.identity.provider} = 'discord' and ${authSchema.identity.userId} = ${input.userId}`)
+
+  const [primaryIdentity] = canonicalIdentityRows
+
+  if (primaryIdentity) {
+    await database
+      .update(authSchema.identity)
+      .set({
+        isPrimary: true,
+      })
+      .where(sql`${authSchema.identity.id} = ${primaryIdentity.id}`)
+  }
 }
 
 async function insertAsset(input: {
@@ -1833,6 +1894,99 @@ describe('admin community role Discord sync', () => {
       discordAccountId: 'discord-primary',
       guildMemberPresent: false,
       userId: 'user-vip',
+    })
+    expect(preview.users[0]?.outcomes.map((outcome) => outcome.status)).toEqual(['linked_but_not_in_guild'])
+  })
+
+  test('falls back to Discord accounts when identity projection rows are missing', async () => {
+    const organizationId = 'org-legacy-account-fallback'
+    const groupId = 'asset-group'
+
+    await insertOrganization({
+      id: organizationId,
+      name: 'Legacy Account Fallback Org',
+      slug: 'legacy-account-fallback-org',
+    })
+    await insertCommunityDiscordConnection({
+      guildId: '123456789012345678',
+      organizationId,
+    })
+    await insertAssetGroup({
+      address: 'collection-address',
+      id: groupId,
+      label: 'Collection',
+      type: 'collection',
+    })
+    await insertTeam({
+      id: 'team-legacy-account-fallback',
+      name: 'Legacy Account Fallback Team',
+      organizationId,
+    })
+    await insertCommunityRole({
+      discordRoleId: 'discord-role-legacy-account-fallback',
+      id: 'role-legacy-account-fallback',
+      name: 'Legacy Account Fallback',
+      organizationId,
+      slug: 'legacy-account-fallback',
+      teamId: 'team-legacy-account-fallback',
+    })
+    await insertCommunityRoleCondition({
+      assetGroupId: groupId,
+      communityRoleId: 'role-legacy-account-fallback',
+      minimumAmount: '1',
+    })
+    await insertUser({
+      email: 'legacy@example.com',
+      id: 'user-legacy-account-fallback',
+      name: 'Legacy Account Fallback User',
+      username: 'legacy',
+    })
+    await insertSolanaWallet({
+      address: 'legacy-wallet',
+      userId: 'user-legacy-account-fallback',
+    })
+    await insertAsset({
+      address: 'legacy-asset',
+      amount: '1',
+      assetGroupId: groupId,
+      owner: 'legacy-wallet',
+      resolverKind: 'helius-collection-assets',
+    })
+    await insertAccount({
+      accountId: 'discord-legacy-account-fallback',
+      id: 'account-legacy-account-fallback',
+      userId: 'user-legacy-account-fallback',
+    })
+    await database
+      .delete(authSchema.identity)
+      .where(
+        sql`${authSchema.identity.userId} = 'user-legacy-account-fallback' and ${authSchema.identity.provider} = 'discord'`,
+      )
+    guildRoles = [
+      {
+        assignable: true,
+        checks: [],
+        id: 'discord-role-legacy-account-fallback',
+        isDefault: false,
+        managed: false,
+        name: 'Legacy Account Fallback',
+        position: 5,
+      },
+    ]
+
+    const preview = await adminCommunityRoleRouter.previewDiscordRoleSync.callable(createAdminCallContext())({
+      organizationId,
+    })
+
+    if (!preview) {
+      throw new Error('Expected legacy account fallback preview result.')
+    }
+
+    expect(preview.users).toHaveLength(1)
+    expect(preview.users[0]).toMatchObject({
+      discordAccountId: 'discord-legacy-account-fallback',
+      guildMemberPresent: false,
+      userId: 'user-legacy-account-fallback',
     })
     expect(preview.users[0]?.outcomes.map((outcome) => outcome.status)).toEqual(['linked_but_not_in_guild'])
   })

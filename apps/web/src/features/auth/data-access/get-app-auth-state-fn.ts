@@ -52,11 +52,11 @@ export const getAppAuthState = createServerFn({ method: 'GET' })
       } satisfies AppAuthState
     }
 
-    const [identities, solanaWallets] = await Promise.all([
+    let [identities, solanaWallets] = await Promise.all([
       serverOrpcClient.profile.listIdentities(),
       serverOrpcClient.profile.listSolanaWallets(),
     ])
-    const hasDiscordAccount = identities.identities.some((identity) => identity.providerId === 'discord')
+    const hasDiscordAccount = identities.identities.some((identity) => identity.provider === 'discord')
     const hasSolanaWallet = solanaWallets.solanaWallets.length > 0
     let username = session.user.username
 
@@ -64,6 +64,10 @@ export const getAppAuthState = createServerFn({ method: 'GET' })
       const syncDiscordUsernameResult = await serverOrpcClient.profile.syncDiscordUsername()
 
       username = syncDiscordUsernameResult.username
+
+      if (syncDiscordUsernameResult.updated) {
+        identities = await serverOrpcClient.profile.listIdentities()
+      }
     }
 
     const hasUsername = Boolean(username)

@@ -10,8 +10,14 @@ import {
 import type { DiscordContext } from '../discord-context'
 
 export type DiscordProfileIdentity = {
-  accountId: string
+  avatarUrl?: string | null
+  displayName?: string | null
+  email?: string | null
+  isPrimary?: boolean
+  linkedAt?: Date | number
+  provider: string
   providerId: string
+  username?: string | null
 }
 
 export type DiscordProfileSolanaWallet = {
@@ -157,18 +163,18 @@ function formatDiscordEmbedList(args: { emptyValue: string; items: string[] }) {
 }
 
 function formatIdentity(identity: DiscordProfileIdentity) {
-  const label = formatProviderLabel(identity.providerId)
+  const label = formatProviderLabel(identity.provider)
 
-  switch (identity.providerId) {
+  switch (identity.provider) {
     case 'discord':
-      return `- ${label}: <@${identity.accountId}>`
-    case 'siws':
+      return `- ${label}: <@${identity.providerId}>`
+    case 'solana':
       return `- ${label}: ${formatMarkdownLink({
-        label: ellipsifySolanaWalletAddress(identity.accountId),
-        url: getOrbMarketsAddressUrl(identity.accountId),
+        label: ellipsifySolanaWalletAddress(identity.providerId),
+        url: getOrbMarketsAddressUrl(identity.providerId),
       })}`
     default:
-      return `- ${label}: \`${identity.accountId}\``
+      return `- ${label}: \`${identity.providerId}\``
   }
 }
 
@@ -185,14 +191,14 @@ function formatMarkdownLink(args: { label: string; url: string }) {
   return `[${label}](${url})`
 }
 
-function formatProviderLabel(providerId: string) {
-  switch (providerId) {
+function formatProviderLabel(provider: string) {
+  switch (provider) {
     case 'discord':
       return 'Discord'
-    case 'siws':
+    case 'solana':
       return 'Solana'
     default:
-      return providerId
+      return provider
   }
 }
 
@@ -237,12 +243,12 @@ export async function getDiscordUserProfile(
   context: Pick<DiscordContext, 'db'>,
   discordUserId: string,
 ): Promise<DiscordUserProfile | null> {
-  const discordAccount = await context.db.query.account.findFirst({
+  const discordIdentity = await context.db.query.identity.findFirst({
     columns: {
       userId: true,
     },
-    orderBy: (account, { asc }) => [asc(account.createdAt), asc(account.id)],
-    where: (account, { and, eq }) => and(eq(account.accountId, discordUserId), eq(account.providerId, 'discord')),
+    orderBy: (identity, { asc, desc }) => [desc(identity.isPrimary), asc(identity.linkedAt), asc(identity.id)],
+    where: (identity, { and, eq }) => and(eq(identity.provider, 'discord'), eq(identity.providerId, discordUserId)),
     with: {
       user: {
         columns: {
@@ -253,20 +259,60 @@ export async function getDiscordUserProfile(
       },
     },
   })
+  const discordAccount = !discordIdentity?.user
+    ? await context.db.query.account.findFirst({
+        columns: {
+          userId: true,
+        },
+        orderBy: (account, { asc }) => [asc(account.createdAt), asc(account.id)],
+        where: (account, { and, eq }) => and(eq(account.providerId, 'discord'), eq(account.accountId, discordUserId)),
+        with: {
+          user: {
+            columns: {
+              name: true,
+              role: true,
+              username: true,
+            },
+          },
+        },
+      })
+    : null
+  const linkedDiscordUser = discordIdentity?.user
+    ? {
+        user: discordIdentity.user,
+        userId: discordIdentity.userId,
+      }
+    : discordAccount?.user
+      ? {
+          user: discordAccount.user,
+          userId: discordAccount.userId,
+        }
+      : null
 
-  if (!discordAccount?.user) {
+  if (!linkedDiscordUser?.user) {
     return null
   }
 
-  const [identities, solanaWallets] = await Promise.all([
-    context.db.query.account.findMany({
+  const [identityRows, solanaWallets] = await Promise.all([
+    context.db.query.identity.findMany({
       columns: {
-        accountId: true,
+        avatarUrl: true,
+        displayName: true,
+        email: true,
+        isPrimary: true,
+        linkedAt: true,
+        provider: true,
         providerId: true,
+        username: true,
       },
-      orderBy: (account, { asc }) => [asc(account.providerId), asc(account.accountId)],
-      where: (account, { and, eq, ne }) =>
-        and(eq(account.userId, discordAccount.userId), ne(account.providerId, 'credential')),
+      orderBy: (identity, { asc, desc }) => [
+        asc(identity.provider),
+        desc(identity.isPrimary),
+        asc(identity.linkedAt),
+        asc(identity.providerId),
+      ],
+      where: (identity, { and, eq, ne }) =>
+        and(eq(identity.userId, linkedDiscordUser.userId), ne(identity.provider, 'solana')),
     }),
     context.db.query.solanaWallet.findMany({
       columns: {
@@ -275,17 +321,34 @@ export async function getDiscordUserProfile(
         name: true,
       },
       orderBy: (solanaWallet, { asc }) => [asc(solanaWallet.address)],
-      where: (solanaWallet, { eq }) => eq(solanaWallet.userId, discordAccount.userId),
+      where: (solanaWallet, { eq }) => eq(solanaWallet.userId, linkedDiscordUser.userId),
     }),
   ])
+  const identities =
+    identityRows.length > 0
+      ? identityRows
+      : (
+          await context.db.query.account.findMany({
+            columns: {
+              accountId: true,
+              providerId: true,
+            },
+            orderBy: (account, { asc }) => [asc(account.providerId), asc(account.createdAt), asc(account.id)],
+            where: (account, { and, eq, ne }) =>
+              and(eq(account.userId, linkedDiscordUser.userId), ne(account.providerId, 'credential')),
+          })
+        ).map((account) => ({
+          provider: account.providerId,
+          providerId: account.accountId,
+        }))
 
   return {
     identities,
     solanaWallets,
     user: {
-      name: discordAccount.user.name,
-      role: discordAccount.user.role,
-      username: discordAccount.user.username,
+      name: linkedDiscordUser.user.name,
+      role: linkedDiscordUser.user.role,
+      username: linkedDiscordUser.user.username,
     },
   }
 }

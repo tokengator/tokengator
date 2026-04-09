@@ -3,6 +3,7 @@ import { db, type Database } from '@tokengator/db'
 import { asset, assetGroup } from '@tokengator/db/schema/asset'
 import {
   account,
+  identity,
   member,
   organization,
   session,
@@ -1182,19 +1183,38 @@ async function loadCanonicalDiscordAccountIdsByUserId(userIds: string[], databas
   }
 
   const currentDatabase = database ?? db
-  const accountRows = await currentDatabase
+  const identityRows = await currentDatabase
     .select({
-      accountId: account.accountId,
-      userId: account.userId,
+      providerId: identity.providerId,
+      userId: identity.userId,
     })
-    .from(account)
-    .where(and(eq(account.providerId, 'discord'), inArray(account.userId, relevantUserIds)))
-    .orderBy(asc(account.createdAt), asc(account.id))
+    .from(identity)
+    .where(and(eq(identity.provider, 'discord'), inArray(identity.userId, relevantUserIds)))
+    .orderBy(desc(identity.isPrimary), asc(identity.linkedAt), asc(identity.id))
   const canonicalDiscordAccountIdByUserId = new Map<string, string>()
 
-  for (const accountRow of accountRows) {
-    if (!canonicalDiscordAccountIdByUserId.has(accountRow.userId)) {
-      canonicalDiscordAccountIdByUserId.set(accountRow.userId, accountRow.accountId)
+  for (const identityRow of identityRows) {
+    if (!canonicalDiscordAccountIdByUserId.has(identityRow.userId)) {
+      canonicalDiscordAccountIdByUserId.set(identityRow.userId, identityRow.providerId)
+    }
+  }
+
+  const missingUserIds = relevantUserIds.filter((userId) => !canonicalDiscordAccountIdByUserId.has(userId))
+
+  if (missingUserIds.length > 0) {
+    const accountRows = await currentDatabase
+      .select({
+        accountId: account.accountId,
+        userId: account.userId,
+      })
+      .from(account)
+      .where(and(eq(account.providerId, 'discord'), inArray(account.userId, missingUserIds)))
+      .orderBy(asc(account.userId), asc(account.createdAt), asc(account.id))
+
+    for (const accountRow of accountRows) {
+      if (!canonicalDiscordAccountIdByUserId.has(accountRow.userId)) {
+        canonicalDiscordAccountIdByUserId.set(accountRow.userId, accountRow.accountId)
+      }
     }
   }
 

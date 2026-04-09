@@ -197,6 +197,18 @@ describe('seedDatabase', () => {
       .from(authSchema.account)
       .innerJoin(authSchema.user, eq(authSchema.account.userId, authSchema.user.id))
       .orderBy(asc(authSchema.user.username), asc(authSchema.account.providerId))
+    const identities = await db
+      .select({
+        displayName: authSchema.identity.displayName,
+        identityUsername: authSchema.identity.username,
+        isPrimary: authSchema.identity.isPrimary,
+        provider: authSchema.identity.provider,
+        providerId: authSchema.identity.providerId,
+        userUsername: authSchema.user.username,
+      })
+      .from(authSchema.identity)
+      .innerJoin(authSchema.user, eq(authSchema.identity.userId, authSchema.user.id))
+      .orderBy(asc(authSchema.user.username), asc(authSchema.identity.provider), asc(authSchema.identity.providerId))
     const assetGroups = await db
       .select({
         address: assetSchema.assetGroup.address,
@@ -302,6 +314,24 @@ describe('seedDatabase', () => {
         accountId: bob.solana.publicKey,
         providerId: 'siws',
         username: BOB_USERNAME,
+      },
+    ])
+    expect(identities).toEqual([
+      {
+        displayName: `${alice.solana.publicKey.slice(0, 6)}…${alice.solana.publicKey.slice(-6)}`,
+        identityUsername: null,
+        isPrimary: true,
+        provider: 'solana',
+        providerId: alice.solana.publicKey,
+        userUsername: ALICE_USERNAME,
+      },
+      {
+        displayName: `${bob.solana.publicKey.slice(0, 6)}…${bob.solana.publicKey.slice(-6)}`,
+        identityUsername: null,
+        isPrimary: true,
+        provider: 'solana',
+        providerId: bob.solana.publicKey,
+        userUsername: BOB_USERNAME,
       },
     ])
     expect(assetGroups).toEqual([...devSeed.assetGroups])
@@ -462,6 +492,7 @@ describe('seedDatabase', () => {
       devSeed.organizations.length *
         devSeed.communityRoles.reduce((count, communityRole) => count + communityRole.conditions.length, 0),
     )
+    expect(await getTableCount(databaseUrl, 'identity')).toBe(2)
     expect(await getTableCount(databaseUrl, 'organization')).toBe(2)
     expect(await getTableCount(databaseUrl, 'solana_wallet')).toBe(2)
     expect(await getTableCount(databaseUrl, 'team')).toBe(devSeed.organizations.length * devSeed.communityRoles.length)

@@ -1,12 +1,15 @@
 import { ORPCError } from '@orpc/server'
-import { and, asc, eq, ne } from 'drizzle-orm'
+import { and, asc, desc, eq } from 'drizzle-orm'
 import z from 'zod'
-import { auth } from '@tokengator/auth'
+import { auth, reconcileUserIdentities } from '@tokengator/auth'
 import { getDiscordUsername } from '@tokengator/auth/lib/username'
 import { db } from '@tokengator/db'
-import { account, solanaWallet } from '@tokengator/db/schema/auth'
+import { account, identity, solanaWallet } from '@tokengator/db/schema/auth'
+import { formatLogError, getAppLogger } from '@tokengator/logger'
 
 import { protectedProcedure } from '../index'
+
+const logger = getAppLogger('api', 'profile-router')
 
 function ellipsifySolanaWalletAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-6)}`
@@ -16,6 +19,22 @@ function normalizeSolanaWalletName(name: string | null) {
   const trimmedName = name?.trim()
 
   return trimmedName ? trimmedName : null
+}
+
+async function reconcileUserIdentitiesBestEffort(args: { requestHeaders?: Headers; userId: string }) {
+  const { requestHeaders, userId } = args
+
+  try {
+    await reconcileUserIdentities({
+      requestHeaders,
+      userId,
+    })
+  } catch (error) {
+    logger.error('[profile-router] userId={userId} failed to refresh identity projection error={error}', {
+      error: formatLogError(error),
+      userId,
+    })
+  }
 }
 
 function toProfileSolanaWallet(walletRecord: { address: string; id: string; isPrimary: boolean; name: string | null }) {
@@ -60,29 +79,48 @@ export const profileRouter = {
       }
 
       await db.delete(solanaWallet).where(eq(solanaWallet.id, walletRecord.id))
+      await reconcileUserIdentitiesBestEffort({
+        requestHeaders: context.requestHeaders,
+        userId: context.session.user.id,
+      })
 
       return {
         solanaWalletId: walletRecord.id,
       }
     }),
   listIdentities: protectedProcedure.handler(async ({ context }) => {
+    await reconcileUserIdentities({
+      requestHeaders: context.requestHeaders,
+      userId: context.session.user.id,
+    })
+
     const identityRecords = await db
       .select({
-        accountId: account.accountId,
-        createdAt: account.createdAt,
-        id: account.id,
-        providerId: account.providerId,
+        avatarUrl: identity.avatarUrl,
+        displayName: identity.displayName,
+        email: identity.email,
+        id: identity.id,
+        isPrimary: identity.isPrimary,
+        linkedAt: identity.linkedAt,
+        provider: identity.provider,
+        providerId: identity.providerId,
+        username: identity.username,
       })
-      .from(account)
-      .where(and(eq(account.userId, context.session.user.id), ne(account.providerId, 'credential')))
-      .orderBy(asc(account.providerId), asc(account.accountId))
+      .from(identity)
+      .where(eq(identity.userId, context.session.user.id))
+      .orderBy(asc(identity.provider), desc(identity.isPrimary), asc(identity.linkedAt), asc(identity.providerId))
 
     return {
       identities: identityRecords.map((identity) => ({
-        accountId: identity.accountId,
-        createdAt: identity.createdAt.getTime(),
+        avatarUrl: identity.avatarUrl,
+        displayName: identity.displayName,
+        email: identity.email,
         id: identity.id,
+        isPrimary: identity.isPrimary,
+        linkedAt: identity.linkedAt.getTime(),
+        provider: identity.provider,
         providerId: identity.providerId,
+        username: identity.username,
       })),
     }
   }),
@@ -144,6 +182,11 @@ export const profileRouter = {
             .where(eq(solanaWallet.id, walletRecord.id))
         })
       }
+
+      await reconcileUserIdentitiesBestEffort({
+        requestHeaders: context.requestHeaders,
+        userId: context.session.user.id,
+      })
 
       return {
         solanaWallet: toProfileSolanaWallet({
@@ -209,6 +252,10 @@ export const profileRouter = {
         },
         headers: context.requestHeaders,
       })
+      await reconcileUserIdentities({
+        requestHeaders: context.requestHeaders,
+        userId: context.session.user.id,
+      })
 
       return {
         updated: true,
@@ -259,6 +306,11 @@ export const profileRouter = {
           isPrimary: solanaWallet.isPrimary,
           name: solanaWallet.name,
         })
+
+      await reconcileUserIdentitiesBestEffort({
+        requestHeaders: context.requestHeaders,
+        userId: context.session.user.id,
+      })
 
       return {
         solanaWallet: toProfileSolanaWallet(updatedWallet ?? { ...walletRecord, name: nextName }),

@@ -607,10 +607,15 @@ describe('createOrpcClient e2e', () => {
     await expect(session.client.profile.listIdentities()).resolves.toEqual({
       identities: [
         {
-          accountId: walletFixture.address,
-          createdAt: expect.any(Number),
+          avatarUrl: null,
+          displayName: ellipsifySolanaWalletAddress(walletFixture.address),
+          email: null,
           id: expect.any(String),
-          providerId: 'siws',
+          isPrimary: true,
+          linkedAt: expect.any(Number),
+          provider: 'solana',
+          providerId: walletFixture.address,
+          username: null,
         },
       ],
     })

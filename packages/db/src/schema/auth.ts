@@ -97,6 +97,43 @@ export const account = sqliteTable(
   (table) => [index('account_userId_idx').on(table.userId)],
 )
 
+export const identity = sqliteTable(
+  'identity',
+  {
+    avatarUrl: text('avatar_url'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    displayName: text('display_name'),
+    email: text('email'),
+    id: text('id')
+      .$defaultFn(() => crypto.randomUUID())
+      .primaryKey(),
+    isPrimary: integer('is_primary', { mode: 'boolean' }).default(false).notNull(),
+    lastSyncedAt: integer('last_synced_at', { mode: 'timestamp_ms' }).notNull(),
+    linkedAt: integer('linked_at', { mode: 'timestamp_ms' }).notNull(),
+    profile: text('profile'),
+    provider: text('provider', { enum: ['discord', 'solana'] }).notNull(),
+    providerId: text('provider_id').notNull(),
+    referenceId: text('reference_id').notNull(),
+    referenceType: text('reference_type', { enum: ['account', 'solana_wallet'] }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    username: text('username'),
+  },
+  (table) => [
+    uniqueIndex('identity_provider_providerId_idx').on(table.provider, table.providerId),
+    uniqueIndex('identity_referenceType_referenceId_idx').on(table.referenceType, table.referenceId),
+    index('identity_userId_idx').on(table.userId),
+    index('identity_userId_provider_idx').on(table.userId, table.provider),
+  ],
+)
+
 export const invitation = sqliteTable(
   'invitation',
   {
@@ -229,6 +266,13 @@ export const accountRelations = relations(account, ({ one }) => ({
   }),
 }))
 
+export const identityRelations = relations(identity, ({ one }) => ({
+  user: one(user, {
+    fields: [identity.userId],
+    references: [user.id],
+  }),
+}))
+
 export const invitationRelations = relations(invitation, ({ one }) => ({
   inviter: one(user, {
     fields: [invitation.inviterId],
@@ -305,6 +349,7 @@ export const teamRelations = relations(team, ({ many, one }) => ({
 
 export const userRelations = relations(user, ({ many }) => ({
   accounts: many(account),
+  identities: many(identity),
   invitations: many(invitation),
   members: many(member),
   sessions: many(session),

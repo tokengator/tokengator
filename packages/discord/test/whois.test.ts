@@ -46,12 +46,12 @@ describe('/whois reply helpers', () => {
       discordUserId: '1234567890',
       identities: [
         {
-          accountId: '1234567890',
-          providerId: 'discord',
+          provider: 'discord',
+          providerId: '1234567890',
         },
         {
-          accountId: 'So11111111111111111111111111111111111111112',
-          providerId: 'siws',
+          provider: 'solana',
+          providerId: 'So11111111111111111111111111111111111111112',
         },
       ],
       solanaWallets: [
@@ -123,8 +123,8 @@ describe('/whois reply helpers', () => {
     const reply = whoisModule.createKnownWhoisReply({
       discordUserId: '1234567890',
       identities: Array.from({ length: 80 }, (_, index) => ({
-        accountId: `identity-${index.toString().padStart(3, '0')}-12345678901234567890`,
-        providerId: index % 2 === 0 ? 'discord' : 'siws',
+        provider: index % 2 === 0 ? 'discord' : 'solana',
+        providerId: `identity-${index.toString().padStart(3, '0')}-12345678901234567890`,
       })),
       solanaWallets: Array.from({ length: 80 }, (_, index) => ({
         address: `wallet-${index.toString().padStart(3, '0')}-1234567890123456789012345678901234567890`,

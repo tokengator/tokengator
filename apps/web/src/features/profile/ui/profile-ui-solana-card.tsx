@@ -74,7 +74,9 @@ function ProfileUiSolanaWalletRow({
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate font-medium">{wallet.displayName}</p>
-          <p className="font-mono text-xs">{wallet.address}</p>
+          <p className="font-mono text-xs" title={wallet.address}>
+            {fallbackName}
+          </p>
         </div>
         <div className="flex items-center gap-3">
           {wallet.isPrimary ? <p className="text-muted-foreground text-xs">Primary</p> : null}

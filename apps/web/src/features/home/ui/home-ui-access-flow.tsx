@@ -13,7 +13,7 @@ export function HomeUiAccessFlow({
       <CardContent className="space-y-6 px-6 py-6 sm:px-8 sm:py-8">
         <div className="space-y-2">
           <p className="text-muted-foreground text-[0.68rem] font-medium tracking-[0.28em] uppercase">Access flow</p>
-          <h2 className="text-2xl font-medium">Sign in once. Verify everywhere.</h2>
+          <h2 className="font-heading text-2xl font-medium">Sign in once. Verify everywhere.</h2>
         </div>
         <ol className="space-y-4">
           {steps.map((step, index) => (

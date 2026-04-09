@@ -9,6 +9,7 @@
     "./web": "./src/web.ts"
   },
   "scripts": {
+    "check-types": "tsc -b --noEmit",
     "test": "bun test ./test"
   },
   "dependencies": {

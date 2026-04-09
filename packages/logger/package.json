@@ -10,7 +10,7 @@
     }
   },
   "scripts": {
-    "check-types": "tsc -b"
+    "check-types": "tsc -b --noEmit"
   },
   "dependencies": {
     "@logtape/logtape": "catalog:"

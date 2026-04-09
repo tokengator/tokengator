@@ -10,6 +10,7 @@
     }
   },
   "scripts": {
+    "check-types": "tsc -b --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:local": "turso dev --db-file local.db",
     "db:migrate": "drizzle-kit migrate",

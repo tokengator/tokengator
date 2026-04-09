@@ -36,7 +36,7 @@
         "discord.js": "catalog:",
         "dotenv": "catalog:",
         "hono": "catalog:",
-        "tanstack-start-bun-server": "workspace:*",
+        "tanstack-start-bun-server": "1.0.0",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -217,17 +217,6 @@
         "@types/bun": "catalog:",
         "better-auth": "catalog:",
         "better-auth-solana": "catalog:",
-        "typescript": "^5",
-      },
-    },
-    "packages/tanstack-start-bun-server": {
-      "name": "tanstack-start-bun-server",
-      "version": "0.1.0",
-      "devDependencies": {
-        "@tokengator/config": "workspace:*",
-        "@tokengator/logger": "workspace:*",
-        "@types/bun": "catalog:",
-        "tsdown": "^0.16.5",
         "typescript": "^5",
       },
     },
@@ -2024,7 +2013,7 @@
 
     "tailwindcss": ["tailwindcss@4.2.2", "", {}, "sha512-KWBIxs1Xb6NoLdMVqhbhgwZf2PGBpPEiwOqgI4pFIYbNTfBXiKYyWoTsXgBQ9WFg/OlhnvHaY+AEpW7wSmFo2Q=="],
 
-    "tanstack-start-bun-server": ["tanstack-start-bun-server@workspace:packages/tanstack-start-bun-server"],
+    "tanstack-start-bun-server": ["tanstack-start-bun-server@1.0.0", "", {}, "sha512-mUtfWa4LA7nLXxnHcJnaMiIHByKWjXvGgBIGEjVvNRnoTjIi6+JDt33idsZbBQHPXsx9H2sGEtO6s2JwAyXIeg=="],
 
     "tapable": ["tapable@2.3.2", "", {}, "sha512-1MOpMXuhGzGL5TTCZFItxCc0AARf1EZFQkGqMm7ERKj8+Hgr5oLvJOVFcC+lRmR8hCe2S3jC4T5D7Vg/d7/fhA=="],
 

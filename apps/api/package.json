@@ -27,6 +27,7 @@
     "discord.js": "catalog:",
     "dotenv": "catalog:",
     "hono": "catalog:",
+    "tanstack-start-bun-server": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {

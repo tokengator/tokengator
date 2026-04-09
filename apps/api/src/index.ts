@@ -1,10 +1,10 @@
 import { join } from 'node:path'
+import { createTanStackStartBunServeConfig } from 'tanstack-start-bun-server'
 import { createApiApp } from '@tokengator/api/app'
 import { env } from '@tokengator/env/api'
 import { configureAppLogger, getAppLogger } from '@tokengator/logger'
 import { startApiDiscordBot } from './start-discord-bot'
 import { startApiScheduledJobs } from './start-scheduled-jobs'
-import { createWebServeConfig } from './start-web'
 
 configureAppLogger({ env })
 const logger = getAppLogger('api', 'api-server')
@@ -14,7 +14,7 @@ async function main() {
   await startApiDiscordBot()
   startApiScheduledJobs()
 
-  const { fetchHandler: webFetch, routes: webRoutes } = await createWebServeConfig({
+  const { fetchHandler: webFetch, routes: webRoutes } = await createTanStackStartBunServeConfig({
     logger: getAppLogger('api', 'web-server'),
     webDistPath: join(import.meta.dir, '../../web/dist'),
   })

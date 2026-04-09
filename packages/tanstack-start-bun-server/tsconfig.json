@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "outDir": "dist",
+    "sourceMap": true
+  },
+  "extends": "@tokengator/config/tsconfig.base.json",
+  "include": ["src", "test"]
+}

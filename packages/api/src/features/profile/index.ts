@@ -1,4 +1,5 @@
 export type {
+  ProfileFinalizeDiscordAuthResult,
   ProfileIdentityEntity,
   ProfileListIdentitiesResult,
   ProfileListSolanaWalletsResult,

@@ -43,6 +43,11 @@ export function toProfileSolanaWalletEntity(wallet: {
 }
 
 export type ProfileIdentityEntity = ReturnType<typeof toProfileIdentityEntity>
+export type ProfileFinalizeDiscordAuthResult = {
+  hasDiscordAccount: boolean
+  updated: boolean
+  username: string | null
+}
 export type ProfileListIdentitiesResult = {
   identities: ProfileIdentityEntity[]
 }

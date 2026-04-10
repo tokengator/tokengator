@@ -1,7 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query'
 import { createServerFn } from '@tanstack/react-start'
-import { getRequestHeaders } from '@tanstack/react-start/server'
-import { hasLocalAuthProviderLink, reconcileLocalUserState, syncDiscordUsername } from '@tokengator/auth'
+
+import { serverOrpcClient } from '@/lib/orpc-server'
 
 import { authMiddleware } from './auth-middleware'
 import { populateAppAuthStateRelatedQueries, setAppAuthStateQueryData, type AppAuthState } from './get-app-auth-state'
@@ -15,25 +15,7 @@ const finalizeDiscordAuth = createServerFn({ method: 'POST' })
         session: null,
       })
     }
-
-    const hasDiscordAccount = await hasLocalAuthProviderLink({
-      providerId: 'discord',
-      userId: context.session.user.id,
-    })
-
-    if (hasDiscordAccount) {
-      const requestHeaders = new Headers(getRequestHeaders())
-
-      await syncDiscordUsername({
-        currentUsername: context.session.user.username ?? null,
-        requestHeaders,
-        userId: context.session.user.id,
-      })
-      await reconcileLocalUserState({
-        requestHeaders,
-        userId: context.session.user.id,
-      })
-    }
+    const { hasDiscordAccount } = await serverOrpcClient.profile.finalizeDiscordAuth()
 
     return await loadAppAuthState({
       hasDiscordAccount,

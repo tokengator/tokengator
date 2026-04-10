@@ -1,6 +1,5 @@
 import type { AppAuthState, AppSession } from '@/features/auth/data-access/get-app-auth-state'
 import { serverOrpcClient } from '@/lib/orpc-server'
-import { hasLocalAuthProviderLink } from '@tokengator/auth'
 
 function toAppSession(session: AppSession | null | undefined): AppSession | null {
   if (!session) {
@@ -38,15 +37,12 @@ export async function loadAppAuthState(args: { hasDiscordAccount?: boolean; sess
     } satisfies AppAuthState
   }
 
-  const [hasDiscordAccount, identities, solanaWallets] = await Promise.all([
-    args.hasDiscordAccount ??
-      hasLocalAuthProviderLink({
-        providerId: 'discord',
-        userId: session.user.id,
-      }),
+  const [identities, solanaWallets] = await Promise.all([
     serverOrpcClient.profile.listIdentities(),
     serverOrpcClient.profile.listSolanaWallets(),
   ])
+  const hasDiscordAccount =
+    args.hasDiscordAccount ?? identities.identities.some((identity) => identity.provider === 'discord')
   const hasSolanaWallet = solanaWallets.solanaWallets.length > 0
   const username = session.user.username ?? getPersistedDiscordUsername({ identities })
   const hasUsername = Boolean(username)

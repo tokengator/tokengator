@@ -2,7 +2,6 @@ import { profileFeatureDeleteSolanaWallet } from './profile-feature-delete-solan
 import { profileFeatureListIdentities } from './profile-feature-list-identities'
 import { profileFeatureListSolanaWallets } from './profile-feature-list-solana-wallets'
 import { profileFeatureSetPrimarySolanaWallet } from './profile-feature-set-primary-solana-wallet'
-import { profileFeatureSyncDiscordUsername } from './profile-feature-sync-discord-username'
 import { profileFeatureUpdateSolanaWallet } from './profile-feature-update-solana-wallet'
 
 export const profileRouter = {
@@ -10,6 +9,5 @@ export const profileRouter = {
   listIdentities: profileFeatureListIdentities,
   listSolanaWallets: profileFeatureListSolanaWallets,
   setPrimarySolanaWallet: profileFeatureSetPrimarySolanaWallet,
-  syncDiscordUsername: profileFeatureSyncDiscordUsername,
   updateSolanaWallet: profileFeatureUpdateSolanaWallet,
 }

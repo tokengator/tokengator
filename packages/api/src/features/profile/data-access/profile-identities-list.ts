@@ -1,16 +1,10 @@
 import { asc, desc, eq } from 'drizzle-orm'
-import { reconcileUserIdentities } from '@tokengator/auth'
 import { db } from '@tokengator/db'
 import { identity } from '@tokengator/db/schema/auth'
 
 import { toProfileIdentityEntity } from './profile.entity'
 
-export async function profileIdentitiesList(input: { requestHeaders?: Headers; userId: string }) {
-  await reconcileUserIdentities({
-    requestHeaders: input.requestHeaders,
-    userId: input.userId,
-  })
-
+export async function profileIdentitiesList(input: { userId: string }) {
   const identityRecords = await db
     .select({
       avatarUrl: identity.avatarUrl,

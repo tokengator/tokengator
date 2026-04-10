@@ -8,6 +8,7 @@ import { Button } from '@tokengator/ui/components/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 
 import { getAuthClientClient } from '@/features/auth/data-access/auth-client-client'
+import { finalizeDiscordAuthState } from '@/features/auth/data-access/finalize-discord-auth'
 import { refreshAppAuthState } from '@/features/auth/data-access/get-app-auth-state'
 import { useAppAuthStateQuery } from '@/features/auth/data-access/use-app-auth-state-query'
 import { AuthFeatureSolanaActions } from '@/features/auth/feature/auth-feature-solana-actions'
@@ -20,6 +21,7 @@ export function OnboardFeatureIndex() {
   const queryClient = useQueryClient()
   const { data } = useAppAuthStateQuery()
   const [isDiscordPending, setIsDiscordPending] = useState(false)
+  const [isUsernamePending, setIsUsernamePending] = useState(false)
   const hasDiscordAccount = data?.onboardingStatus?.hasDiscordAccount ?? false
   const hasSolanaWallet = data?.onboardingStatus?.hasSolanaWallet ?? false
   const hasUsername = data?.onboardingStatus?.hasUsername ?? false
@@ -62,11 +64,19 @@ export function OnboardFeatureIndex() {
     }
   }
 
-  async function handleUsernameRefresh() {
+  async function handleUsernameRetry() {
+    setIsUsernamePending(true)
+
     try {
-      await refreshAppAuthState(queryClient)
+      const appAuthState = await finalizeDiscordAuthState(queryClient)
+
+      if (!appAuthState?.onboardingStatus?.hasUsername) {
+        toast.error('Unable to sync Discord username')
+      }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Unable to refresh account setup')
+      toast.error(error instanceof Error ? error.message : 'Unable to sync Discord username')
+    } finally {
+      setIsUsernamePending(false)
     }
   }
 
@@ -128,10 +138,15 @@ export function OnboardFeatureIndex() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-muted-foreground text-sm">
-              Refresh this page if your Discord username does not appear automatically after linking.
+              Your username should sync during Discord sign-in or link. Retry sync if it does not appear automatically.
             </p>
-            <Button onClick={() => void handleUsernameRefresh()} type="button" variant="outline">
-              Refresh
+            <Button
+              disabled={isUsernamePending}
+              onClick={() => void handleUsernameRetry()}
+              type="button"
+              variant="outline"
+            >
+              {isUsernamePending ? 'Syncing...' : 'Retry sync'}
             </Button>
           </CardContent>
         </Card>

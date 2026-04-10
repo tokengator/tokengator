@@ -4,7 +4,6 @@ import { profileIdentitiesList as profileIdentitiesListDataAccess } from '../dat
 
 export const profileFeatureListIdentities = protectedProcedure.handler(async ({ context }) => {
   return await profileIdentitiesListDataAccess({
-    requestHeaders: context.requestHeaders,
     userId: context.session.user.id,
   })
 })

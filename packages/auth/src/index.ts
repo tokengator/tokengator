@@ -2,6 +2,7 @@ import type { DiscordProfile } from 'better-auth/social-providers'
 import { betterAuth } from 'better-auth'
 import { siws } from 'better-auth-solana'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { createAuthMiddleware } from 'better-auth/api'
 import { admin } from 'better-auth/plugins/admin'
 import { organization } from 'better-auth/plugins/organization'
 import { username } from 'better-auth/plugins/username'
@@ -22,6 +23,10 @@ type DesiredIdentity = Omit<typeof schema.identity.$inferInsert, 'id'>
 type DiscordAccountInfo = {
   data?: Record<string, unknown>
   user?: Record<string, unknown>
+}
+type SyncDiscordUsernameResult = {
+  updated: boolean
+  username: string | null
 }
 
 function ellipsifySolanaWalletAddress(address: string) {
@@ -72,6 +77,19 @@ async function hasSolanaAdminWallet(userId: string) {
   return walletRecord !== undefined
 }
 
+export async function hasLocalAuthProviderLink(args: { providerId: string; userId: string }) {
+  const [accountRecord] = await db
+    .select({
+      id: schema.account.id,
+    })
+    .from(schema.account)
+    .where(and(eq(schema.account.providerId, args.providerId), eq(schema.account.userId, args.userId)))
+    .orderBy(asc(schema.account.accountId), asc(schema.account.id))
+    .limit(1)
+
+  return accountRecord !== undefined
+}
+
 async function syncAdminRole(userId: string) {
   const [userRecord] = await db
     .select({
@@ -103,6 +121,30 @@ function getBetterAuthDomain(url: string) {
 
 function getCompatibilityEmailDomain(url: string) {
   return `discord.${new URL(url).hostname}`
+}
+
+function localIdentityProjectionPlugin() {
+  return {
+    hooks: {
+      after: [
+        {
+          handler: createAuthMiddleware(async (ctx) => {
+            const userId = ctx.context.session?.user.id
+
+            if (!userId) {
+              return
+            }
+
+            await reconcileLocalUserState({
+              userId,
+            })
+          }),
+          matcher: (context: { path?: string }) => context.path === '/siws/link',
+        },
+      ],
+    },
+    id: 'local-identity-projection',
+  }
 }
 
 function mapDiscordProfileToUser(profile: DiscordProfile) {
@@ -229,11 +271,15 @@ async function createDesiredDiscordIdentities(args: {
         existingDiscordIdentityByReferenceId.get(discordAccount.accountRowId) ??
         existingDiscordIdentityByProviderId.get(discordAccount.accountId) ??
         null
+      const fallbackAvatarUrl = index === 0 ? discordAccount.userImage : null
+      const fallbackDisplayName = index === 0 ? discordAccount.userName : null
+      const fallbackEmail = index === 0 ? discordAccount.userEmail : null
+      const fallbackUsername = index === 0 ? discordAccount.userUsername : null
       const username = getDiscordUsername(
         getOptionalString(accountInfo?.user, 'username') ??
           getOptionalString(accountInfo?.data, 'username') ??
           existingDiscordIdentity?.username ??
-          discordAccount.userUsername,
+          fallbackUsername,
       )
 
       return {
@@ -241,19 +287,19 @@ async function createDesiredDiscordIdentities(args: {
           getOptionalString(accountInfo?.user, 'image') ??
             getOptionalString(accountInfo?.data, 'image') ??
             existingDiscordIdentity?.avatarUrl ??
-            discordAccount.userImage,
+            fallbackAvatarUrl,
         ),
         displayName: normalizeOptionalString(
           getOptionalString(accountInfo?.user, 'name') ??
             getOptionalString(accountInfo?.data, 'name') ??
             existingDiscordIdentity?.displayName ??
-            discordAccount.userName,
+            fallbackDisplayName,
         ),
         email: normalizeEmail(
           getOptionalString(accountInfo?.user, 'email') ??
             getOptionalString(accountInfo?.data, 'email') ??
             existingDiscordIdentity?.email ??
-            discordAccount.userEmail,
+            fallbackEmail,
         ),
         isPrimary: index === 0,
         lastSyncedAt: now,
@@ -305,7 +351,7 @@ async function createDesiredSolanaIdentities(userId: string): Promise<DesiredIde
   })
 }
 
-export async function reconcileUserIdentities(args: { requestHeaders?: Headers; userId: string }) {
+export async function reconcileLocalUserIdentities(args: { requestHeaders?: Headers; userId: string }) {
   const { requestHeaders, userId } = args
   const supportedProviders = ['discord', 'solana'] as const
   const [discordIdentities, solanaIdentities] = await Promise.all([
@@ -403,6 +449,74 @@ export async function reconcileUserIdentities(args: { requestHeaders?: Headers; 
   })
 }
 
+export async function reconcileLocalUserState(args: { requestHeaders?: Headers; userId: string }) {
+  await reconcileLocalUserIdentities(args)
+  await syncAdminRole(args.userId)
+}
+
+export async function syncDiscordUsername(args: {
+  currentUsername: string | null | undefined
+  requestHeaders: Headers
+  userId: string
+}): Promise<SyncDiscordUsernameResult> {
+  if (args.currentUsername) {
+    return {
+      updated: false,
+      username: args.currentUsername,
+    }
+  }
+
+  const [discordAccount] = await db
+    .select({
+      accountId: schema.account.accountId,
+    })
+    .from(schema.account)
+    .where(and(eq(schema.account.providerId, 'discord'), eq(schema.account.userId, args.userId)))
+    .orderBy(asc(schema.account.createdAt), asc(schema.account.id))
+    .limit(1)
+
+  if (!discordAccount) {
+    return {
+      updated: false,
+      username: null,
+    }
+  }
+
+  try {
+    const accountInfo = await getDiscordAccountInfo({
+      accountId: discordAccount.accountId,
+      requestHeaders: args.requestHeaders,
+    })
+    const username = getDiscordUsername(
+      getOptionalString(accountInfo?.user, 'username') ?? getOptionalString(accountInfo?.data, 'username') ?? null,
+    )
+
+    if (!username) {
+      return {
+        updated: false,
+        username: null,
+      }
+    }
+
+    await auth.api.updateUser({
+      body: {
+        username,
+      },
+      headers: args.requestHeaders,
+    })
+
+    return {
+      updated: true,
+      username,
+    }
+  } catch {
+    return {
+      updated: false,
+      username: null,
+    }
+  }
+}
+
 function getDefaultCookieAttributes() {
   const isSecureOrigin = new URL(env.BETTER_AUTH_URL).protocol === 'https:'
 
@@ -433,24 +547,31 @@ export const auth = betterAuth({
     account: {
       create: {
         after: async (account) => {
-          await reconcileUserIdentities({
+          await reconcileLocalUserState({
             userId: account.userId,
           })
-          await syncAdminRole(account.userId)
         },
       },
     },
     session: {
       create: {
         before: async (session) => {
-          await reconcileUserIdentities({
+          await reconcileLocalUserState({
             userId: session.userId,
           })
-          await syncAdminRole(session.userId)
 
           return {
             data: session,
           }
+        },
+      },
+    },
+    user: {
+      update: {
+        after: async (user) => {
+          await reconcileLocalUserState({
+            userId: user.id,
+          })
         },
       },
     },
@@ -460,6 +581,7 @@ export const auth = betterAuth({
   },
   plugins: [
     admin(),
+    localIdentityProjectionPlugin(),
     organization({
       allowUserToCreateOrganization: false,
       teams: {

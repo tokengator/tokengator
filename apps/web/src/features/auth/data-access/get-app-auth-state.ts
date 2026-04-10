@@ -1,6 +1,5 @@
 import { queryOptions, type QueryClient } from '@tanstack/react-query'
 
-import type { OnboardingStatus } from '@/features/organization/feature/organization-feature-active-access'
 import type { serverOrpcClient } from '@/lib/orpc-server'
 import { getProfileListIdentitiesQueryKey } from '@/features/profile/data-access/use-profile-list-identities'
 import { getProfileListSolanaWalletsQueryKey } from '@/features/profile/data-access/use-profile-list-solana-wallets'
@@ -20,11 +19,17 @@ export interface AppSession {
 
 export type AuthenticatedHomePath = '/onboard' | '/profile'
 
+export interface AppOnboardingStatus {
+  hasDiscordAccount: boolean
+  hasSolanaWallet: boolean
+  hasUsername: boolean
+}
+
 export interface AppAuthState {
   authenticatedHomePath: AuthenticatedHomePath
   identities: Awaited<ReturnType<typeof serverOrpcClient.profile.listIdentities>> | null
   isOnboardingComplete: boolean
-  onboardingStatus: OnboardingStatus | null
+  onboardingStatus: AppOnboardingStatus | null
   session: AppSession | null
   solanaWallets: Awaited<ReturnType<typeof serverOrpcClient.profile.listSolanaWallets>> | null
 }
@@ -48,6 +53,12 @@ export function populateAppAuthStateRelatedQueries(args: { appAuthState: AppAuth
   }
 }
 
+export function setAppAuthStateQueryData(args: { appAuthState: AppAuthState; queryClient: QueryClient }) {
+  const { appAuthState, queryClient } = args
+
+  queryClient.setQueryData<AppAuthState>(appAuthStateQueryKey, appAuthState)
+}
+
 export function getAppAuthStateQueryOptions() {
   return queryOptions({
     queryFn: () => getAppAuthState(),
@@ -66,6 +77,10 @@ export async function refreshAppAuthState(queryClient: QueryClient) {
     staleTime: 0,
   })
 
+  setAppAuthStateQueryData({
+    appAuthState,
+    queryClient,
+  })
   populateAppAuthStateRelatedQueries({
     appAuthState,
     queryClient,

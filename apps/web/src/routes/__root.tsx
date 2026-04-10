@@ -10,6 +10,7 @@ import {
 } from '@/features/auth/data-access/get-app-auth-state'
 import { ShellFeatureFrame } from '@/features/shell/feature/shell-feature-frame'
 import { AppProviders } from '@/lib/app-providers'
+import { ensureAppOrigin } from '@/lib/ensure-app-origin'
 import { getAppConfig } from '@/lib/get-app-config'
 
 import appCss from '../index.css?url'
@@ -26,11 +27,11 @@ export interface RouterAppContext {
 }
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
-  beforeLoad: async ({ context }) => {
-    const [appAuthState, appConfig] = await Promise.all([
-      context.queryClient.ensureQueryData(getAppAuthStateQueryOptions()),
-      getAppConfig(),
-    ])
+  beforeLoad: async ({ context, location }) => {
+    const appConfig = await getAppConfig()
+    await ensureAppOrigin({ appConfig, location })
+
+    const appAuthState = await context.queryClient.ensureQueryData(getAppAuthStateQueryOptions())
 
     populateAppAuthStateRelatedQueries({
       appAuthState,

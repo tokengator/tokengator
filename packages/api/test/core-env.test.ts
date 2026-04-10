@@ -21,6 +21,7 @@ const ENV_KEYS = [
   'NODE_ENV',
   'SOLANA_CLUSTER',
   'SOLANA_ENDPOINT_PUBLIC',
+  'WEB_URL',
 ] as const
 const PREVIOUS_ENV = {} as Partial<Record<(typeof ENV_KEYS)[number], string | undefined>>
 const TEST_DATABASE_DIR = mkdtempSync(resolve(tmpdir(), 'tokengator-api-tests-'))
@@ -47,6 +48,7 @@ beforeAll(async () => {
   process.env.NODE_ENV = 'test'
   process.env.SOLANA_CLUSTER = 'devnet'
   process.env.SOLANA_ENDPOINT_PUBLIC = 'https://api.devnet.solana.com'
+  delete process.env.WEB_URL
 
   ;({ createApiApp } = await import('../src/app'))
 })
@@ -71,13 +73,65 @@ afterAll(() => {
 
 function getExpectedAppConfig(): AppConfig {
   return {
+    appOrigin: 'http://127.0.0.1:3000',
     solanaCluster: 'devnet',
     solanaEndpoint: 'https://api.devnet.solana.com',
     solanaSignInEnabled: true,
   }
 }
 
+function loadCoreAppConfig(overrides: Partial<Record<(typeof ENV_KEYS)[number], string | undefined>> = {}) {
+  const env = {
+    ...process.env,
+  }
+
+  for (const [key, value] of Object.entries(overrides)) {
+    if (value === undefined) {
+      delete env[key]
+      continue
+    }
+
+    env[key] = value
+  }
+
+  const moduleUrl = new URL('../src/features/core/data-access/get-core-app-config.ts', import.meta.url).href
+  const result = Bun.spawnSync({
+    cmd: [
+      'bun',
+      '--eval',
+      `const { getCoreAppConfig } = await import(${JSON.stringify(moduleUrl)}); console.log(JSON.stringify(getCoreAppConfig()))`,
+    ],
+    env,
+    stderr: 'pipe',
+    stdout: 'pipe',
+  })
+
+  if (result.exitCode !== 0) {
+    throw new Error(Buffer.from(result.stderr).toString('utf8').trim() || 'Failed to load core app config')
+  }
+
+  return JSON.parse(Buffer.from(result.stdout).toString('utf8')) as AppConfig
+}
+
 describe('core env endpoints', () => {
+  test('getCoreAppConfig falls back to API_URL when WEB_URL is unset', () => {
+    const appConfig = loadCoreAppConfig({
+      API_URL: 'https://api.example.com/base?via=test',
+      WEB_URL: undefined,
+    })
+
+    expect(appConfig.appOrigin).toBe('https://api.example.com')
+  })
+
+  test('getCoreAppConfig prefers WEB_URL when it is set', () => {
+    const appConfig = loadCoreAppConfig({
+      API_URL: 'https://api.example.com/base?via=test',
+      WEB_URL: 'https://app.example.com/onboard?from=discord',
+    })
+
+    expect(appConfig.appOrigin).toBe('https://app.example.com')
+  })
+
   test('GET /api/__/env.json returns app config as JSON', async () => {
     const app = createApiApp()
     const response = await app.request('http://localhost/api/__/env.json')

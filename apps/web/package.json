@@ -6,7 +6,8 @@
     "build": "vite build",
     "check-types": "tsc -b --noEmit",
     "dev": "vite dev",
-    "serve": "vite preview"
+    "serve": "vite preview",
+    "test": "bun test ./test"
   },
   "dependencies": {
     "@libsql/client": "catalog:",

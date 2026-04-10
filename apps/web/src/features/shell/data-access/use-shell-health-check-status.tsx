@@ -4,7 +4,7 @@ export type HealthCheckStatus = 'connected' | 'disconnected' | 'loading'
 export function useShellHealthCheckStatus(): HealthCheckStatus {
   const healthCheck = useShellHealthCheckQuery()
 
-  return healthCheck.isLoading
+  return healthCheck.isPending
     ? 'loading'
     : healthCheck.isError
       ? 'disconnected'

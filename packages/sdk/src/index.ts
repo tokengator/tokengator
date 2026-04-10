@@ -9,7 +9,7 @@ export type OrpcClientFetch = (input: Request | URL | string, init?: RequestInit
 export type * from '@tokengator/api'
 
 export type CreateOrpcClientOptions = {
-  baseUrl: string
+  baseUrl: RPCLinkOptions<Record<never, never>>['url']
   credentials?: 'include' | 'omit' | 'same-origin'
   fetch?: OrpcClientFetch
   headers?: RPCLinkOptions<Record<never, never>>['headers']
@@ -34,7 +34,11 @@ export function createOrpcClient(options: CreateOrpcClientOptions): OrpcClient {
       })
     },
     headers,
-    url: resolveRpcUrl(baseUrl, rpcPath),
+    url: async (options, path, input) => {
+      const resolvedBaseUrl = typeof baseUrl === 'function' ? await baseUrl(options, path, input) : baseUrl
+
+      return resolveRpcUrl(resolvedBaseUrl.toString(), rpcPath)
+    },
   })
 
   return createORPCClient(link) as OrpcClient

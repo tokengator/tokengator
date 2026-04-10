@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react'
 import { Loader2 } from 'lucide-react'
+import type { AdminOrganizationDetailEntity } from '@tokengator/sdk'
 import { Button } from '@tokengator/ui/components/button'
 import { UiDetailRow } from '@tokengator/ui/components/ui-detail-row'
 import { UiStatus, type UiStatusVariants } from '@tokengator/ui/components/ui-status'
 import { formatDateTime } from '@tokengator/ui/util/format-date-time'
 
-import type { AdminCommunityDiscordConnection } from '../data-access/use-admin-community-get-query'
+type AdminCommunityDiscordConnection = NonNullable<AdminOrganizationDetailEntity['discordConnection']>
 
 function getDiscordConnectionStatusTone(status: AdminCommunityDiscordConnection['status']): UiStatusVariants['tone'] {
   return status === 'connected' ? 'success' : 'warning'

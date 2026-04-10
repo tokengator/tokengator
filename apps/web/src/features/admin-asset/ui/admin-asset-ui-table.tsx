@@ -1,3 +1,4 @@
+import type { AdminAssetEntity } from '@tokengator/sdk'
 import { Button } from '@tokengator/ui/components/button'
 import {
   UiTable,
@@ -8,17 +9,8 @@ import {
   UiTableRow,
 } from '@tokengator/ui/components/ui-table'
 
-interface AdminAssetUiTableAsset {
-  address: string
-  amount: string
-  id: string
-  indexedAt: Date | string
-  owner: string
-  resolverKind: 'helius-collection-assets' | 'helius-token-accounts'
-}
-
 interface AdminAssetUiTableProps {
-  assets: AdminAssetUiTableAsset[]
+  assets: AdminAssetEntity[]
   deletingAssetId?: string
   isDeletePending: boolean
   onDelete: (id: string) => void

@@ -1,33 +1,24 @@
 import type { ReactNode } from 'react'
 import { PencilLine, Trash2 } from 'lucide-react'
+import type { AdminCommunityRoleConditionEntity, AdminCommunityRoleEntity } from '@tokengator/sdk'
 import { Button } from '@tokengator/ui/components/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import { UiStatus, type UiStatusVariants } from '@tokengator/ui/components/ui-status'
 
-interface AdminCommunityRoleUiCardCondition {
-  assetGroupAddress: string
-  assetGroupEnabled: boolean
-  assetGroupLabel: string
-  assetGroupType: string
-  id: string
-  maximumAmount: string | null
-  minimumAmount: string
-}
-
 interface AdminCommunityRoleUiCardProps {
-  conditions: AdminCommunityRoleUiCardCondition[]
+  conditions: AdminCommunityRoleConditionEntity[]
   discordMappingLabel: string
   discordMappingStatusLabel: string
   discordMappingTone: UiStatusVariants['tone']
-  enabled: boolean
+  enabled: AdminCommunityRoleEntity['enabled']
   mappingContent: ReactNode
-  matchMode: string
-  name: string
+  matchMode: AdminCommunityRoleEntity['matchMode']
+  name: AdminCommunityRoleEntity['name']
   onDelete: () => void
   onEdit: () => void
-  slug: string
-  teamMemberCount: number
-  teamName: string
+  slug: AdminCommunityRoleEntity['slug']
+  teamMemberCount: AdminCommunityRoleEntity['teamMemberCount']
+  teamName: AdminCommunityRoleEntity['teamName']
 }
 
 export function AdminCommunityRoleUiCard(props: AdminCommunityRoleUiCardProps) {

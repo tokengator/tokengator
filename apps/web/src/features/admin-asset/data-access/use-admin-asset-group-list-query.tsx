@@ -1,14 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
+import type { AdminAssetGroupListInput } from '@tokengator/sdk'
 
 import { orpc } from '@/lib/orpc'
 
-interface UseAdminAssetGroupListQueryInput {
-  limit?: number
-  offset?: number
-  search?: string
-}
-
-export function useAdminAssetGroupListQuery(input: UseAdminAssetGroupListQueryInput) {
+export function useAdminAssetGroupListQuery(input: AdminAssetGroupListInput) {
   return useQuery(
     orpc.adminAssetGroup.list.queryOptions({
       input,

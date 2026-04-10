@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import type { AdminAssetGroupWithIndexingStatus } from '@tokengator/sdk'
 
 import { UiStatus } from '@tokengator/ui/components/ui-status'
 import {
@@ -13,32 +14,10 @@ import { formatDateTime } from '@tokengator/ui/util/format-date-time'
 
 import { getFreshnessTone } from '@/features/admin/util/get-freshness-tone'
 
-interface AdminAssetGroupUiTableAssetGroup {
-  address: string
-  enabled: boolean
-  id: string
-  indexingStatus: {
-    freshnessStatus: 'fresh' | 'stale' | 'unknown'
-    isRunning: boolean
-    lastRun: {
-      errorMessage: string | null
-      finishedAt: Date | string | null
-      startedAt: Date | string
-      status: 'failed' | 'running' | 'skipped' | 'succeeded'
-    } | null
-    lastSuccessfulRun: {
-      finishedAt: Date | string | null
-    } | null
-    staleAfterMinutes: number
-  } | null
-  label: string
-  type: 'collection' | 'mint'
-}
-
 interface AdminAssetGroupUiTableProps {
-  assetGroups: AdminAssetGroupUiTableAssetGroup[]
-  renderActions: (assetGroup: AdminAssetGroupUiTableAssetGroup) => ReactNode
-  renderLabel?: (assetGroup: AdminAssetGroupUiTableAssetGroup) => ReactNode
+  assetGroups: AdminAssetGroupWithIndexingStatus[]
+  renderActions: (assetGroup: AdminAssetGroupWithIndexingStatus) => ReactNode
+  renderLabel?: (assetGroup: AdminAssetGroupWithIndexingStatus) => ReactNode
 }
 
 export function AdminAssetGroupUiTable(props: AdminAssetGroupUiTableProps) {

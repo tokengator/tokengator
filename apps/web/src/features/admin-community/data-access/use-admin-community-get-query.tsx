@@ -1,16 +1,14 @@
 import { queryOptions, useQuery } from '@tanstack/react-query'
+import type { AdminOrganizationDetailEntity } from '@tokengator/sdk'
 
 import { getAdminCommunity } from '@/features/admin-community/data-access/get-admin-community-fn'
 import { orpc } from '@/lib/orpc'
-
-export type AdminCommunityGetResult = Awaited<ReturnType<typeof orpc.adminOrganization.get.call>>
-export type AdminCommunityDiscordConnection = NonNullable<AdminCommunityGetResult['discordConnection']>
 
 function isNotFoundError(error: unknown): error is { code: string } {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === 'NOT_FOUND'
 }
 
-async function getAdminCommunityOrNull(query: () => Promise<AdminCommunityGetResult>) {
+async function getAdminCommunityOrNull(query: () => Promise<AdminOrganizationDetailEntity>) {
   try {
     return await query()
   } catch (error) {
@@ -56,7 +54,7 @@ export function getAdminCommunityGetRouteQueryOptions(organizationId: string) {
 export function useAdminCommunityGetQuery(
   organizationId: string,
   options?: {
-    initialData?: AdminCommunityGetResult | null
+    initialData?: AdminOrganizationDetailEntity | null
   },
 ) {
   return useQuery({

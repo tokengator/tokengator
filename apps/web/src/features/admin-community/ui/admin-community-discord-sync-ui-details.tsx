@@ -1,11 +1,19 @@
+import type {
+  AdminCommunityRoleApplyDiscordRoleSyncResult,
+  AdminCommunityRolePreviewDiscordRoleSyncResult,
+} from '@tokengator/sdk'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import { UiStatus, type UiStatusVariants } from '@tokengator/ui/components/ui-status'
 
-import type {
-  AdminCommunityDiscordOutcomeStatus,
-  AdminCommunityDiscordSyncResult,
-} from '../data-access/admin-community-role-types'
 import { formatAdminCommunityDiscordCheck } from '../util/admin-community-discord-check'
+
+type AdminCommunityDiscordSyncResult =
+  | AdminCommunityRoleApplyDiscordRoleSyncResult
+  | AdminCommunityRolePreviewDiscordRoleSyncResult
+type AdminCommunityDiscordOutcomeStatus = Extract<
+  AdminCommunityDiscordSyncResult,
+  { users: unknown[] }
+>['users'][number]['outcomes'][number]['status']
 
 function getDiscordOutcomeStatusTone(status: AdminCommunityDiscordOutcomeStatus): UiStatusVariants['tone'] {
   if (status === 'already_correct') {

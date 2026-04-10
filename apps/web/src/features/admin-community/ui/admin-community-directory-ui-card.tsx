@@ -1,17 +1,17 @@
 import type { ReactNode } from 'react'
+import type { AdminOrganizationListEntity } from '@tokengator/sdk'
 
-import type { AppSessionUser } from '@/features/auth/data-access/get-app-auth-state'
 import { formatOwnerSummary } from '@/features/admin-community/util/format-owner-summary.tsx'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import { UiDetailRow } from '@tokengator/ui/components/ui-detail-row'
 import { formatDate } from '@tokengator/ui/util/format-date'
 
 interface AdminCommunityDirectoryUiCardProps {
-  createdAt: Date | string
+  createdAt: AdminOrganizationListEntity['createdAt']
   manageAction: ReactNode
-  memberCount: number
-  owners: Array<Pick<AppSessionUser, 'name' | 'username'>>
-  slug: string
+  memberCount: AdminOrganizationListEntity['memberCount']
+  owners: AdminOrganizationListEntity['owners']
+  slug: AdminOrganizationListEntity['slug']
   title: ReactNode
 }
 

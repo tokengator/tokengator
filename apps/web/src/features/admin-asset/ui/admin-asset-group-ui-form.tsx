@@ -1,5 +1,6 @@
 import { Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import type { AdminAssetGroupUpdateInput } from '@tokengator/sdk'
 import { Button } from '@tokengator/ui/components/button'
 import { Checkbox } from '@tokengator/ui/components/checkbox'
 import { Input } from '@tokengator/ui/components/input'
@@ -7,17 +8,10 @@ import { Label } from '@tokengator/ui/components/label'
 
 import { ellipsifyAddress } from '../util/ellipsify-address'
 
-export interface AdminAssetGroupFormValues {
-  address: string
-  enabled: boolean
-  label: string
-  type: 'collection' | 'mint'
-}
-
 interface AdminAssetGroupUiFormProps {
-  initialValues: AdminAssetGroupFormValues
+  initialValues: AdminAssetGroupUpdateInput['data']
   isPending: boolean
-  onSubmit: (values: AdminAssetGroupFormValues) => void
+  onSubmit: (values: AdminAssetGroupUpdateInput['data']) => void
   showEnabled?: boolean
   submitLabel: string
 }
@@ -55,7 +49,7 @@ export function AdminAssetGroupUiForm(props: AdminAssetGroupUiFormProps) {
           onChange={(event) =>
             setValues((currentValues) => ({
               ...currentValues,
-              type: event.target.value as AdminAssetGroupFormValues['type'],
+              type: event.target.value as AdminAssetGroupUpdateInput['data']['type'],
             }))
           }
           value={values.type}

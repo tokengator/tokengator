@@ -1,20 +1,18 @@
 import { useState } from 'react'
+import type { AdminCommunityRoleDiscordGuildRolesResult, AdminCommunityRoleEntity } from '@tokengator/sdk'
 import type { UiStatusVariants } from '@tokengator/ui/components/ui-status'
 
-import type {
-  AdminCommunityDiscordGuildRoleRecord,
-  AdminCommunityDiscordGuildRolesResult,
-  AdminCommunityRoleRecord,
-} from '../data-access/admin-community-role-types'
 import { useAdminCommunityDiscordRoleMappingSet } from '../data-access/use-admin-community-discord-role-mapping-set'
 import { AdminCommunityRoleUiCard } from '../ui/admin-community-role-ui-card'
 import { AdminCommunityRoleUiMappingCard } from '../ui/admin-community-role-ui-mapping-card'
 import { formatAdminCommunityDiscordCheck } from '../util/admin-community-discord-check'
 
+type AdminCommunityDiscordGuildRoleRecord = AdminCommunityRoleDiscordGuildRolesResult['guildRoles'][number]
+
 function getDiscordMappingState(input: {
-  discordGuildRoles?: AdminCommunityDiscordGuildRolesResult
+  discordGuildRoles?: AdminCommunityRoleDiscordGuildRolesResult
   discordGuildRolesError: boolean
-  role: AdminCommunityRoleRecord
+  role: AdminCommunityRoleEntity
 }) {
   if (!input.role.discordRoleId) {
     return {
@@ -84,9 +82,9 @@ function normalizeDiscordRoleName(name: string) {
 }
 
 interface AdminCommunityFeatureRoleMappingCardProps {
-  communityRole: AdminCommunityRoleRecord
-  communityRoles: AdminCommunityRoleRecord[]
-  discordGuildRoles?: AdminCommunityDiscordGuildRolesResult
+  communityRole: AdminCommunityRoleEntity
+  communityRoles: AdminCommunityRoleEntity[]
+  discordGuildRoles?: AdminCommunityRoleDiscordGuildRolesResult
   hasDiscordGuildRolesError: boolean
   isDiscordGuildRolesPending: boolean
   onDelete: () => void

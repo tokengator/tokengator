@@ -1,5 +1,6 @@
 import { Loader2, Plus } from 'lucide-react'
 import { useState } from 'react'
+import type { AdminCommunityRoleInput } from '@tokengator/sdk'
 import { Button } from '@tokengator/ui/components/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import {
@@ -19,11 +20,7 @@ import { useAdminCommunityRoleDelete } from '../data-access/use-admin-community-
 import { useAdminCommunityRoleListQuery } from '../data-access/use-admin-community-role-list-query'
 import { useAdminCommunityRoleUpdate } from '../data-access/use-admin-community-role-update'
 import { AdminCommunityRoleUiDeleteDialog } from '../ui/admin-community-role-ui-delete-dialog'
-import {
-  AdminCommunityRoleUiForm,
-  getAdminCommunityRoleUiDefaultValues,
-  type AdminCommunityRoleUiFormSubmitValues,
-} from '../ui/admin-community-role-ui-form'
+import { AdminCommunityRoleUiForm, getAdminCommunityRoleUiDefaultValues } from '../ui/admin-community-role-ui-form'
 import { AdminCommunityFeatureRoleMappingCard } from './admin-community-feature-role-mapping-card'
 
 interface AdminCommunityFeatureRoleCatalogProps {
@@ -55,7 +52,7 @@ export function AdminCommunityFeatureRoleCatalog(props: AdminCommunityFeatureRol
     })) ?? []
   const editingRole = communityRoles.find((communityRole) => communityRole.id === editingRoleId) ?? null
 
-  async function handleCreateRole(values: AdminCommunityRoleUiFormSubmitValues) {
+  async function handleCreateRole(values: AdminCommunityRoleInput) {
     try {
       await createCommunityRole.mutateAsync({
         data: values,
@@ -78,7 +75,7 @@ export function AdminCommunityFeatureRoleCatalog(props: AdminCommunityFeatureRol
     } catch {}
   }
 
-  async function handleUpdateRole(values: AdminCommunityRoleUiFormSubmitValues) {
+  async function handleUpdateRole(values: AdminCommunityRoleInput) {
     if (!editingRole) {
       return
     }

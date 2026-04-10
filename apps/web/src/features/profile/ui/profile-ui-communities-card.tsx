@@ -1,21 +1,9 @@
+import type { OrganizationMembershipEntity } from '@tokengator/sdk'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import { UiListCard, UiListCardHeader, UiListCardMeta } from '@tokengator/ui/components/ui-list-card'
 
-type ProfileCommunity = {
-  gatedRoles: Array<{
-    id: string
-    name: string
-    slug: string
-  }>
-  id: string
-  logo: string | null
-  name: string
-  role: string
-  slug: string
-}
-
 interface ProfileUiCommunitiesCardProps {
-  communities: ProfileCommunity[]
+  communities: OrganizationMembershipEntity[]
   isPending?: boolean
 }
 

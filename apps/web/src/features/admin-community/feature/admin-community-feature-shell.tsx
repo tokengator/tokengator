@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 import { Loader2 } from 'lucide-react'
+import type { AdminOrganizationDetailEntity } from '@tokengator/sdk'
 import { Card, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import { Tabs, TabsList, TabsTrigger } from '@tokengator/ui/components/tabs'
 
-import { type AdminCommunityGetResult, useAdminCommunityGetQuery } from '../data-access/use-admin-community-get-query'
+import { useAdminCommunityGetQuery } from '../data-access/use-admin-community-get-query'
 
 const organizationTabs = [
   {
@@ -52,7 +53,7 @@ export function AdminCommunityFeatureShell({
   initialOrganization,
 }: {
   children: ReactNode
-  initialOrganization: AdminCommunityGetResult | null
+  initialOrganization: AdminOrganizationDetailEntity | null
 }) {
   const location = useLocation()
   const navigate = useNavigate()

@@ -1,16 +1,21 @@
 import { Loader2, RefreshCw } from 'lucide-react'
+import type {
+  AdminCommunityRoleApplyDiscordRoleSyncResult,
+  AdminCommunityRolePreviewDiscordRoleSyncResult,
+} from '@tokengator/sdk'
 import { Button } from '@tokengator/ui/components/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import { UiInfoCard, UiInfoCardLabel, UiInfoCardValue } from '@tokengator/ui/components/ui-info-card'
 
-import {
-  type AdminCommunityDiscordSyncResult,
-  useAdminCommunityDiscordSyncApply,
-} from '../data-access/use-admin-community-discord-sync-apply'
+import { useAdminCommunityDiscordSyncApply } from '../data-access/use-admin-community-discord-sync-apply'
 import { useAdminCommunityDiscordSyncPreview } from '../data-access/use-admin-community-discord-sync-preview'
 
+type AdminCommunityDiscordSyncResult =
+  | AdminCommunityRoleApplyDiscordRoleSyncResult
+  | AdminCommunityRolePreviewDiscordRoleSyncResult
+
 interface AdminCommunityFeatureDiscordSyncProps {
-  onResultChange: (result: AdminCommunityDiscordSyncResult) => void
+  onResultChange: (result: AdminCommunityDiscordSyncResult | null) => void
   organizationId: string
   result: AdminCommunityDiscordSyncResult | null
 }

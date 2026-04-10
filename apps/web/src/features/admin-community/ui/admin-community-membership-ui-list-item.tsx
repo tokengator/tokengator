@@ -1,23 +1,21 @@
-import type { AdminCommunityGetResult } from '../data-access/use-admin-community-get-query'
+import type { AdminOrganizationDetailEntity, AdminOrganizationMemberRole } from '@tokengator/sdk'
 
 import { Button } from '@tokengator/ui/components/button'
 
-export type AdminCommunityMembershipRole = 'admin' | 'member' | 'owner'
-
-const roleOptions = ['owner', 'admin', 'member'] as const
+const roleOptions = ['owner', 'admin', 'member'] as const satisfies readonly AdminOrganizationMemberRole[]
 
 interface AdminCommunityMembershipUiListItemProps {
   isRemovePending: boolean
   isUpdatePending: boolean
-  member: AdminCommunityGetResult['members'][number]
+  member: AdminOrganizationDetailEntity['members'][number]
   onRemove: () => void
-  onRoleChange: (role: AdminCommunityMembershipRole) => void
+  onRoleChange: (role: AdminOrganizationMemberRole) => void
 }
 
 export function AdminCommunityMembershipUiListItem(props: AdminCommunityMembershipUiListItemProps) {
   const { isRemovePending, isUpdatePending, member, onRemove, onRoleChange } = props
   const displayName = member.name || (member.username ? `@${member.username}` : member.id)
-  const memberRoles = roleOptions.includes(member.role as AdminCommunityMembershipRole)
+  const memberRoles = roleOptions.includes(member.role as AdminOrganizationMemberRole)
     ? roleOptions
     : [member.role, ...roleOptions]
 
@@ -38,11 +36,11 @@ export function AdminCommunityMembershipUiListItem(props: AdminCommunityMembersh
         aria-label={`Role for ${displayName}`}
         className="bg-background border px-2 py-1 text-sm"
         disabled={isUpdatePending}
-        onChange={(event) => onRoleChange(event.target.value as AdminCommunityMembershipRole)}
+        onChange={(event) => onRoleChange(event.target.value as AdminOrganizationMemberRole)}
         value={member.role}
       >
         {memberRoles.map((role) => {
-          const isSupportedRole = roleOptions.includes(role as AdminCommunityMembershipRole)
+          const isSupportedRole = roleOptions.includes(role as AdminOrganizationMemberRole)
 
           return (
             <option disabled={!isSupportedRole} key={role} value={role}>

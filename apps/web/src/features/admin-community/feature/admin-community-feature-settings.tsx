@@ -1,6 +1,6 @@
+import type { AdminOrganizationDetailEntity } from '@tokengator/sdk'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 
-import type { AdminCommunityGetResult } from '../data-access/use-admin-community-get-query'
 import { useAdminCommunityUpdate } from '../data-access/use-admin-community-update'
 import {
   AdminCommunitySettingsUiForm,
@@ -8,7 +8,7 @@ import {
 } from '../ui/admin-community-settings-ui-form'
 
 interface AdminCommunityFeatureSettingsProps {
-  organization: AdminCommunityGetResult
+  organization: AdminOrganizationDetailEntity
 }
 
 export function AdminCommunityFeatureSettings(props: AdminCommunityFeatureSettingsProps) {

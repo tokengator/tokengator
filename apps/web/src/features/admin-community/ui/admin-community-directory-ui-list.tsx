@@ -1,25 +1,15 @@
 import type { ReactNode } from 'react'
+import type { AdminOrganizationListEntity } from '@tokengator/sdk'
 
 import { Card, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 
-import type { AppSessionUser } from '@/features/auth/data-access/get-app-auth-state'
-
 import { AdminCommunityDirectoryUiCard } from './admin-community-directory-ui-card'
-
-interface AdminCommunityDirectoryUiListOrganization {
-  createdAt: Date | string
-  id: string
-  memberCount: number
-  name: string
-  owners: Array<Pick<AppSessionUser, 'name' | 'username'>>
-  slug: string
-}
 
 interface AdminCommunityDirectoryUiListProps {
   isSearchActive?: boolean
-  organizations: AdminCommunityDirectoryUiListOrganization[]
-  renderManageAction: (organization: AdminCommunityDirectoryUiListOrganization) => ReactNode
-  renderTitle?: (organization: AdminCommunityDirectoryUiListOrganization) => ReactNode
+  organizations: AdminOrganizationListEntity[]
+  renderManageAction: (organization: AdminOrganizationListEntity) => ReactNode
+  renderTitle?: (organization: AdminOrganizationListEntity) => ReactNode
 }
 
 export function AdminCommunityDirectoryUiList(props: AdminCommunityDirectoryUiListProps) {

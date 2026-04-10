@@ -1,13 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
+import type { AdminOrganizationListOwnerCandidatesInput } from '@tokengator/sdk'
 
 import { orpc } from '@/lib/orpc'
 
-interface UseAdminCommunityOwnerCandidatesQueryInput {
+export function useAdminCommunityOwnerCandidatesQuery(input: {
   enabled: boolean
-  search?: string
-}
-
-export function useAdminCommunityOwnerCandidatesQuery(input: UseAdminCommunityOwnerCandidatesQueryInput) {
+  search?: NonNullable<AdminOrganizationListOwnerCandidatesInput>['search']
+}) {
   return useQuery(
     orpc.adminOrganization.listOwnerCandidates.queryOptions({
       enabled: input.enabled,

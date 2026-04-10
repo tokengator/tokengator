@@ -1,5 +1,6 @@
 import { Loader2 } from 'lucide-react'
 import { useRef, useState } from 'react'
+import type { AdminCommunityRoleInput } from '@tokengator/sdk'
 import { Button } from '@tokengator/ui/components/button'
 import { Checkbox } from '@tokengator/ui/components/checkbox'
 import { Input } from '@tokengator/ui/components/input'
@@ -17,18 +18,6 @@ export interface AdminCommunityRoleUiFormValues {
   conditions: Array<{
     assetGroupId: string
     maximumAmount: string
-    minimumAmount: string
-  }>
-  enabled: boolean
-  matchMode: 'all' | 'any'
-  name: string
-  slug: string
-}
-
-export interface AdminCommunityRoleUiFormSubmitValues {
-  conditions: Array<{
-    assetGroupId: string
-    maximumAmount: string | null
     minimumAmount: string
   }>
   enabled: boolean
@@ -77,7 +66,7 @@ interface AdminCommunityRoleUiFormProps {
   assetGroupOptions: AdminCommunityRoleUiAssetGroupOption[]
   initialValues: AdminCommunityRoleUiFormValues
   isPending: boolean
-  onSubmit: (values: AdminCommunityRoleUiFormSubmitValues) => void
+  onSubmit: (values: AdminCommunityRoleInput) => void
   submitLabel: string
 }
 
@@ -95,7 +84,7 @@ export function AdminCommunityRoleUiForm(props: AdminCommunityRoleUiFormProps) {
       onSubmit={(event) => {
         event.preventDefault()
 
-        onSubmit({
+        const nextValues: AdminCommunityRoleInput = {
           ...values,
           conditions: values.conditions
             .map((condition) => ({
@@ -106,7 +95,9 @@ export function AdminCommunityRoleUiForm(props: AdminCommunityRoleUiFormProps) {
             .filter((condition) => condition.assetGroupId),
           name: values.name.trim(),
           slug: values.slug.trim() || slugify(values.name),
-        })
+        }
+
+        onSubmit(nextValues)
       }}
     >
       <div className="grid gap-1.5">

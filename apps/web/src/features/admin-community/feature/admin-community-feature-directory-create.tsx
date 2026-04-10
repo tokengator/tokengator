@@ -1,4 +1,5 @@
 import { useDeferredValue, useState } from 'react'
+import type { AdminOrganizationCreateInput, AdminOrganizationOwnerCandidateEntity } from '@tokengator/sdk'
 import { slugify } from '@tokengator/ui/util/slugify'
 
 import type { AppSessionUser } from '@/features/auth/data-access/get-app-auth-state'
@@ -11,7 +12,7 @@ const defaultCreateValues = {
   logo: '',
   name: '',
   slug: '',
-}
+} satisfies Pick<AdminOrganizationCreateInput, 'logo' | 'name' | 'slug'>
 
 interface AdminCommunityFeatureDirectoryCreateProps {
   currentUser: AppSessionUser
@@ -20,11 +21,16 @@ interface AdminCommunityFeatureDirectoryCreateProps {
 
 export function AdminCommunityFeatureDirectoryCreate(props: AdminCommunityFeatureDirectoryCreateProps) {
   const { currentUser, onCreated } = props
+  const currentOwner = {
+    id: currentUser.id,
+    name: currentUser.name,
+    username: currentUser.username ?? null,
+  } satisfies AdminOrganizationOwnerCandidateEntity
   const createCommunity = useAdminCommunityDirectoryCreate()
   const [createValues, setCreateValues] = useState(defaultCreateValues)
   const [isOpen, setIsOpen] = useState(false)
   const [ownerSearch, setOwnerSearch] = useState('')
-  const [selectedOwner, setSelectedOwner] = useState<Pick<AppSessionUser, 'id' | 'name' | 'username'>>(currentUser)
+  const [selectedOwner, setSelectedOwner] = useState<AdminOrganizationOwnerCandidateEntity>(currentOwner)
   const deferredOwnerSearch = useDeferredValue(ownerSearch)
   const normalizedOwnerSearch = deferredOwnerSearch.trim()
   const ownerCandidates = useAdminCommunityOwnerCandidatesQuery({
@@ -35,7 +41,7 @@ export function AdminCommunityFeatureDirectoryCreate(props: AdminCommunityFeatur
   function handleOpenChange(nextOpen: boolean) {
     setIsOpen(nextOpen)
     setOwnerSearch('')
-    setSelectedOwner(currentUser)
+    setSelectedOwner(currentOwner)
   }
 
   function handleNameBlur() {
@@ -63,7 +69,7 @@ export function AdminCommunityFeatureDirectoryCreate(props: AdminCommunityFeatur
       setCreateValues(defaultCreateValues)
       setIsOpen(false)
       setOwnerSearch('')
-      setSelectedOwner(currentUser)
+      setSelectedOwner(currentOwner)
       onCreated(organization.id)
     } catch {
       // The mutation hook already reports the failure toast.

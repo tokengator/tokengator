@@ -1,15 +1,16 @@
 import { useNavigate } from '@tanstack/react-router'
+import type { AdminAssetGroupUpdateInput } from '@tokengator/sdk'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 
 import { useAdminAssetGroupCreate } from '../data-access/use-admin-asset-group-create'
-import { type AdminAssetGroupFormValues, AdminAssetGroupUiForm } from '../ui/admin-asset-group-ui-form'
+import { AdminAssetGroupUiForm } from '../ui/admin-asset-group-ui-form'
 
 const defaultFormValues = {
   address: '',
   enabled: true,
   label: '',
   type: 'collection',
-} satisfies AdminAssetGroupFormValues
+} satisfies AdminAssetGroupUpdateInput['data']
 
 export function AdminAssetFeatureGroupCreate() {
   const createAssetGroup = useAdminAssetGroupCreate()

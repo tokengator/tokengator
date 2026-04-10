@@ -1,12 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
+import type { AdminOrganizationListInput } from '@tokengator/sdk'
 
 import { orpc } from '@/lib/orpc'
 
-interface UseAdminCommunityDirectoryQueryInput {
-  search?: string
-}
-
-export function useAdminCommunityDirectoryQuery(input: UseAdminCommunityDirectoryQueryInput) {
+export function useAdminCommunityDirectoryQuery(input: { search?: NonNullable<AdminOrganizationListInput>['search'] }) {
   return useQuery(
     orpc.adminOrganization.list.queryOptions({
       input: {

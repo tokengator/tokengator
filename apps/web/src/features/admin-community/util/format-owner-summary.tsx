@@ -1,5 +1,5 @@
-import type { AppSessionUser } from '@/features/auth/data-access/get-app-auth-state'
+import type { AdminOrganizationOwnerEntity } from '@tokengator/sdk'
 
-export function formatOwnerSummary(owner: Pick<AppSessionUser, 'name' | 'username'>) {
+export function formatOwnerSummary(owner: Pick<AdminOrganizationOwnerEntity, 'name' | 'username'>) {
   return owner.username ? `${owner.name} (@${owner.username})` : owner.name
 }

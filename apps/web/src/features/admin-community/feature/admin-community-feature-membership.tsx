@@ -1,15 +1,13 @@
+import type { AdminOrganizationDetailEntity, AdminOrganizationMemberRole } from '@tokengator/sdk'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 
-import { type AdminCommunityGetResult, useAdminCommunityGetQuery } from '../data-access/use-admin-community-get-query'
+import { useAdminCommunityGetQuery } from '../data-access/use-admin-community-get-query'
 import { useAdminCommunityMemberRemove } from '../data-access/use-admin-community-member-remove'
 import { useAdminCommunityMemberRoleUpdate } from '../data-access/use-admin-community-member-role-update'
-import {
-  AdminCommunityMembershipUiList,
-  type AdminCommunityMembershipRole,
-} from '../ui/admin-community-membership-ui-list'
+import { AdminCommunityMembershipUiList } from '../ui/admin-community-membership-ui-list'
 
 interface AdminCommunityFeatureMembershipProps {
-  initialOrganization: AdminCommunityGetResult
+  initialOrganization: AdminOrganizationDetailEntity
 }
 
 export function AdminCommunityFeatureMembership(props: AdminCommunityFeatureMembershipProps) {
@@ -32,7 +30,7 @@ export function AdminCommunityFeatureMembership(props: AdminCommunityFeatureMemb
     }
   }
 
-  async function handleMemberRoleUpdate(memberId: string, role: AdminCommunityMembershipRole) {
+  async function handleMemberRoleUpdate(memberId: string, role: AdminOrganizationMemberRole) {
     try {
       await updateMemberRole.mutateAsync({
         memberId,

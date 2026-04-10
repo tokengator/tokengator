@@ -1,17 +1,14 @@
+import type { AdminCommunityRoleListRunsResult } from '@tokengator/sdk'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import { UiInfoCard, UiInfoCardError, UiInfoCardLabel, UiInfoCardValue } from '@tokengator/ui/components/ui-info-card'
 import { UiStatus, type UiStatusVariants } from '@tokengator/ui/components/ui-status'
 import { formatDateTime } from '@tokengator/ui/util/format-date-time'
 
 import { getFreshnessTone } from '@/features/admin/util/get-freshness-tone'
-import type {
-  AdminCommunityMembershipSyncRunsResult,
-  AdminCommunitySyncRunStatus,
-} from '../data-access/admin-community-role-types'
 import { useAdminCommunityMembershipRunsQuery } from '../data-access/use-admin-community-membership-runs-query'
 import { useAdminCommunitySyncStatusQuery } from '../data-access/use-admin-community-sync-status-query'
 
-function getSyncRunTone(status: AdminCommunitySyncRunStatus): UiStatusVariants['tone'] {
+function getSyncRunTone(status: AdminCommunityRoleListRunsResult['runs'][number]['status']): UiStatusVariants['tone'] {
   if (status === 'succeeded') {
     return 'success'
   }
@@ -37,8 +34,8 @@ export function AdminCommunityFeatureOperationsHealth(props: AdminCommunityFeatu
   const communitySyncStatus = useAdminCommunitySyncStatusQuery(organizationId)
   const dependencyAssetGroups = communitySyncStatus.data?.dependencyAssetGroups ?? []
   const membershipStatus = communitySyncStatus.data?.membershipStatus ?? null
-  const recentMembershipRuns = (communityMembershipRuns.data?.runs ??
-    []) as AdminCommunityMembershipSyncRunsResult['runs']
+  const recentMembershipRuns =
+    communityMembershipRuns.data?.kind === 'membership' ? communityMembershipRuns.data.runs : []
 
   return (
     <Card>

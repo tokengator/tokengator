@@ -1,9 +1,11 @@
-import { type AdminCommunityGetResult, useAdminCommunityGetQuery } from '../data-access/use-admin-community-get-query'
+import type { AdminOrganizationDetailEntity } from '@tokengator/sdk'
+
+import { useAdminCommunityGetQuery } from '../data-access/use-admin-community-get-query'
 import { AdminCommunityFeatureSettings } from './admin-community-feature-settings'
 import { AdminCommunityFeatureSettingsDelete } from './admin-community-feature-settings-delete'
 
 interface AdminCommunityFeatureSettingsEntryProps {
-  initialOrganization: AdminCommunityGetResult
+  initialOrganization: AdminOrganizationDetailEntity
 }
 
 export function AdminCommunityFeatureSettingsEntry(props: AdminCommunityFeatureSettingsEntryProps) {

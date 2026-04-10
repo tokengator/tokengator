@@ -1,14 +1,11 @@
 import { Loader2 } from 'lucide-react'
+import type { AdminCommunityRoleListRunsResult } from '@tokengator/sdk'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import { UiInfoCard, UiInfoCardLabel, UiInfoCardMeta, UiInfoCardValue } from '@tokengator/ui/components/ui-info-card'
 import { UiStatus, type UiStatusVariants } from '@tokengator/ui/components/ui-status'
 import { formatDateTime } from '@tokengator/ui/util/format-date-time'
 
 import { getFreshnessTone } from '@/features/admin/util/get-freshness-tone'
-import type {
-  AdminCommunityDiscordSyncRunsResult,
-  AdminCommunitySyncRunStatus,
-} from '../data-access/admin-community-role-types'
 import { useAdminCommunityDiscordGuildRolesQuery } from '../data-access/use-admin-community-discord-guild-roles-query'
 import { useAdminCommunityDiscordRunsQuery } from '../data-access/use-admin-community-discord-runs-query'
 import { useAdminCommunitySyncStatusQuery } from '../data-access/use-admin-community-sync-status-query'
@@ -22,7 +19,7 @@ function getDiscordConnectionTone(status: 'connected' | 'needs_attention'): UiSt
   return 'success'
 }
 
-function getSyncRunTone(status: AdminCommunitySyncRunStatus): UiStatusVariants['tone'] {
+function getSyncRunTone(status: AdminCommunityRoleListRunsResult['runs'][number]['status']): UiStatusVariants['tone'] {
   if (status === 'succeeded') {
     return 'success'
   }
@@ -53,7 +50,7 @@ export function AdminCommunityFeatureDiscordHealth(props: AdminCommunityFeatureD
   const isPending = discordGuildRoles.isPending
   const discordConnectionChecks = discordConnection?.diagnostics.checks ?? []
   const discordConnectionStatusTone = discordConnection ? getDiscordConnectionTone(discordConnection.status) : 'warning'
-  const recentDiscordRuns = (communityDiscordRuns.data?.runs ?? []) as AdminCommunityDiscordSyncRunsResult['runs']
+  const recentDiscordRuns = communityDiscordRuns.data?.kind === 'discord' ? communityDiscordRuns.data.runs : []
   const hasDiscordRunsError = Boolean(communityDiscordRuns.error)
   const hasDiscordSyncStatusError = Boolean(communitySyncStatus.error)
   const discordFreshnessStatus = discordStatus?.freshnessStatus ?? 'unknown'

@@ -3,10 +3,6 @@ import { toast } from 'sonner'
 
 import { orpc } from '@/lib/orpc'
 
-import type { AdminCommunityDiscordSyncResult } from './admin-community-role-types'
-
-export type { AdminCommunityDiscordSyncResult }
-
 export function useAdminCommunityDiscordSyncPreview() {
   return useMutation(
     orpc.adminCommunityRole.previewDiscordRoleSync.mutationOptions({

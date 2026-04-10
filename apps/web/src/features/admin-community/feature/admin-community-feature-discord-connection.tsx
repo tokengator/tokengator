@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
+import type { AdminOrganizationDetailEntity } from '@tokengator/sdk'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 
-import type { AdminCommunityGetResult } from '../data-access/use-admin-community-get-query'
 import { useAdminCommunityDiscordConnectionDelete } from '../data-access/use-admin-community-discord-connection-delete'
 import { useAdminCommunityDiscordConnectionRefresh } from '../data-access/use-admin-community-discord-connection-refresh'
 import { useAdminCommunityDiscordConnectionUpsert } from '../data-access/use-admin-community-discord-connection-upsert'
@@ -10,7 +10,11 @@ import { AdminCommunityDiscordConnectionUiDetails } from '../ui/admin-community-
 import { AdminCommunityDiscordConnectionUiForm } from '../ui/admin-community-discord-connection-ui-form'
 import { formatAdminCommunityDiscordCheck } from '../util/admin-community-discord-check'
 
-export function AdminCommunityFeatureDiscordConnection({ organization }: { organization: AdminCommunityGetResult }) {
+export function AdminCommunityFeatureDiscordConnection({
+  organization,
+}: {
+  organization: AdminOrganizationDetailEntity
+}) {
   const discordConnection = organization.discordConnection
   const deleteDiscordConnection = useAdminCommunityDiscordConnectionDelete(organization.id)
   const refreshDiscordConnection = useAdminCommunityDiscordConnectionRefresh(organization.id)

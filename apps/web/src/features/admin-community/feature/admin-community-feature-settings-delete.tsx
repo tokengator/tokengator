@@ -1,12 +1,12 @@
 import { useNavigate } from '@tanstack/react-router'
+import type { AdminOrganizationDetailEntity } from '@tokengator/sdk'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 
-import type { AdminCommunityGetResult } from '../data-access/use-admin-community-get-query'
 import { useAdminCommunityDelete } from '../data-access/use-admin-community-delete'
 import { AdminCommunitySettingsUiDeleteDialog } from '../ui/admin-community-settings-ui-delete-dialog'
 
 interface AdminCommunityFeatureSettingsDeleteProps {
-  organization: AdminCommunityGetResult
+  organization: AdminOrganizationDetailEntity
 }
 
 export function AdminCommunityFeatureSettingsDelete(props: AdminCommunityFeatureSettingsDeleteProps) {

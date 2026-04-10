@@ -1,18 +1,16 @@
 import { Loader2, RefreshCw } from 'lucide-react'
+import type { AdminCommunityRolePreviewSyncResult } from '@tokengator/sdk'
 import { Button } from '@tokengator/ui/components/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import { UiInfoCard, UiInfoCardLabel, UiInfoCardValue } from '@tokengator/ui/components/ui-info-card'
 
-import {
-  type AdminCommunityMembershipSyncResult,
-  useAdminCommunityMembershipSyncApply,
-} from '../data-access/use-admin-community-membership-sync-apply'
+import { useAdminCommunityMembershipSyncApply } from '../data-access/use-admin-community-membership-sync-apply'
 import { useAdminCommunityMembershipSyncPreview } from '../data-access/use-admin-community-membership-sync-preview'
 
 interface AdminCommunityFeatureMembershipSyncProps {
-  onResultChange: (result: AdminCommunityMembershipSyncResult) => void
+  onResultChange: (result: AdminCommunityRolePreviewSyncResult) => void
   organizationId: string
-  result: AdminCommunityMembershipSyncResult | null
+  result: AdminCommunityRolePreviewSyncResult | null
 }
 
 export function AdminCommunityFeatureMembershipSync(props: AdminCommunityFeatureMembershipSyncProps) {

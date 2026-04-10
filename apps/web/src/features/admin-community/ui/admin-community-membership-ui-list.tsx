@@ -1,27 +1,21 @@
 import { useState } from 'react'
+import type { AdminOrganizationDetailEntity, AdminOrganizationMemberRole } from '@tokengator/sdk'
 
-import type { AdminCommunityGetResult } from '../data-access/use-admin-community-get-query'
-
-import {
-  AdminCommunityMembershipUiListItem,
-  type AdminCommunityMembershipRole,
-} from './admin-community-membership-ui-list-item'
+import { AdminCommunityMembershipUiListItem } from './admin-community-membership-ui-list-item'
 import { AdminCommunityMembershipUiRemoveDialog } from './admin-community-membership-ui-remove-dialog'
 
 interface AdminCommunityMembershipUiListProps {
   isRemovePending: boolean
   isUpdatePending: boolean
-  members: AdminCommunityGetResult['members']
+  members: AdminOrganizationDetailEntity['members']
   onMemberRemove: (memberId: string) => Promise<boolean>
-  onMemberRoleUpdate: (memberId: string, role: AdminCommunityMembershipRole) => Promise<void>
+  onMemberRoleUpdate: (memberId: string, role: AdminOrganizationMemberRole) => Promise<void>
 }
-
-export type { AdminCommunityMembershipRole } from './admin-community-membership-ui-list-item'
 
 export function AdminCommunityMembershipUiList(props: AdminCommunityMembershipUiListProps) {
   const { isRemovePending, isUpdatePending, members, onMemberRemove, onMemberRoleUpdate } = props
   const [memberPendingRemoval, setMemberPendingRemoval] = useState<Pick<
-    AdminCommunityGetResult['members'][number],
+    AdminOrganizationDetailEntity['members'][number],
     'id' | 'name'
   > | null>(null)
 

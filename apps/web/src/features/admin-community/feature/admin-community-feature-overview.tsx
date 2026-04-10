@@ -1,14 +1,15 @@
+import type { AdminOrganizationDetailEntity } from '@tokengator/sdk'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import { UiDetailRow } from '@tokengator/ui/components/ui-detail-row'
 import { formatDateTime } from '@tokengator/ui/util/format-date-time'
 
 import { formatOwnerSummary } from '@/features/admin-community/util/format-owner-summary.tsx'
-import { type AdminCommunityGetResult, useAdminCommunityGetQuery } from '../data-access/use-admin-community-get-query'
+import { useAdminCommunityGetQuery } from '../data-access/use-admin-community-get-query'
 
 export function AdminCommunityFeatureOverview({
   initialOrganization,
 }: {
-  initialOrganization: AdminCommunityGetResult
+  initialOrganization: AdminOrganizationDetailEntity
 }) {
   const { data } = useAdminCommunityGetQuery(initialOrganization.id, {
     initialData: initialOrganization,

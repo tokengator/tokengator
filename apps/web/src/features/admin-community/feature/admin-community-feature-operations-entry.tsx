@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
+import type { AdminCommunityRolePreviewSyncResult } from '@tokengator/sdk'
 
-import type { AdminCommunityMembershipSyncResult } from '../data-access/admin-community-role-types'
 import { AdminCommunityMembershipSyncUiDetails } from '../ui/admin-community-membership-sync-ui-details'
 import { AdminCommunityFeatureMembershipSync } from './admin-community-feature-membership-sync'
 import { AdminCommunityFeatureOperationsHealth } from './admin-community-feature-operations-health'
@@ -11,7 +11,7 @@ interface AdminCommunityFeatureOperationsEntryProps {
 
 export function AdminCommunityFeatureOperationsEntry(props: AdminCommunityFeatureOperationsEntryProps) {
   const { organizationId } = props
-  const [membershipSyncResult, setMembershipSyncResult] = useState<AdminCommunityMembershipSyncResult | null>(null)
+  const [membershipSyncResult, setMembershipSyncResult] = useState<AdminCommunityRolePreviewSyncResult | null>(null)
 
   useEffect(() => {
     setMembershipSyncResult(null)

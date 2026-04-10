@@ -1,14 +1,22 @@
 import { useEffect, useState } from 'react'
+import type {
+  AdminCommunityRoleApplyDiscordRoleSyncResult,
+  AdminCommunityRolePreviewDiscordRoleSyncResult,
+  AdminOrganizationDetailEntity,
+} from '@tokengator/sdk'
 
-import { type AdminCommunityDiscordSyncResult } from '../data-access/use-admin-community-discord-sync-apply'
-import { type AdminCommunityGetResult, useAdminCommunityGetQuery } from '../data-access/use-admin-community-get-query'
+import { useAdminCommunityGetQuery } from '../data-access/use-admin-community-get-query'
 import { AdminCommunityDiscordSyncUiDetails } from '../ui/admin-community-discord-sync-ui-details'
 import { AdminCommunityFeatureDiscordConnection } from './admin-community-feature-discord-connection'
 import { AdminCommunityFeatureDiscordHealth } from './admin-community-feature-discord-health'
 import { AdminCommunityFeatureDiscordSync } from './admin-community-feature-discord-sync'
 
+type AdminCommunityDiscordSyncResult =
+  | AdminCommunityRoleApplyDiscordRoleSyncResult
+  | AdminCommunityRolePreviewDiscordRoleSyncResult
+
 interface AdminCommunityFeatureDiscordEntryProps {
-  initialOrganization: AdminCommunityGetResult
+  initialOrganization: AdminOrganizationDetailEntity
 }
 
 export function AdminCommunityFeatureDiscordEntry(props: AdminCommunityFeatureDiscordEntryProps) {

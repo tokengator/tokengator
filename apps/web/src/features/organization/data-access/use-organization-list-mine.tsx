@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
+import type { OrganizationListMineResult } from '@tokengator/sdk'
 
-import type { OrganizationListMineData } from './get-organization-list-mine'
 import { getOrganizationListMineQueryOptions } from './get-organization-list-mine'
 
 interface UseOrganizationListMineOptions {
   enabled?: boolean
-  initialData?: OrganizationListMineData
+  initialData?: OrganizationListMineResult
 }
 
 export function useOrganizationListMine(userId: string, options: UseOrganizationListMineOptions = {}) {

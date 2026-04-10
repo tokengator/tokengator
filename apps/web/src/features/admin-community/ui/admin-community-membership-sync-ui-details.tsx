@@ -1,9 +1,8 @@
+import type { AdminCommunityRolePreviewSyncResult } from '@tokengator/sdk'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 
-import type { AdminCommunityMembershipSyncResult } from '../data-access/use-admin-community-membership-sync-apply'
-
 interface AdminCommunityMembershipSyncUiDetailsProps {
-  result: AdminCommunityMembershipSyncResult
+  result: AdminCommunityRolePreviewSyncResult
 }
 
 export function AdminCommunityMembershipSyncUiDetails(props: AdminCommunityMembershipSyncUiDetailsProps) {

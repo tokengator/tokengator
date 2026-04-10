@@ -1,5 +1,5 @@
 import { Loader2, Plus } from 'lucide-react'
-import type { AppSessionUser } from '@/features/auth/data-access/get-app-auth-state'
+import type { AdminOrganizationCreateInput, AdminOrganizationOwnerCandidateEntity } from '@tokengator/sdk'
 import { Button } from '@tokengator/ui/components/button'
 import {
   Dialog,
@@ -13,14 +13,8 @@ import {
 import { Input } from '@tokengator/ui/components/input'
 import { cn } from '@tokengator/ui/lib/utils'
 
-interface AdminCommunityDirectoryUiCreateDialogValues {
-  logo: string
-  name: string
-  slug: string
-}
-
 interface AdminCommunityDirectoryUiCreateDialogProps {
-  createValues: AdminCommunityDirectoryUiCreateDialogValues
+  createValues: Pick<AdminOrganizationCreateInput, 'logo' | 'name' | 'slug'>
   isOpen: boolean
   isOwnerCandidatesPending: boolean
   isPending: boolean
@@ -29,12 +23,12 @@ interface AdminCommunityDirectoryUiCreateDialogProps {
   onNameChange: (name: string) => void
   onOpenChange: (isOpen: boolean) => void
   onOwnerSearchChange: (search: string) => void
-  onOwnerSelect: (owner: Pick<AppSessionUser, 'id' | 'name' | 'username'>) => void
+  onOwnerSelect: (owner: AdminOrganizationOwnerCandidateEntity) => void
   onSlugChange: (slug: string) => void
   onSubmit: () => void
-  ownerCandidates: Array<Pick<AppSessionUser, 'id' | 'name' | 'username'>>
+  ownerCandidates: AdminOrganizationOwnerCandidateEntity[]
   ownerSearch: string
-  selectedOwner: Pick<AppSessionUser, 'id' | 'name' | 'username'>
+  selectedOwner: AdminOrganizationOwnerCandidateEntity
 }
 
 export function AdminCommunityDirectoryUiCreateDialog(props: AdminCommunityDirectoryUiCreateDialogProps) {

@@ -1,8 +1,9 @@
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { env } from '@tokengator/env/web-client'
 
-import { authClient } from '@/features/auth/data-access/auth-client'
+import { getAuthClientClient } from '@/features/auth/data-access/auth-client-client'
 import { SolanaProvider } from '@/lib/solana-provider'
 
 import { AuthUiSignInForm } from '../ui/auth-ui-sign-in-form'
@@ -15,12 +16,13 @@ export function AuthFeatureSignIn() {
   const [isDiscordPending, setIsDiscordPending] = useState(false)
 
   async function handleDiscordSignIn() {
-    const callbackURL = `${window.location.origin}/auth-callback`
+    const authClientClient = getAuthClientClient()
+    const callbackURL = `${env.API_URL}/auth-callback`
 
     setIsDiscordPending(true)
 
     try {
-      await authClient.signIn.social({
+      await authClientClient.signIn.social({
         callbackURL,
         errorCallbackURL: callbackURL,
         newUserCallbackURL: callbackURL,

@@ -6,7 +6,8 @@
   "exports": {
     "./api": "./src/api.ts",
     "./discord": "./src/discord.ts",
-    "./web": "./src/web.ts"
+    "./web-client": "./src/web-client.ts",
+    "./web-server": "./src/web-server.ts"
   },
   "scripts": {
     "check-types": "tsc -b --noEmit",

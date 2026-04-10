@@ -1,7 +1,7 @@
 import { createMiddleware } from '@tanstack/react-start'
 import { getRequestHeaders } from '@tanstack/react-start/server'
 
-import { authClient } from './auth-client'
+import { authClientServer } from './auth-client-server'
 
 export const authMiddleware = createMiddleware().server(async ({ next, request }) => {
   const headers = new Headers(getRequestHeaders())
@@ -12,7 +12,7 @@ export const authMiddleware = createMiddleware().server(async ({ next, request }
     }
   })
 
-  const session = await authClient.getSession({
+  const session = await authClientServer.getSession({
     fetchOptions: {
       headers,
       throw: true,

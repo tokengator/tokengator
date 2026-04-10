@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
 
-import { authClient } from '@/features/auth/data-access/auth-client'
+import { getAuthClientClient } from '@/features/auth/data-access/auth-client-client'
 import { refreshAppAuthState } from '@/features/auth/data-access/get-app-auth-state'
 import { useAppSession } from '@/features/auth/data-access/use-app-session'
 
@@ -19,7 +19,9 @@ export function ShellFeatureUserMenu() {
       onAdminClick={() => void navigate({ to: '/admin' })}
       onProfileClick={() => void navigate({ to: '/profile' })}
       onSignOut={() => {
-        authClient.signOut({
+        const authClientClient = getAuthClientClient()
+
+        authClientClient.signOut({
           fetchOptions: {
             onError: (error) => {
               toast.error(error instanceof Error ? error.message : 'Unable to sign out')

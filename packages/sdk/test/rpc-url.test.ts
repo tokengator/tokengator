@@ -14,4 +14,8 @@ describe('resolveRpcUrl', () => {
   test('preserves an existing pathname on the base URL', () => {
     expect(resolveRpcUrl('https://api.tokengator.test/base/', '/rpc')).toBe('https://api.tokengator.test/base/rpc')
   })
+
+  test('supports a same-origin relative rpc path', () => {
+    expect(resolveRpcUrl('', '/rpc')).toBe('/rpc')
+  })
 })

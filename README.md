@@ -135,8 +135,8 @@ On startup the app container runs `db:push` and then starts the API/frontend ser
 
 ### Split-Origin Override
 
-If you still need the frontend to call a separate API origin, set `VITE_API_URL` for the app container.
-Server-rendered web requests use `VITE_API_URL` when present and otherwise fall back to `BETTER_AUTH_URL`.
+If you still need the frontend to call a separate API origin, set `API_URL` for the app container.
+Server-rendered web requests use `API_URL` when present and otherwise fall back to `BETTER_AUTH_URL`.
 Browser requests use `window.location.origin`.
 
 ### Images

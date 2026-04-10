@@ -1,7 +1,6 @@
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
 import { QueryCache, QueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { env } from '@tokengator/env/web'
 import { createOrpcClient, type OrpcClient } from '@tokengator/sdk'
 
 function createQueryClient() {
@@ -32,7 +31,7 @@ export function getQueryClient() {
 }
 
 export const client: OrpcClient = createOrpcClient({
-  baseUrl: env.VITE_API_URL,
+  baseUrl: '',
 })
 
 export const orpc = createTanstackQueryUtils(client)

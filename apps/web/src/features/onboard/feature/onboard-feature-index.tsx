@@ -3,10 +3,11 @@ import { useNavigate } from '@tanstack/react-router'
 import { Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { env } from '@tokengator/env/web-client'
 import { Button } from '@tokengator/ui/components/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 
-import { authClient } from '@/features/auth/data-access/auth-client'
+import { getAuthClientClient } from '@/features/auth/data-access/auth-client-client'
 import { refreshAppAuthState } from '@/features/auth/data-access/get-app-auth-state'
 import { useAppAuthStateQuery } from '@/features/auth/data-access/use-app-auth-state-query'
 import { AuthFeatureSolanaActions } from '@/features/auth/feature/auth-feature-solana-actions'
@@ -33,12 +34,13 @@ export function OnboardFeatureIndex() {
   }, [isOnboardingComplete, navigate])
 
   async function handleDiscordLink() {
-    const callbackURL = `${window.location.origin}/auth-callback`
+    const authClientClient = getAuthClientClient()
+    const callbackURL = `${env.API_URL}/auth-callback`
 
     setIsDiscordPending(true)
 
     try {
-      const response = (await authClient.$fetch('/link-social', {
+      const response = (await authClientClient.$fetch('/link-social', {
         body: {
           callbackURL,
           errorCallbackURL: callbackURL,

@@ -2,7 +2,7 @@ import type { SolanaSignInInput, SolanaSignInOutput } from '@wallet-ui/react'
 import { getBase58Decoder } from '@solana/kit'
 import { createSIWSInput, type SIWSNonceResponse } from 'better-auth-solana/client'
 
-import { authClient } from './auth-client'
+import { getAuthClientClient } from './auth-client-client'
 
 type SIWSAction = 'link' | 'verify'
 
@@ -70,7 +70,8 @@ async function createAndSignMessage({
 }
 
 async function fetchNonce({ address }: { address: string }): Promise<SIWSNonceResponse> {
-  const { data, error } = await authClient.siws.nonce({
+  const authClientClient = getAuthClientClient()
+  const { data, error } = await authClientClient.siws.nonce({
     walletAddress: address,
   })
 
@@ -82,7 +83,8 @@ async function fetchNonce({ address }: { address: string }): Promise<SIWSNonceRe
 }
 
 async function linkMessage({ address, message, signature }: { address: string; message: string; signature: string }) {
-  const { data, error } = await authClient.siws.link({
+  const authClientClient = getAuthClientClient()
+  const { data, error } = await authClientClient.siws.link({
     message,
     signature,
     walletAddress: address,
@@ -96,7 +98,8 @@ async function linkMessage({ address, message, signature }: { address: string; m
 }
 
 async function verifyMessage({ address, message, signature }: { address: string; message: string; signature: string }) {
-  const { data, error } = await authClient.siws.verify({
+  const authClientClient = getAuthClientClient()
+  const { data, error } = await authClientClient.siws.verify({
     message,
     signature,
     walletAddress: address,

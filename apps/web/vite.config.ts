@@ -9,7 +9,7 @@ const allowedHosts =
     .map((value) => value.trim())
     .filter(Boolean) ?? []
 const host = process.env.VITE_SERVER_HOST?.trim().toLowerCase() === 'true' ? true : undefined
-const target = process.env.VITE_API_URL ?? 'http://localhost:3000'
+const target = process.env.API_URL ?? 'http://localhost:3000'
 
 export default defineConfig({
   build: {

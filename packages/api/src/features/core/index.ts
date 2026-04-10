@@ -1,1 +1,1 @@
-export type { AppConfig } from './feature/core-feature-app-config'
+export type { AppConfig } from './data-access/get-core-app-config'

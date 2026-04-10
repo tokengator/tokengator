@@ -10,6 +10,8 @@ import { auth } from '@tokengator/auth'
 import { env } from '@tokengator/env/api'
 import { formatLogError, getAppLogger } from '@tokengator/logger'
 
+import { getCoreAppConfig } from './features/core/data-access/get-core-app-config'
+import { getCoreEnvJs } from './features/core/data-access/get-core-env-js'
 import { createContext } from './lib/context'
 import { appRouter } from './router'
 
@@ -89,6 +91,18 @@ export function createApiApp() {
   )
   app.get('/api/health', (context) => {
     return context.text('OK')
+  })
+  app.get('/api/__/env.js', (context) => {
+    context.header('cache-control', 'no-store')
+    context.header('content-type', 'application/javascript; charset=utf-8')
+
+    return context.body(getCoreEnvJs(getCoreAppConfig()))
+  })
+  app.get('/api/__/env.json', (context) => {
+    context.header('cache-control', 'no-store')
+    context.header('content-type', 'application/json; charset=utf-8')
+
+    return context.body(JSON.stringify(getCoreAppConfig()))
   })
 
   app.post('/api/auth/siws/verify', (context, next) => {

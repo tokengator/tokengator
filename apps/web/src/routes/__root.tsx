@@ -10,6 +10,7 @@ import {
 } from '@/features/auth/data-access/get-app-auth-state'
 import { ShellFeatureFrame } from '@/features/shell/feature/shell-feature-frame'
 import { AppProviders } from '@/lib/app-providers'
+import { getAppConfig } from '@/lib/get-app-config'
 
 import appCss from '../index.css?url'
 
@@ -28,7 +29,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
   beforeLoad: async ({ context }) => {
     const [appAuthState, appConfig] = await Promise.all([
       context.queryClient.ensureQueryData(getAppAuthStateQueryOptions()),
-      context.queryClient.ensureQueryData(context.orpc.core.appConfig.queryOptions()),
+      getAppConfig(),
     ])
 
     populateAppAuthStateRelatedQueries({
@@ -39,7 +40,6 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
     return { appAuthState, appConfig }
   },
   component: RootDocument,
-
   head: () => ({
     links: [
       {
@@ -72,6 +72,7 @@ function RootDocument() {
     <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
+        <script charSet="utf-8" src="/api/__/env.js" />
       </head>
       <body>
         <AppProviders>

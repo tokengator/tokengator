@@ -57,9 +57,9 @@ function configureTestLogging(onRecord?: (record: LogRecord) => void) {
 }
 
 beforeAll(async () => {
+  process.env.API_URL = 'http://127.0.0.1:3000'
   process.env.BETTER_AUTH_SECRET = '12345678901234567890123456789012'
   process.env.BETTER_AUTH_SOLANA_SIGN_IN_ENABLED = 'true'
-  process.env.BETTER_AUTH_URL = 'http://127.0.0.1:3000'
   process.env.CORS_ORIGINS = 'http://127.0.0.1:3001'
   process.env.DATABASE_AUTH_TOKEN = 'test-token'
   process.env.DATABASE_URL = 'file:///tmp/tokengator-scheduled-jobs.sqlite'

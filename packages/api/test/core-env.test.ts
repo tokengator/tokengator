@@ -7,9 +7,9 @@ import { pathToFileURL } from 'node:url'
 import type { AppConfig } from '../src'
 
 const ENV_KEYS = [
+  'API_URL',
   'BETTER_AUTH_SECRET',
   'BETTER_AUTH_SOLANA_SIGN_IN_ENABLED',
-  'BETTER_AUTH_URL',
   'CORS_ORIGINS',
   'DATABASE_AUTH_TOKEN',
   'DATABASE_URL',
@@ -33,9 +33,9 @@ beforeAll(async () => {
     PREVIOUS_ENV[key] = process.env[key]
   }
 
+  process.env.API_URL = 'http://127.0.0.1:3000'
   process.env.BETTER_AUTH_SECRET = '12345678901234567890123456789012'
   process.env.BETTER_AUTH_SOLANA_SIGN_IN_ENABLED = 'true'
-  process.env.BETTER_AUTH_URL = 'http://127.0.0.1:3000'
   process.env.CORS_ORIGINS = 'http://127.0.0.1:3001'
   process.env.DATABASE_AUTH_TOKEN = 'test-token'
   process.env.DATABASE_URL = TEST_DATABASE_URL

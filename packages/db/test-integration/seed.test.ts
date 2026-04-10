@@ -31,8 +31,8 @@ function createDatabaseUrl(filename: string) {
 function createSeedEnv(databaseAuthToken: string, databaseUrl: string, envOverrides: Record<string, string> = {}) {
   return {
     ...process.env,
+    API_URL: 'http://localhost:3000',
     BETTER_AUTH_SECRET: '12345678901234567890123456789012',
-    BETTER_AUTH_URL: 'http://localhost:3000',
     CORS_ORIGINS: 'http://localhost:3001',
     DATABASE_AUTH_TOKEN: databaseAuthToken,
     DATABASE_URL: databaseUrl,
@@ -151,8 +151,8 @@ beforeAll(() => {
 
   const databaseUrl = pathToFileURL(resolve(tempDir, 'test.sqlite')).toString()
 
+  process.env.API_URL = 'http://localhost:3000'
   process.env.BETTER_AUTH_SECRET = '12345678901234567890123456789012'
-  process.env.BETTER_AUTH_URL = 'http://localhost:3000'
   process.env.CORS_ORIGINS = 'http://localhost:3001'
   process.env.DATABASE_AUTH_TOKEN = 'test-token'
   process.env.DATABASE_URL = databaseUrl

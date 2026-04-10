@@ -154,7 +154,7 @@ function mapDiscordProfileToUser(profile: DiscordProfile) {
   if ('email' in profile && typeof profile.email === 'string' && profile.email.trim()) {
     compatibilityEmail = profile.email.trim()
   } else if ('id' in profile && typeof profile.id === 'string') {
-    compatibilityEmail = `${profile.id}@${getCompatibilityEmailDomain(env.BETTER_AUTH_URL)}`
+    compatibilityEmail = `${profile.id}@${getCompatibilityEmailDomain(env.API_URL)}`
   }
 
   return {
@@ -518,7 +518,7 @@ export async function syncDiscordUsername(args: {
 }
 
 function getDefaultCookieAttributes() {
-  const isSecureOrigin = new URL(env.BETTER_AUTH_URL).protocol === 'https:'
+  const isSecureOrigin = new URL(env.API_URL).protocol === 'https:'
 
   return {
     httpOnly: true,
@@ -527,7 +527,7 @@ function getDefaultCookieAttributes() {
   }
 }
 
-const siwsUri = env.WEB_URL ?? env.BETTER_AUTH_URL
+const siwsUri = env.WEB_URL ?? env.API_URL
 export const auth = betterAuth({
   account: {
     accountLinking: {
@@ -537,7 +537,7 @@ export const auth = betterAuth({
   advanced: {
     defaultCookieAttributes: getDefaultCookieAttributes(),
   },
-  baseURL: env.BETTER_AUTH_URL,
+  baseURL: env.API_URL,
   database: drizzleAdapter(db, {
     provider: 'sqlite',
 

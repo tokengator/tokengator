@@ -404,8 +404,8 @@ beforeAll(async () => {
     createWalletFixture('solana-user'),
   ])
 
+  process.env.API_URL = baseUrl
   process.env.BETTER_AUTH_SECRET = '12345678901234567890123456789012'
-  process.env.BETTER_AUTH_URL = baseUrl
   process.env.CORS_ORIGINS = 'http://127.0.0.1:3001'
   process.env.DATABASE_AUTH_TOKEN = 'test-token'
   process.env.DATABASE_URL = databaseUrl

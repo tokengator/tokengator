@@ -4,22 +4,22 @@ import { MessageFlags, type InteractionReplyOptions } from 'discord.js'
 
 type WhoamiModule = typeof import('../src/commands/whoami')
 
-let previousBetterAuthUrl = ''
-let previousBetterAuthUrlWasSet = false
+let previousApiUrl = ''
+let previousApiUrlWasSet = false
 let whoamiModule: WhoamiModule
 
 beforeAll(async () => {
-  previousBetterAuthUrl = process.env.BETTER_AUTH_URL ?? ''
-  previousBetterAuthUrlWasSet = 'BETTER_AUTH_URL' in process.env
-  process.env.BETTER_AUTH_URL = 'http://127.0.0.1:3000'
+  previousApiUrl = process.env.API_URL ?? ''
+  previousApiUrlWasSet = 'API_URL' in process.env
+  process.env.API_URL = 'http://127.0.0.1:3000'
   whoamiModule = await import(`../src/commands/whoami.ts?test=${Date.now()}-whoami`)
 })
 
 afterAll(() => {
-  if (previousBetterAuthUrlWasSet) {
-    process.env.BETTER_AUTH_URL = previousBetterAuthUrl
+  if (previousApiUrlWasSet) {
+    process.env.API_URL = previousApiUrl
   } else {
-    delete process.env.BETTER_AUTH_URL
+    delete process.env.API_URL
   }
 })
 

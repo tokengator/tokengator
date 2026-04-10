@@ -4,9 +4,9 @@ import { APP_DEBUG_CATEGORY_VALUES } from '@tokengator/logger/debug-categories'
 import { parseStringList } from '../src/lib/server-env-list'
 
 const API_ENV_KEYS = [
+  'API_URL',
   'BETTER_AUTH_SECRET',
   'BETTER_AUTH_SOLANA_SIGN_IN_ENABLED',
-  'BETTER_AUTH_URL',
   'CORS_ORIGINS',
   'DATABASE_AUTH_TOKEN',
   'DATABASE_URL',
@@ -36,9 +36,9 @@ function withApiEnv(overrides: Partial<Record<(typeof API_ENV_KEYS)[number], str
   }
 
   Object.assign(process.env, {
+    API_URL: 'http://127.0.0.1:3000',
     BETTER_AUTH_SECRET: '12345678901234567890123456789012',
     BETTER_AUTH_SOLANA_SIGN_IN_ENABLED: 'true',
-    BETTER_AUTH_URL: 'http://127.0.0.1:3000',
     CORS_ORIGINS: 'http://127.0.0.1:3001',
     DATABASE_AUTH_TOKEN: 'test-token',
     DATABASE_URL: 'file:///tmp/tokengator-env-test.sqlite',

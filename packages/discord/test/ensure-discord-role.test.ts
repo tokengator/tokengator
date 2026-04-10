@@ -6,7 +6,7 @@ import type { DiscordEnv } from '@tokengator/env/discord'
 import { ensureDiscordRole, listDiscordRoles } from '../src/ensure-discord-role'
 
 const baseEnv = {
-  BETTER_AUTH_URL: 'https://auth.example.com',
+  API_URL: 'https://api.example.com',
   DISCORD_BOT_START: true,
   DISCORD_BOT_TOKEN: 'bot-token',
   DISCORD_CLIENT_ID: 'client-id',

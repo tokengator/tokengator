@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 const DISCORD_ENV_KEYS = [
-  'BETTER_AUTH_URL',
+  'API_URL',
   'DISCORD_BOT_START',
   'DISCORD_BOT_TOKEN',
   'DISCORD_CLIENT_ID',
@@ -20,7 +20,7 @@ function withDiscordEnv(overrides: Partial<Record<(typeof DISCORD_ENV_KEYS)[numb
   }
 
   Object.assign(process.env, {
-    BETTER_AUTH_URL: 'http://127.0.0.1:3000',
+    API_URL: 'http://127.0.0.1:3000',
     NODE_ENV: 'development',
   })
 
@@ -86,16 +86,16 @@ describe('discord env', () => {
     }
   })
 
-  test('parses BETTER_AUTH_URL and optional WEB_URL', async () => {
+  test('parses API_URL and optional WEB_URL', async () => {
     const restoreEnv = withDiscordEnv({
-      BETTER_AUTH_URL: 'https://auth.example.com',
+      API_URL: 'https://api.example.com',
       WEB_URL: 'https://app.example.com',
     })
 
     try {
       const { env } = await import(`../src/discord.ts?test=${Date.now()}-urls`)
 
-      expect(env.BETTER_AUTH_URL).toBe('https://auth.example.com')
+      expect(env.API_URL).toBe('https://api.example.com')
       expect(env.WEB_URL).toBe('https://app.example.com')
     } finally {
       restoreEnv()

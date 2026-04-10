@@ -7,7 +7,7 @@ import { createDiscordBotInviteUrl } from '../src/create-discord-bot-invite-url'
 import { shouldStartDiscord } from '../src/discord-env'
 
 const baseEnv = {
-  BETTER_AUTH_URL: 'https://auth.example.com',
+  API_URL: 'https://api.example.com',
   DISCORD_BOT_START: true,
   DISCORD_BOT_TOKEN: 'bot-token',
   DISCORD_CLIENT_ID: 'client-id',

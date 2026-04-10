@@ -4,22 +4,22 @@ import { ApplicationCommandOptionType, MessageFlags, type InteractionReplyOption
 
 type WhoisModule = typeof import('../src/commands/whois')
 
-let previousBetterAuthUrl = ''
-let previousBetterAuthUrlWasSet = false
+let previousApiUrl = ''
+let previousApiUrlWasSet = false
 let whoisModule: WhoisModule
 
 beforeAll(async () => {
-  previousBetterAuthUrl = process.env.BETTER_AUTH_URL ?? ''
-  previousBetterAuthUrlWasSet = 'BETTER_AUTH_URL' in process.env
-  process.env.BETTER_AUTH_URL = 'http://127.0.0.1:3000'
+  previousApiUrl = process.env.API_URL ?? ''
+  previousApiUrlWasSet = 'API_URL' in process.env
+  process.env.API_URL = 'http://127.0.0.1:3000'
   whoisModule = await import(`../src/commands/whois.ts?test=${Date.now()}-whois`)
 })
 
 afterAll(() => {
-  if (previousBetterAuthUrlWasSet) {
-    process.env.BETTER_AUTH_URL = previousBetterAuthUrl
+  if (previousApiUrlWasSet) {
+    process.env.API_URL = previousApiUrl
   } else {
-    delete process.env.BETTER_AUTH_URL
+    delete process.env.API_URL
   }
 })
 

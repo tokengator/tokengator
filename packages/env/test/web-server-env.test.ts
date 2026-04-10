@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-const WEB_SERVER_ENV_KEYS = ['API_URL', 'BETTER_AUTH_URL'] as const
+const WEB_SERVER_ENV_KEYS = ['API_URL'] as const
 
 function withWebServerEnv(overrides: Partial<Record<(typeof WEB_SERVER_ENV_KEYS)[number], string | undefined>> = {}) {
   const previousEnv = new Map<string, string | undefined>()
@@ -11,7 +11,6 @@ function withWebServerEnv(overrides: Partial<Record<(typeof WEB_SERVER_ENV_KEYS)
 
   Object.assign(process.env, {
     API_URL: 'http://127.0.0.1:4000',
-    BETTER_AUTH_URL: 'http://127.0.0.1:3000',
   })
 
   for (const [key, value] of Object.entries(overrides)) {
@@ -38,7 +37,7 @@ function withWebServerEnv(overrides: Partial<Record<(typeof WEB_SERVER_ENV_KEYS)
 }
 
 describe('web server env', () => {
-  test('prefers API_URL when it is set', async () => {
+  test('parses API_URL', async () => {
     const restoreEnv = withWebServerEnv()
 
     try {
@@ -50,15 +49,15 @@ describe('web server env', () => {
     }
   })
 
-  test('falls back to BETTER_AUTH_URL when API_URL is unset', async () => {
+  test('requires API_URL', async () => {
     const restoreEnv = withWebServerEnv({
       API_URL: undefined,
     })
 
     try {
-      const { env } = await import(`../src/web-server.ts?test=${Date.now()}-better-auth-url`)
-
-      expect(env.API_URL).toBe('http://127.0.0.1:3000')
+      await expect(import(`../src/web-server.ts?test=${Date.now()}-missing-api-url`)).rejects.toThrow(
+        'Invalid environment variables',
+      )
     } finally {
       restoreEnv()
     }

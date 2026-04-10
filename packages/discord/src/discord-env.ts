@@ -17,7 +17,7 @@ export function getDiscordClientId(ctx: Pick<DiscordContext, 'env'>, clientId?: 
 }
 
 export function getDiscordPlatformUrl(ctx: Pick<DiscordContext, 'env'>) {
-  return ctx.env.WEB_URL ?? ctx.env.BETTER_AUTH_URL
+  return ctx.env.WEB_URL ?? ctx.env.API_URL
 }
 
 export function getDiscordGuildId(ctx: Pick<DiscordContext, 'env'>, guildId?: string) {

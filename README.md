@@ -126,7 +126,7 @@ This brings up:
 
 The Docker override file pins the Compose stack to a single public origin:
 
-- `BETTER_AUTH_URL=http://localhost:3000`
+- `API_URL=http://localhost:3000`
 - `CORS_ORIGINS=http://localhost:3000`
 - `WEB_URL=http://localhost:3000`
 - `DATABASE_URL=http://libsql:8080`
@@ -136,7 +136,7 @@ On startup the app container runs `db:push` and then starts the API/frontend ser
 ### Split-Origin Override
 
 If you still need the frontend to call a separate API origin, set `API_URL` for the app container.
-Server-rendered web requests use `API_URL` when present and otherwise fall back to `BETTER_AUTH_URL`.
+Server-rendered web requests use `API_URL`.
 Browser requests use `window.location.origin`.
 
 ### Images

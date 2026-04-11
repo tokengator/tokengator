@@ -59,6 +59,7 @@
     "lint": "oxlint && oxfmt --check",
     "lint:fix": "oxlint --fix && oxfmt --write",
     "prestart:api": "bun run build && bun db:push",
+    "ruler:apply": "bun x ruler apply --local-only",
     "setup": "bun run ./scripts/setup.ts",
     "start:api": "bun --bun run --cwd apps/api start",
     "test": "turbo run test",

@@ -2,7 +2,7 @@
 # See https://okigu.com/ruler for documentation.
 
 # Default agents to run when --agents is not specified
-default_agents = ["claude", "gemini-cli", "opencode"]
+default_agents = ["claude", "codex"]
 
 # --- Global MCP Server Configuration ---
 [mcp]
@@ -13,15 +13,15 @@ merge_strategy = "merge"
 
 # --- MCP Server Definitions ---
 [mcp_servers.better-auth]
-url = "https://mcp.chonkie.ai/better-auth/better-auth-builder/mcp"
+url = "https://mcp.better-auth.com/mcp"
 
 [mcp_servers.context7]
-args = ["-y", "@upstash/context7-mcp"]
-command = "npx"
+args = ["x", "@upstash/context7-mcp"]
+command = "bun"
 
 [mcp_servers.shadcn]
-args = ["shadcn@latest", "mcp"]
-command = "npx"
+args = ["x", "shadcn@latest", "mcp"]
+command = "bun"
 
 # --- Global .gitignore Configuration ---
 [gitignore]

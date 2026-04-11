@@ -24,8 +24,20 @@ export function ShellUiHeader({ actions, homeLink }: ShellUiHeaderProps) {
             className="group min-w-0 transition-opacity hover:opacity-90"
             to={homeLink}
           >
-            <img alt="TokenGator" className="hidden h-6 w-auto sm:h-7 dark:block" src="/brand/logo-white.svg" />
-            <img alt="TokenGator" className="h-6 w-auto sm:h-7 dark:hidden" src="/brand/logo-black.svg" />
+            <img
+              alt="TokenGator"
+              className="hidden h-6 w-auto sm:h-7 dark:block"
+              height={83}
+              src="/brand/logo-white.svg"
+              width={534}
+            />
+            <img
+              alt="TokenGator"
+              className="h-6 w-auto sm:h-7 dark:hidden"
+              height={83}
+              src="/brand/logo-black.svg"
+              width={534}
+            />
           </Link>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">{actions}</div>

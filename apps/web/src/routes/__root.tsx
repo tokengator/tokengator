@@ -61,6 +61,11 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
         title: 'TokenGator',
       },
       {
+        content:
+          'Verify your identity, unlock token-gated access, and manage Discord roles and community operations from one place.',
+        name: 'description',
+      },
+      {
         content: 'width=device-width, initial-scale=1, viewport-fit=cover',
         name: 'viewport',
       },

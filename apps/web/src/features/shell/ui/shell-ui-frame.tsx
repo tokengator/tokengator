@@ -19,9 +19,9 @@ export function ShellUiFrame({ children, header }: ShellUiFrameProps) {
   return (
     <div className="grid h-svh min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden" style={shellFrameStyle}>
       {header}
-      <div className="min-h-0 min-w-0 overflow-x-hidden overflow-y-auto" style={shellUiFrameContentStyle}>
+      <main className="min-h-0 min-w-0 overflow-x-hidden overflow-y-auto" style={shellUiFrameContentStyle}>
         {children}
-      </div>
+      </main>
     </div>
   )
 }

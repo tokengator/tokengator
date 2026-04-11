@@ -9,6 +9,7 @@ const allowedHosts =
     .map((value) => value.trim())
     .filter(Boolean) ?? []
 const host = process.env.VITE_SERVER_HOST?.trim().toLowerCase() === 'true' ? true : undefined
+const port = Number(process.env.VITE_SERVER_PORT ?? 3001)
 const target = process.env.API_URL ?? 'http://localhost:3000'
 
 export default defineConfig({
@@ -19,7 +20,7 @@ export default defineConfig({
   server: {
     allowedHosts,
     host,
-    port: 3001,
+    port,
     proxy: {
       '/api': { changeOrigin: true, target },
       '/rpc': { changeOrigin: true, target },

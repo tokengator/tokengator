@@ -11,7 +11,8 @@
     "discord:provision-roles": "bun run src/provision-discord-roles.ts",
     "discord:register": "bun run src/register-discord.ts",
     "jobs": "bun run src/run-scheduled-jobs.ts",
-    "start": "bun run dist/index.mjs"
+    "start": "bun run dist/index.mjs",
+    "test": "bun test ./test"
   },
   "dependencies": {
     "@orpc/openapi": "catalog:",

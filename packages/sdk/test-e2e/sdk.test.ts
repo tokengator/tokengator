@@ -986,6 +986,297 @@ describe('createOrpcClient e2e', () => {
     )
   })
 
+  test('admin users can manage users through the SDK', async () => {
+    const identityId = crypto.randomUUID()
+    const membershipId = crypto.randomUUID()
+    const primaryWalletId = crypto.randomUUID()
+    const secondaryWalletId = crypto.randomUUID()
+    const targetSession = createSessionClients(baseUrl)
+    const ownerSession = createSessionClients(baseUrl)
+    const [{ asset }, { identity, member, solanaWallet }, ownerUser, targetUser] = await Promise.all([
+      import('@tokengator/db/schema/asset'),
+      import('@tokengator/db/schema/auth'),
+      createUniqueUser(ownerSession, {
+        emailPrefix: 'admin-user-owner',
+        namePrefix: 'Admin User Owner',
+        usernamePrefix: 'adminuserowner',
+      }),
+      createUniqueUser(targetSession, {
+        emailPrefix: 'admin-user-target',
+        namePrefix: 'Admin User Target',
+        usernamePrefix: 'adminusertarget',
+      }),
+    ])
+    const ownerCandidate = await getOwnerCandidateByUsername(ownerUser.username)
+
+    expect(ownerCandidate).toBeDefined()
+
+    const organization = await adminSession.client.adminOrganization.create({
+      name: `Admin User Org ${targetUser.username}`,
+      ownerUserId: ownerCandidate!.id,
+      slug: `admin-user-org-${targetUser.username}`,
+    })
+    const assetGroup = await adminSession.client.adminAssetGroup.create({
+      address: `collection-${targetUser.username}`,
+      enabled: true,
+      label: `Collection ${targetUser.username}`,
+      type: 'collection',
+    })
+    const primaryWalletAddress = `wallet-${targetUser.username}-a`
+    const secondaryWalletAddress = `wallet-${targetUser.username}-b`
+    const indexedAt = new Date()
+
+    await database.insert(member).values({
+      createdAt: indexedAt,
+      id: membershipId,
+      organizationId: organization.id,
+      role: 'member',
+      userId: targetUser.id,
+    })
+    await database.insert(solanaWallet).values([
+      {
+        address: primaryWalletAddress,
+        createdAt: indexedAt,
+        id: primaryWalletId,
+        isPrimary: true,
+        name: null,
+        userId: targetUser.id,
+      },
+      {
+        address: secondaryWalletAddress,
+        createdAt: indexedAt,
+        id: secondaryWalletId,
+        isPrimary: false,
+        name: 'Treasury',
+        userId: targetUser.id,
+      },
+    ])
+    await database.insert(identity).values({
+      avatarUrl: null,
+      createdAt: indexedAt,
+      displayName: 'Discord Target',
+      email: 'discord-target@example.com',
+      id: identityId,
+      isPrimary: true,
+      lastSyncedAt: indexedAt,
+      linkedAt: indexedAt,
+      profile: null,
+      provider: 'discord',
+      providerId: `discord-${targetUser.username}`,
+      referenceId: `account-${targetUser.username}`,
+      referenceType: 'account',
+      updatedAt: indexedAt,
+      userId: targetUser.id,
+      username: `${targetUser.username}-discord`,
+    })
+    await database.insert(asset).values({
+      address: `asset-${targetUser.username}`,
+      addressLower: `asset-${targetUser.username}`,
+      amount: '1',
+      assetGroupId: assetGroup.id,
+      firstSeenAt: indexedAt,
+      id: crypto.randomUUID(),
+      indexedAssetId: `v2:${JSON.stringify([assetGroup.id, `asset-${targetUser.username}`, ` ${secondaryWalletAddress} `, 'helius-collection-assets'])}`,
+      indexedAt,
+      lastSeenAt: indexedAt,
+      metadata: null,
+      metadataDescription: null,
+      metadataImageUrl: null,
+      metadataJson: null,
+      metadataJsonUrl: null,
+      metadataName: 'Admin User Asset',
+      metadataProgramAccount: null,
+      metadataSymbol: null,
+      owner: ` ${secondaryWalletAddress} `,
+      ownerLower: ` ${secondaryWalletAddress} `,
+      page: 1,
+      raw: null,
+      resolverId: assetGroup.id,
+      resolverKind: 'helius-collection-assets',
+    })
+
+    await expect(adminSession.client.adminUser.list({ search: targetUser.username })).resolves.toEqual({
+      total: 1,
+      users: [
+        expect.objectContaining({
+          assetCount: 1,
+          banned: false,
+          communityCount: 1,
+          email: targetUser.email,
+          id: targetUser.id,
+          identityCount: 1,
+          name: targetUser.name,
+          role: 'user',
+          username: targetUser.username,
+          walletCount: 2,
+        }),
+      ],
+    })
+    await expect(adminSession.client.adminUser.get({ userId: targetUser.id })).resolves.toEqual(
+      expect.objectContaining({
+        assetCount: 1,
+        banned: false,
+        communityCount: 1,
+        email: targetUser.email,
+        id: targetUser.id,
+        identityCount: 1,
+        name: targetUser.name,
+        role: 'user',
+        username: targetUser.username,
+        walletCount: 2,
+      }),
+    )
+    await expect(adminSession.client.adminUser.listIdentities({ userId: targetUser.id })).resolves.toEqual({
+      identities: [
+        {
+          avatarUrl: null,
+          displayName: 'Discord Target',
+          email: 'discord-target@example.com',
+          id: identityId,
+          isPrimary: true,
+          linkedAt: indexedAt.getTime(),
+          provider: 'discord',
+          providerId: `discord-${targetUser.username}`,
+          username: `${targetUser.username}-discord`,
+        },
+      ],
+      solanaWallets: [
+        {
+          address: primaryWalletAddress,
+          displayName: ellipsifySolanaWalletAddress(primaryWalletAddress),
+          id: primaryWalletId,
+          isPrimary: true,
+          name: null,
+        },
+        {
+          address: secondaryWalletAddress,
+          displayName: 'Treasury',
+          id: secondaryWalletId,
+          isPrimary: false,
+          name: 'Treasury',
+        },
+      ],
+    })
+    await expect(adminSession.client.adminUser.listCommunities({ userId: targetUser.id })).resolves.toEqual({
+      communities: [
+        {
+          createdAt: expect.any(Date),
+          gatedRoles: [],
+          id: membershipId,
+          logo: null,
+          name: `Admin User Org ${targetUser.username}`,
+          organizationId: organization.id,
+          role: 'member',
+          slug: `admin-user-org-${targetUser.username}`,
+        },
+      ],
+    })
+    await expect(adminSession.client.adminUser.listAssets({ userId: targetUser.id })).resolves.toEqual({
+      assets: [
+        expect.objectContaining({
+          address: `asset-${targetUser.username}`,
+          assetGroupId: assetGroup.id,
+          metadataName: 'Admin User Asset',
+          owner: secondaryWalletAddress,
+          resolverKind: 'helius-collection-assets',
+        }),
+      ],
+      limit: 25,
+      offset: 0,
+      total: 1,
+    })
+
+    await expect(
+      adminSession.client.adminUser.updateCommunityMembership({
+        memberId: membershipId,
+        role: 'admin',
+        userId: targetUser.id,
+      }),
+    ).resolves.toEqual({
+      memberId: membershipId,
+      organizationId: organization.id,
+      role: 'admin',
+    })
+    await expect(
+      adminSession.client.adminUser.updateSolanaWallet({
+        name: 'Main Wallet',
+        solanaWalletId: primaryWalletId,
+        userId: targetUser.id,
+      }),
+    ).resolves.toEqual({
+      solanaWallet: {
+        address: primaryWalletAddress,
+        displayName: 'Main Wallet',
+        id: primaryWalletId,
+        isPrimary: true,
+        name: 'Main Wallet',
+      },
+    })
+    await expect(
+      adminSession.client.adminUser.setPrimarySolanaWallet({
+        solanaWalletId: secondaryWalletId,
+        userId: targetUser.id,
+      }),
+    ).resolves.toEqual({
+      solanaWallet: {
+        address: secondaryWalletAddress,
+        displayName: 'Treasury',
+        id: secondaryWalletId,
+        isPrimary: true,
+        name: 'Treasury',
+      },
+    })
+    await expect(
+      adminSession.client.adminUser.deleteSolanaWallet({
+        solanaWalletId: primaryWalletId,
+        userId: targetUser.id,
+      }),
+    ).resolves.toEqual({
+      solanaWalletId: primaryWalletId,
+    })
+    await expect(
+      adminSession.client.adminUser.removeCommunityMembership({
+        memberId: membershipId,
+        userId: targetUser.id,
+      }),
+    ).resolves.toEqual({
+      memberId: membershipId,
+      organizationId: organization.id,
+      userId: targetUser.id,
+    })
+    await expect(
+      adminSession.client.adminUser.update({
+        data: {
+          banExpires: indexedAt.getTime(),
+          banned: true,
+          banReason: 'Manual review',
+          email: `updated-${targetUser.email}`,
+          image: 'https://example.com/avatar.png',
+          name: 'Updated Admin User Target',
+          role: 'admin',
+          username: `updated-${targetUser.username}`,
+        },
+        userId: targetUser.id,
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        assetCount: 1,
+        banExpires: indexedAt,
+        banned: true,
+        banReason: 'Manual review',
+        communityCount: 0,
+        email: `updated-${targetUser.email}`,
+        id: targetUser.id,
+        identityCount: 1,
+        image: 'https://example.com/avatar.png',
+        name: 'Updated Admin User Target',
+        role: 'admin',
+        username: `updated-${targetUser.username}`,
+        walletCount: 1,
+      }),
+    )
+  })
+
   test('admin users can manage asset groups and assets through the SDK', async () => {
     const [{ asset }, createdAssetGroup] = await Promise.all([
       import('@tokengator/db/schema/asset'),

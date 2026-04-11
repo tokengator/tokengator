@@ -5,7 +5,7 @@ type AdminLink =
   | {
       label: string
       search?: never
-      to: '/admin/communities' | '/admin/dashboard'
+      to: '/admin/communities' | '/admin/dashboard' | '/admin/users'
     }
   | {
       label: string
@@ -32,6 +32,10 @@ const links = [
   {
     label: 'Communities',
     to: '/admin/communities',
+  },
+  {
+    label: 'Users',
+    to: '/admin/users',
   },
 ] satisfies AdminLink[]
 

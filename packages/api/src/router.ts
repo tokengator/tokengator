@@ -4,6 +4,7 @@ import { adminAssetGroupRouter } from './features/admin-asset-group/feature/admi
 import { adminAssetRouter } from './features/admin-asset/feature/admin-asset-router'
 import { adminCommunityRoleRouter } from './features/admin-community-role/feature/admin-community-role-router'
 import { adminOrganizationRouter } from './features/admin-organization/feature/admin-organization-router'
+import { adminUserRouter } from './features/admin-user/feature/admin-user-router'
 import { coreRouter } from './features/core/feature/core-router'
 import { organizationRouter } from './features/organization/feature/organization-router'
 import { profileRouter } from './features/profile/feature/profile-router'
@@ -13,6 +14,7 @@ export const appRouter = {
   adminAssetGroup: adminAssetGroupRouter,
   adminCommunityRole: adminCommunityRoleRouter,
   adminOrganization: adminOrganizationRouter,
+  adminUser: adminUserRouter,
   core: coreRouter,
   organization: organizationRouter,
   profile: profileRouter,

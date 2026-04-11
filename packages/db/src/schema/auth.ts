@@ -8,6 +8,7 @@ export const user = sqliteTable('user', {
   createdAt: integer('created_at', { mode: 'timestamp_ms' })
     .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
     .notNull(),
+  developerMode: integer('developer_mode', { mode: 'boolean' }).default(false).notNull(),
   displayUsername: text('display_username'),
   email: text('email').notNull().unique(),
   emailVerified: integer('email_verified', { mode: 'boolean' }).default(false).notNull(),

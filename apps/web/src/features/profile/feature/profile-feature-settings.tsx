@@ -1,14 +1,52 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
+import { Label } from '@tokengator/ui/components/label'
+import { Switch } from '@tokengator/ui/components/switch'
+
+import { useAppAuthStateQuery } from '@/features/auth/data-access/use-app-auth-state-query'
+import { useAppSession } from '@/features/auth/data-access/use-app-session'
+
+import { useProfileSettings } from '../data-access/use-profile-get-settings'
+import { useProfileUpdateSettings } from '../data-access/use-profile-update-settings'
 
 export function ProfileFeatureSettings() {
+  const { data: appAuthState } = useAppAuthStateQuery()
+  const { data: session } = useAppSession()
+  const userId = session?.user.id ?? ''
+  const settings = useProfileSettings(userId)
+  const updateSettings = useProfileUpdateSettings(userId)
+  const persistedSettings = settings.data?.settings ?? appAuthState?.profileSettings?.settings ?? null
+  const developerMode = updateSettings.pendingSettings?.developerMode ?? persistedSettings?.developerMode ?? false
+  const isDisabled = updateSettings.isPending || (persistedSettings === null && settings.isPending)
+
+  if (!session) {
+    return null
+  }
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Settings</CardTitle>
-        <CardDescription>Profile settings are coming soon.</CardDescription>
+        <CardDescription>Manage your profile preferences.</CardDescription>
       </CardHeader>
-      <CardContent className="text-muted-foreground text-sm">
-        This tab is a placeholder for future profile settings.
+      <CardContent className="flex items-start justify-between gap-4">
+        <div className="grid gap-1">
+          <Label htmlFor="profile-settings-developer-mode">Developer mode</Label>
+          <p className="text-muted-foreground text-sm">Show developer tools like debug views across the app.</p>
+        </div>
+        <Switch
+          checked={developerMode}
+          disabled={isDisabled}
+          id="profile-settings-developer-mode"
+          onCheckedChange={(checked) =>
+            void updateSettings
+              .updateSettings({
+                developerMode: checked,
+              })
+              .catch(() => {
+                // Error handling already lives in the mutation onError callback.
+              })
+          }
+        />
       </CardContent>
     </Card>
   )

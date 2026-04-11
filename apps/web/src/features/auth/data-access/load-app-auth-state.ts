@@ -32,13 +32,15 @@ export async function loadAppAuthState(args: { hasDiscordAccount?: boolean; sess
       identities: null,
       isOnboardingComplete: false,
       onboardingStatus: null,
+      profileSettings: null,
       session: null,
       solanaWallets: null,
     } satisfies AppAuthState
   }
 
-  const [identities, solanaWallets] = await Promise.all([
+  const [identities, profileSettings, solanaWallets] = await Promise.all([
     serverOrpcClient.profile.listIdentities(),
+    serverOrpcClient.profile.getSettings(),
     serverOrpcClient.profile.listSolanaWallets(),
   ])
   const hasDiscordAccount =
@@ -59,6 +61,7 @@ export async function loadAppAuthState(args: { hasDiscordAccount?: boolean; sess
     identities,
     isOnboardingComplete,
     onboardingStatus,
+    profileSettings,
     session: nextSession,
     solanaWallets,
   } satisfies AppAuthState

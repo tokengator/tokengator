@@ -871,6 +871,55 @@ describe('createOrpcClient e2e', () => {
     )
   })
 
+  test('profile settings expose developer mode with user-scoped updates', async () => {
+    await expect(bobSession.client.profile.getSettings()).resolves.toEqual({
+      settings: {
+        developerMode: false,
+      },
+    })
+    await expect(carolSession.client.profile.getSettings()).resolves.toEqual({
+      settings: {
+        developerMode: false,
+      },
+    })
+
+    await expect(
+      bobSession.client.profile.updateSettings({
+        developerMode: true,
+      }),
+    ).resolves.toEqual({
+      settings: {
+        developerMode: true,
+      },
+    })
+
+    await expect(bobSession.client.profile.getSettings()).resolves.toEqual({
+      settings: {
+        developerMode: true,
+      },
+    })
+    await expect(carolSession.client.profile.getSettings()).resolves.toEqual({
+      settings: {
+        developerMode: false,
+      },
+    })
+
+    await expect(
+      bobSession.client.profile.updateSettings({
+        developerMode: false,
+      }),
+    ).resolves.toEqual({
+      settings: {
+        developerMode: false,
+      },
+    })
+    await expect(bobSession.client.profile.getSettings()).resolves.toEqual({
+      settings: {
+        developerMode: false,
+      },
+    })
+  })
+
   test('organization listMine returns read-only memberships', async () => {
     const bobOwner = await getOwnerCandidateByUsername(BOB_USERNAME)
     const carolOwner = await getOwnerCandidateByUsername(CAROL_USERNAME)

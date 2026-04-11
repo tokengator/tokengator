@@ -41,12 +41,7 @@ export function ProfileFeatureShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-full overflow-y-auto px-4 py-6">
       <div className="mx-auto grid w-full max-w-xl gap-6">
-        <ProfileUiAccountCard
-          name={session.user.name}
-          role={session.user.role ?? 'user'}
-          username={session.user.username}
-        />
-
+        <ProfileUiAccountCard user={session.user} />
         <Tabs value={currentTab}>
           <TabsList className="w-full justify-start">
             {profileTabs.map((tab) => (
@@ -56,7 +51,6 @@ export function ProfileFeatureShell({ children }: { children: ReactNode }) {
             ))}
           </TabsList>
         </Tabs>
-
         {children}
       </div>
     </div>

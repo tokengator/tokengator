@@ -25,6 +25,12 @@ export function toProfileIdentityEntity(identity: {
   }
 }
 
+export function toProfileSettingsEntity(settings: { developerMode: boolean }) {
+  return {
+    developerMode: settings.developerMode,
+  }
+}
+
 export function toProfileSolanaWalletEntity(wallet: {
   address: string
   id: string
@@ -48,6 +54,9 @@ export type ProfileFinalizeDiscordAuthResult = {
   updated: boolean
   username: string | null
 }
+export type ProfileGetSettingsResult = {
+  settings: ProfileSettingsEntity
+}
 export type ProfileListIdentitiesResult = {
   identities: ProfileIdentityEntity[]
 }
@@ -57,6 +66,7 @@ export type ProfileListSolanaWalletsResult = {
 export type ProfileSetPrimarySolanaWalletResult = {
   solanaWallet: ProfileSolanaWalletEntity
 }
+export type ProfileSettingsEntity = ReturnType<typeof toProfileSettingsEntity>
 export type ProfileSolanaWalletDeleteResult = {
   solanaWalletId: string
 }
@@ -64,6 +74,9 @@ export type ProfileSolanaWalletEntity = ReturnType<typeof toProfileSolanaWalletE
 export type ProfileSyncDiscordUsernameResult = {
   updated: boolean
   username: string | null
+}
+export type ProfileUpdateSettingsResult = {
+  settings: ProfileSettingsEntity
 }
 export type ProfileUpdateSolanaWalletResult = {
   solanaWallet: ProfileSolanaWalletEntity

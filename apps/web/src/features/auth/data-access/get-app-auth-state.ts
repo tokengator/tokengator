@@ -1,6 +1,7 @@
 import { queryOptions, type QueryClient } from '@tanstack/react-query'
 
 import type { serverOrpcClient } from '@/lib/orpc-server'
+import { getProfileSettingsQueryKey } from '@/features/profile/data-access/use-profile-get-settings'
 import { getProfileListIdentitiesQueryKey } from '@/features/profile/data-access/use-profile-list-identities'
 import { getProfileListSolanaWalletsQueryKey } from '@/features/profile/data-access/use-profile-list-solana-wallets'
 
@@ -30,6 +31,7 @@ export interface AppAuthState {
   identities: Awaited<ReturnType<typeof serverOrpcClient.profile.listIdentities>> | null
   isOnboardingComplete: boolean
   onboardingStatus: AppOnboardingStatus | null
+  profileSettings: Awaited<ReturnType<typeof serverOrpcClient.profile.getSettings>> | null
   session: AppSession | null
   solanaWallets: Awaited<ReturnType<typeof serverOrpcClient.profile.listSolanaWallets>> | null
 }
@@ -46,6 +48,10 @@ export function populateAppAuthStateRelatedQueries(args: { appAuthState: AppAuth
 
   if (appAuthState.identities) {
     queryClient.setQueryData(getProfileListIdentitiesQueryKey(userId), appAuthState.identities)
+  }
+
+  if (appAuthState.profileSettings) {
+    queryClient.setQueryData(getProfileSettingsQueryKey(userId), appAuthState.profileSettings)
   }
 
   if (appAuthState.solanaWallets) {

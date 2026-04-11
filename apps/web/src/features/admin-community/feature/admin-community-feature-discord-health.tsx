@@ -3,6 +3,7 @@ import type { AdminCommunityRoleListRunsResult } from '@tokengator/sdk'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import { UiInfoCard, UiInfoCardLabel, UiInfoCardMeta, UiInfoCardValue } from '@tokengator/ui/components/ui-info-card'
 import { UiStatus, type UiStatusVariants } from '@tokengator/ui/components/ui-status'
+import { UiTextCopyIcon } from '@tokengator/ui/components/ui-text-copy-icon'
 import { formatDateTime } from '@tokengator/ui/util/format-date-time'
 
 import { getFreshnessTone } from '@/features/admin/util/get-freshness-tone'
@@ -96,7 +97,14 @@ export function AdminCommunityFeatureDiscordHealth(props: AdminCommunityFeatureD
               <UiInfoCard>
                 <UiInfoCardLabel>Discord Server</UiInfoCardLabel>
                 <UiInfoCardValue>{discordConnection.guildName ?? 'Unknown'}</UiInfoCardValue>
-                <UiInfoCardMeta>{discordConnection.guildId}</UiInfoCardMeta>
+                <UiInfoCardMeta className="flex items-center gap-1.5">
+                  <span className="font-mono">{discordConnection.guildId}</span>
+                  <UiTextCopyIcon
+                    text={discordConnection.guildId}
+                    title="Copy Discord server ID"
+                    toast="Discord server ID copied."
+                  />
+                </UiInfoCardMeta>
               </UiInfoCard>
               <UiInfoCard>
                 <UiInfoCardLabel>Status</UiInfoCardLabel>

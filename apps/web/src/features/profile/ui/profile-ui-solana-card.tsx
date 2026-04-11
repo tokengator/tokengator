@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@tokengator/ui/components/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import { Input } from '@tokengator/ui/components/input'
+import { UiTextCopyIcon } from '@tokengator/ui/components/ui-text-copy-icon'
 
 export type ProfileSolanaWallet = {
   address: string
@@ -74,9 +75,12 @@ function ProfileUiSolanaWalletRow({
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate font-medium">{wallet.displayName}</p>
-          <p className="font-mono text-xs" title={wallet.address}>
-            {fallbackName}
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p className="font-mono text-xs" title={wallet.address}>
+              {fallbackName}
+            </p>
+            <UiTextCopyIcon text={wallet.address} title="Copy wallet address" toast="Wallet address copied." />
+          </div>
         </div>
         <div className="flex items-center gap-3">
           {wallet.isPrimary ? <p className="text-muted-foreground text-xs">Primary</p> : null}
@@ -164,7 +168,14 @@ export function ProfileUiSolanaCard({
                 Disconnect
               </Button>
             </div>
-            <p className="font-mono text-xs">{ellipsify(connectedWallet.address)}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="font-mono text-xs">{ellipsify(connectedWallet.address)}</p>
+              <UiTextCopyIcon
+                text={connectedWallet.address}
+                title="Copy wallet address"
+                toast="Wallet address copied."
+              />
+            </div>
             <p className="text-muted-foreground text-xs">
               This connected wallet is not linked yet, so it cannot be renamed.
             </p>

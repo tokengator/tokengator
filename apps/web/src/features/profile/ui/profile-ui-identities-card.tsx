@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import { UiListCard, UiListCardHeader, UiListCardMeta } from '@tokengator/ui/components/ui-list-card'
+import { UiTextCopyIcon } from '@tokengator/ui/components/ui-text-copy-icon'
 
 type ProfileIdentity = {
   avatarUrl: string | null
@@ -70,7 +71,10 @@ export function ProfileUiIdentitiesCard({ identities, isPending = false }: Profi
                 {identity.username && identity.username !== getIdentityLabel(identity) ? (
                   <p className="text-muted-foreground text-xs">@{identity.username}</p>
                 ) : null}
-                <p className="font-mono text-xs">{identity.providerId}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="font-mono text-xs">{identity.providerId}</p>
+                  <UiTextCopyIcon text={identity.providerId} title="Copy identity ID" toast="Identity ID copied." />
+                </div>
               </UiListCard>
             ))
           : null}

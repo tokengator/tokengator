@@ -4,6 +4,7 @@ import type { AdminOrganizationDetailEntity } from '@tokengator/sdk'
 import { Button } from '@tokengator/ui/components/button'
 import { UiDetailRow } from '@tokengator/ui/components/ui-detail-row'
 import { UiStatus, type UiStatusVariants } from '@tokengator/ui/components/ui-status'
+import { UiTextCopyIcon } from '@tokengator/ui/components/ui-text-copy-icon'
 import { formatDateTime } from '@tokengator/ui/util/format-date-time'
 
 type AdminCommunityDiscordConnection = NonNullable<AdminOrganizationDetailEntity['discordConnection']>
@@ -27,7 +28,16 @@ export function AdminCommunityDiscordConnectionUiDetails(props: AdminCommunityDi
   return (
     <>
       <div className="grid gap-2 text-sm">
-        <UiDetailRow label="Server ID:">{discordConnection.guildId}</UiDetailRow>
+        <UiDetailRow label="Server ID:">
+          <div className="flex items-center gap-1.5 font-mono text-xs">
+            <span>{discordConnection.guildId}</span>
+            <UiTextCopyIcon
+              text={discordConnection.guildId}
+              title="Copy Discord server ID"
+              toast="Discord server ID copied."
+            />
+          </div>
+        </UiDetailRow>
         <UiDetailRow label="Server Name:">{discordConnection.guildName ?? 'Unknown'}</UiDetailRow>
         <UiDetailRow align="center" label="Status:">
           <UiStatus tone={getDiscordConnectionStatusTone(discordConnection.status)}>

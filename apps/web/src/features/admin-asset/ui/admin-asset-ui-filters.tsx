@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@tokengator/ui/components/button'
 import { Input } from '@tokengator/ui/components/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@tokengator/ui/components/select'
 
 export interface AdminAssetFiltersValues {
   address: string
@@ -13,6 +14,22 @@ interface AdminAssetUiFiltersProps {
   onApply: (values: AdminAssetFiltersValues) => void
   onReset: () => void
 }
+
+const allResolverKindsValue = '__all__'
+const resolverKindItems = [
+  {
+    label: 'all',
+    value: allResolverKindsValue,
+  },
+  {
+    label: 'helius-collection-assets',
+    value: 'helius-collection-assets',
+  },
+  {
+    label: 'helius-token-accounts',
+    value: 'helius-token-accounts',
+  },
+] as const
 
 export function AdminAssetUiFilters(props: AdminAssetUiFiltersProps) {
   const { initialValues, onApply, onReset } = props
@@ -58,24 +75,34 @@ export function AdminAssetUiFilters(props: AdminAssetUiFiltersProps) {
           />
         </div>
         <div className="grid gap-1.5">
-          <label className="text-sm" htmlFor="asset-resolver-filter">
+          <label className="text-sm" id="asset-resolver-filter-label">
             Resolver Kind
           </label>
-          <select
-            className="bg-background border px-2 py-1 text-sm"
-            id="asset-resolver-filter"
-            onChange={(event) =>
+          <Select
+            items={resolverKindItems}
+            onValueChange={(value) => {
+              if (value === null) {
+                return
+              }
+
               setValues((currentValues) => ({
                 ...currentValues,
-                resolverKind: event.target.value as AdminAssetFiltersValues['resolverKind'],
+                resolverKind: value === allResolverKindsValue ? '' : (value as AdminAssetFiltersValues['resolverKind']),
               }))
-            }
-            value={values.resolverKind}
+            }}
+            value={values.resolverKind || allResolverKindsValue}
           >
-            <option value="">all</option>
-            <option value="helius-collection-assets">helius-collection-assets</option>
-            <option value="helius-token-accounts">helius-token-accounts</option>
-          </select>
+            <SelectTrigger aria-labelledby="asset-resolver-filter-label" className="w-full" id="asset-resolver-filter">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {resolverKindItems.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
       <div className="flex justify-end gap-2">

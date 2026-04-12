@@ -1,6 +1,7 @@
 import type { AdminOrganizationDetailEntity, AdminOrganizationMemberRole } from '@tokengator/sdk'
 
 import { Button } from '@tokengator/ui/components/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@tokengator/ui/components/select'
 
 const roleOptions = ['owner', 'admin', 'member'] as const satisfies readonly AdminOrganizationMemberRole[]
 
@@ -32,23 +33,32 @@ export function AdminCommunityMembershipUiListItem(props: AdminCommunityMembersh
           {member.gatedRoles.length ? member.gatedRoles.map((gatedRole) => gatedRole.name).join(', ') : 'none'}
         </p>
       </div>
-      <select
-        aria-label={`Role for ${displayName}`}
-        className="bg-background border px-2 py-1 text-sm"
+      <Select
         disabled={isUpdatePending}
-        onChange={(event) => onRoleChange(event.target.value as AdminOrganizationMemberRole)}
+        onValueChange={(value) => {
+          if (value === null) {
+            return
+          }
+
+          onRoleChange(value as AdminOrganizationMemberRole)
+        }}
         value={member.role}
       >
-        {memberRoles.map((role) => {
-          const isSupportedRole = roleOptions.includes(role as AdminOrganizationMemberRole)
+        <SelectTrigger aria-label={`Role for ${displayName}`} className="w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {memberRoles.map((role) => {
+            const isSupportedRole = roleOptions.includes(role as AdminOrganizationMemberRole)
 
-          return (
-            <option disabled={!isSupportedRole} key={role} value={role}>
-              {role}
-            </option>
-          )
-        })}
-      </select>
+            return (
+              <SelectItem disabled={!isSupportedRole} key={role} value={role}>
+                {role}
+              </SelectItem>
+            )
+          })}
+        </SelectContent>
+      </Select>
       <Button disabled={isRemovePending} onClick={onRemove} type="button" variant="outline">
         Remove
       </Button>

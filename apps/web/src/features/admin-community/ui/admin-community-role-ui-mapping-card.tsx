@@ -1,5 +1,6 @@
 import { Button } from '@tokengator/ui/components/button'
 import { Label } from '@tokengator/ui/components/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@tokengator/ui/components/select'
 
 export interface AdminCommunityRoleUiMappingOption {
   disabled: boolean
@@ -28,6 +29,8 @@ interface AdminCommunityRoleUiMappingCardProps {
   statusMessage: string
 }
 
+const notMappedDiscordRoleValue = '__not-mapped__'
+
 export function AdminCommunityRoleUiMappingCard(props: AdminCommunityRoleUiMappingCardProps) {
   const {
     canClear,
@@ -46,6 +49,24 @@ export function AdminCommunityRoleUiMappingCard(props: AdminCommunityRoleUiMappi
     showDisabledRoleNote,
     statusMessage,
   } = props
+  const discordRoleItems = [
+    {
+      label: 'Not mapped',
+      value: notMappedDiscordRoleValue,
+    },
+    ...(missingMappedRoleOption
+      ? [
+          {
+            label: missingMappedRoleOption.label,
+            value: missingMappedRoleOption.id,
+          },
+        ]
+      : []),
+    ...options.map((option) => ({
+      label: option.label,
+      value: option.id,
+    })),
+  ]
 
   return (
     <div className="grid gap-3 rounded-lg border p-3">
@@ -64,24 +85,34 @@ export function AdminCommunityRoleUiMappingCard(props: AdminCommunityRoleUiMappi
       </div>
       <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-end">
         <div className="grid gap-1.5">
-          <Label htmlFor={id}>Discord Role</Label>
-          <select
-            className="bg-background border px-2 py-1 text-sm"
+          <Label id={`${id}-label`}>Discord Role</Label>
+          <Select
             disabled={isPending || !canConfigureDiscordMappings}
-            id={id}
-            onChange={(event) => onDraftChange(event.target.value)}
-            value={currentDiscordRoleDraft}
+            items={discordRoleItems}
+            onValueChange={(value) => {
+              if (value === null) {
+                return
+              }
+
+              onDraftChange(value === notMappedDiscordRoleValue ? '' : value)
+            }}
+            value={currentDiscordRoleDraft || notMappedDiscordRoleValue}
           >
-            <option value="">Not mapped</option>
-            {missingMappedRoleOption ? (
-              <option value={missingMappedRoleOption.id}>{missingMappedRoleOption.label}</option>
-            ) : null}
-            {options.map((option) => (
-              <option disabled={option.disabled} key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger aria-labelledby={`${id}-label`} className="w-full" id={id}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={notMappedDiscordRoleValue}>Not mapped</SelectItem>
+              {missingMappedRoleOption ? (
+                <SelectItem value={missingMappedRoleOption.id}>{missingMappedRoleOption.label}</SelectItem>
+              ) : null}
+              {options.map((option) => (
+                <SelectItem disabled={option.disabled} key={option.id} value={option.id}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <Button disabled={!canSave || isPending} onClick={onSave} type="button">
           Save Mapping

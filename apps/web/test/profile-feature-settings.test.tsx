@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, mock, test } from 'bun:test'
+import { afterAll, beforeAll, describe, expect, mock, test } from 'bun:test'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 let appAuthStateDeveloperMode = false
@@ -45,6 +45,10 @@ beforeAll(async () => {
   }))
 
   ;({ ProfileFeatureSettings } = await import('../src/features/profile/feature/profile-feature-settings'))
+})
+
+afterAll(() => {
+  mock.restore()
 })
 
 describe('ProfileFeatureSettings', () => {

@@ -1,5 +1,6 @@
 import type { AdminOrganizationMemberRole, AdminUserCommunityEntity } from '@tokengator/sdk'
 import { Button } from '@tokengator/ui/components/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@tokengator/ui/components/select'
 
 const roleOptions = ['owner', 'admin', 'member'] as const satisfies readonly AdminOrganizationMemberRole[]
 
@@ -39,12 +40,14 @@ export function AdminUserCommunitiesUiList(props: {
                   : 'none'}
               </p>
             </div>
-            <select
-              aria-label={`Role for ${community.name}`}
-              className="bg-background border px-2 py-1 text-sm"
+            <Select
               disabled={isUpdatePending}
-              onChange={(event) => {
-                const nextRole = event.target.value
+              onValueChange={(value) => {
+                if (value === null) {
+                  return
+                }
+
+                const nextRole = value
 
                 if (!isAdminOrganizationMemberRole(nextRole)) {
                   return
@@ -54,16 +57,21 @@ export function AdminUserCommunitiesUiList(props: {
               }}
               value={community.role}
             >
-              {communityRoles.map((role) => {
-                const isSupportedRole = roleOptions.includes(role as AdminOrganizationMemberRole)
+              <SelectTrigger aria-label={`Role for ${community.name}`} className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {communityRoles.map((role) => {
+                  const isSupportedRole = roleOptions.includes(role as AdminOrganizationMemberRole)
 
-                return (
-                  <option disabled={!isSupportedRole} key={role} value={role}>
-                    {role}
-                  </option>
-                )
-              })}
-            </select>
+                  return (
+                    <SelectItem disabled={!isSupportedRole} key={role} value={role}>
+                      {role}
+                    </SelectItem>
+                  )
+                })}
+              </SelectContent>
+            </Select>
             <Button
               disabled={isRemovePending}
               onClick={() => void onRemove(community.id)}

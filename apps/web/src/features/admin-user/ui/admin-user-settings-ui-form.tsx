@@ -2,6 +2,7 @@ import { Loader2 } from 'lucide-react'
 import { type SubmitEvent, useEffect, useRef, useState } from 'react'
 import { Button } from '@tokengator/ui/components/button'
 import { Input } from '@tokengator/ui/components/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@tokengator/ui/components/select'
 
 export interface AdminUserSettingsUiFormValues {
   banExpires: string
@@ -124,14 +125,17 @@ export function AdminUserSettingsUiForm(props: {
         />
       </div>
       <div className="grid gap-1.5">
-        <label className="text-sm" htmlFor="user-detail-role">
+        <label className="text-sm" id="user-detail-role-label">
           Role
         </label>
-        <select
-          className="bg-background border px-2 py-1 text-sm"
-          id="user-detail-role"
-          onChange={(event) => {
-            const nextRole = event.target.value
+        <Select
+          disabled={isPending}
+          onValueChange={(value) => {
+            if (value === null) {
+              return
+            }
+
+            const nextRole = value
 
             if (!isAdminUserRole(nextRole)) {
               return
@@ -144,12 +148,17 @@ export function AdminUserSettingsUiForm(props: {
           }}
           value={formValues.role}
         >
-          {userRoles.map((role) => (
-            <option key={role} value={role}>
-              {role}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger aria-labelledby="user-detail-role-label" className="w-full" id="user-detail-role">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {userRoles.map((role) => (
+              <SelectItem key={role} value={role}>
+                {role}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <label className="flex items-center gap-2 text-sm">
         <input

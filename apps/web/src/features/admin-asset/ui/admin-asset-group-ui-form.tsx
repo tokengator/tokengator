@@ -5,6 +5,7 @@ import { Button } from '@tokengator/ui/components/button'
 import { Checkbox } from '@tokengator/ui/components/checkbox'
 import { Input } from '@tokengator/ui/components/input'
 import { Label } from '@tokengator/ui/components/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@tokengator/ui/components/select'
 
 import { ellipsifyAddress } from '../util/ellipsify-address'
 
@@ -40,23 +41,31 @@ export function AdminAssetGroupUiForm(props: AdminAssetGroupUiFormProps) {
       }}
     >
       <div className="grid gap-1.5">
-        <label className="text-sm" htmlFor="asset-group-type">
+        <label className="text-sm" id="asset-group-type-label">
           Type
         </label>
-        <select
-          className="bg-background border px-2 py-1 text-sm"
-          id="asset-group-type"
-          onChange={(event) =>
+        <Select
+          disabled={isPending}
+          onValueChange={(value) => {
+            if (value === null) {
+              return
+            }
+
             setValues((currentValues) => ({
               ...currentValues,
-              type: event.target.value as AdminAssetGroupUpdateInput['data']['type'],
+              type: value as AdminAssetGroupUpdateInput['data']['type'],
             }))
-          }
+          }}
           value={values.type}
         >
-          <option value="collection">collection</option>
-          <option value="mint">mint</option>
-        </select>
+          <SelectTrigger aria-labelledby="asset-group-type-label" className="w-full" id="asset-group-type">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="collection">collection</SelectItem>
+            <SelectItem value="mint">mint</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       <div className="grid gap-1.5">
         <label className="text-sm" htmlFor="asset-group-address">

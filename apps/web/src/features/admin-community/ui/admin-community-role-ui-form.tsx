@@ -5,6 +5,7 @@ import { Button } from '@tokengator/ui/components/button'
 import { Checkbox } from '@tokengator/ui/components/checkbox'
 import { Input } from '@tokengator/ui/components/input'
 import { Label } from '@tokengator/ui/components/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@tokengator/ui/components/select'
 import { slugify } from '@tokengator/ui/util/slugify'
 
 export interface AdminCommunityRoleUiAssetGroupOption {
@@ -70,6 +71,18 @@ interface AdminCommunityRoleUiFormProps {
   submitLabel: string
 }
 
+const unselectedAssetGroupValue = '__select-asset-group__'
+const matchModeItems = [
+  {
+    label: 'ALL',
+    value: 'all',
+  },
+  {
+    label: 'ANY',
+    value: 'any',
+  },
+] as const
+
 export function AdminCommunityRoleUiForm(props: AdminCommunityRoleUiFormProps) {
   const { assetGroupOptions, initialValues, isPending, onSubmit, submitLabel } = props
   const nextConditionKeyRef = useRef(initialValues.conditions.length)
@@ -77,6 +90,18 @@ export function AdminCommunityRoleUiForm(props: AdminCommunityRoleUiFormProps) {
     getAdminCommunityRoleUiConditionKeys(initialValues.conditions.length),
   )
   const [values, setValues] = useState(initialValues)
+  const assetGroupItems = [
+    {
+      disabled: false,
+      label: 'Select an asset group',
+      value: unselectedAssetGroupValue,
+    },
+    ...assetGroupOptions.map((assetGroup) => ({
+      disabled: !assetGroup.enabled,
+      label: `${assetGroup.label} (${assetGroup.type}${assetGroup.enabled ? '' : ', disabled'})`,
+      value: assetGroup.id,
+    })),
+  ]
 
   return (
     <form
@@ -143,21 +168,37 @@ export function AdminCommunityRoleUiForm(props: AdminCommunityRoleUiFormProps) {
         />
       </div>
       <div className="grid gap-1.5">
-        <Label htmlFor="community-role-match-mode">Match Mode</Label>
-        <select
-          className="bg-background border px-2 py-1 text-sm"
-          id="community-role-match-mode"
-          onChange={(event) =>
+        <Label id="community-role-match-mode-label">Match Mode</Label>
+        <Select
+          disabled={isPending}
+          items={matchModeItems}
+          onValueChange={(value) => {
+            if (value === null) {
+              return
+            }
+
             setValues((currentValues) => ({
               ...currentValues,
-              matchMode: event.target.value as AdminCommunityRoleUiFormValues['matchMode'],
+              matchMode: value as AdminCommunityRoleUiFormValues['matchMode'],
             }))
-          }
+          }}
           value={values.matchMode}
         >
-          <option value="all">ALL</option>
-          <option value="any">ANY</option>
-        </select>
+          <SelectTrigger
+            aria-labelledby="community-role-match-mode-label"
+            className="w-full"
+            id="community-role-match-mode"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {matchModeItems.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="flex items-center gap-2">
         <Checkbox
@@ -195,33 +236,45 @@ export function AdminCommunityRoleUiForm(props: AdminCommunityRoleUiFormProps) {
         {values.conditions.map((condition, conditionIndex) => (
           <div className="grid gap-3 border p-3" key={conditionKeys[conditionIndex] ?? `condition-${conditionIndex}`}>
             <div className="grid gap-1.5">
-              <Label htmlFor={`community-role-condition-asset-group-${conditionIndex}`}>Asset Group</Label>
-              <select
-                className="bg-background border px-2 py-1 text-sm"
-                id={`community-role-condition-asset-group-${conditionIndex}`}
-                onChange={(event) =>
+              <Label id={`community-role-condition-asset-group-${conditionIndex}-label`}>Asset Group</Label>
+              <Select
+                disabled={isPending}
+                items={assetGroupItems}
+                onValueChange={(value) => {
+                  if (value === null) {
+                    return
+                  }
+
                   setValues((currentValues) => ({
                     ...currentValues,
                     conditions: currentValues.conditions.map((currentCondition, currentConditionIndex) =>
                       currentConditionIndex === conditionIndex
                         ? {
                             ...currentCondition,
-                            assetGroupId: event.target.value,
+                            assetGroupId: value === unselectedAssetGroupValue ? '' : value,
                           }
                         : currentCondition,
                     ),
                   }))
-                }
+                }}
                 required
-                value={condition.assetGroupId}
+                value={condition.assetGroupId || unselectedAssetGroupValue}
               >
-                <option value="">Select an asset group</option>
-                {assetGroupOptions.map((assetGroup) => (
-                  <option key={assetGroup.id} value={assetGroup.id}>
-                    {`${assetGroup.label} (${assetGroup.type}${assetGroup.enabled ? '' : ', disabled'})`}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger
+                  aria-labelledby={`community-role-condition-asset-group-${conditionIndex}-label`}
+                  className="w-full"
+                  id={`community-role-condition-asset-group-${conditionIndex}`}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {assetGroupItems.map((item) => (
+                    <SelectItem disabled={item.disabled} key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor={`community-role-condition-minimum-amount-${conditionIndex}`}>Minimum Amount</Label>

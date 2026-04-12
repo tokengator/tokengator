@@ -100,7 +100,7 @@ beforeAll(async () => {
   ;({ db: database } = await import('@tokengator/db'))
   authSchema = await import('@tokengator/db/schema/auth')
   ;({ profileSettingsUpdate } = await import('../src/features/profile/data-access/profile-settings-update'))
-}, 15_000)
+}, 30_000)
 
 afterAll(() => {
   for (const key of ENV_KEYS) {

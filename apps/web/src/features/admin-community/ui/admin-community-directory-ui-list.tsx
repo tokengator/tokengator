@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react'
 import type { AdminOrganizationListEntity } from '@tokengator/sdk'
 
+import { CommunityUiItem } from '@/features/community/ui/community-ui-item'
 import { Card, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
+import { formatDate } from '@tokengator/ui/util/format-date'
 
-import { AdminCommunityDirectoryUiCard } from './admin-community-directory-ui-card'
+import { formatOwnerSummary } from '../util/format-owner-summary.tsx'
 
 interface AdminCommunityDirectoryUiListProps {
   isSearchActive?: boolean
@@ -33,13 +35,22 @@ export function AdminCommunityDirectoryUiList(props: AdminCommunityDirectoryUiLi
   return (
     <div className="grid gap-4">
       {organizations.map((organization) => (
-        <AdminCommunityDirectoryUiCard
-          createdAt={organization.createdAt}
+        <CommunityUiItem
+          action={renderManageAction(organization)}
+          community={organization}
+          footer={
+            <div className="text-muted-foreground flex flex-wrap gap-3 text-xs">
+              <span>
+                Owners:{' '}
+                {organization.owners.length
+                  ? organization.owners.map(formatOwnerSummary).join(', ')
+                  : 'No owners found'}
+              </span>
+              <span>Members: {organization.memberCount}</span>
+              <span>Created: {formatDate(organization.createdAt)}</span>
+            </div>
+          }
           key={organization.id}
-          manageAction={renderManageAction(organization)}
-          memberCount={organization.memberCount}
-          owners={organization.owners}
-          slug={organization.slug}
           title={renderTitle ? renderTitle(organization) : organization.name}
         />
       ))}

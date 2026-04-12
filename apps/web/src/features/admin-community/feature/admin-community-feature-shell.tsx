@@ -2,6 +2,9 @@ import type { ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 import { Loader2 } from 'lucide-react'
 import type { AdminOrganizationDetailEntity } from '@tokengator/sdk'
+
+import { CommunityUiItem } from '@/features/community/ui/community-ui-item'
+
 import { Card, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import { Tabs, TabsList, TabsTrigger } from '@tokengator/ui/components/tabs'
 
@@ -93,10 +96,11 @@ export function AdminCommunityFeatureShell({
             Back to communities
           </Link>
           {data ? (
-            <>
-              <h2 className="text-lg font-medium">{data.name}</h2>
-              <p className="text-muted-foreground text-sm">{data.slug}</p>
-            </>
+            <CommunityUiItem
+              community={data}
+              title={<span className="text-lg font-medium">{data.name}</span>}
+              variant="default"
+            />
           ) : (
             <div className="text-muted-foreground flex items-center gap-2 text-sm">
               <Loader2 className="size-4 animate-spin" />

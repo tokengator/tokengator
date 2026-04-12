@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@tokengator/ui/components/button'
 import { Input } from '@tokengator/ui/components/input'
+import { Label } from '@tokengator/ui/components/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@tokengator/ui/components/select'
 
 export interface AdminAssetFiltersValues {
@@ -43,9 +44,7 @@ export function AdminAssetUiFilters(props: AdminAssetUiFiltersProps) {
     <div className="flex flex-col gap-3 border p-4">
       <div className="grid gap-3 md:grid-cols-3">
         <div className="grid gap-1.5">
-          <label className="text-sm" htmlFor="asset-owner-filter">
-            Owner
-          </label>
+          <Label htmlFor="asset-owner-filter">Owner</Label>
           <Input
             id="asset-owner-filter"
             onChange={(event) =>
@@ -59,9 +58,7 @@ export function AdminAssetUiFilters(props: AdminAssetUiFiltersProps) {
           />
         </div>
         <div className="grid gap-1.5">
-          <label className="text-sm" htmlFor="asset-address-filter">
-            Address
-          </label>
+          <Label htmlFor="asset-address-filter">Address</Label>
           <Input
             id="asset-address-filter"
             onChange={(event) =>
@@ -75,9 +72,7 @@ export function AdminAssetUiFilters(props: AdminAssetUiFiltersProps) {
           />
         </div>
         <div className="grid gap-1.5">
-          <label className="text-sm" id="asset-resolver-filter-label">
-            Resolver Kind
-          </label>
+          <Label id="asset-resolver-filter-label">Resolver Kind</Label>
           <Select
             items={resolverKindItems}
             onValueChange={(value) => {

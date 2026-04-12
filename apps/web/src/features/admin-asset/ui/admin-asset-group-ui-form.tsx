@@ -41,9 +41,7 @@ export function AdminAssetGroupUiForm(props: AdminAssetGroupUiFormProps) {
       }}
     >
       <div className="grid gap-1.5">
-        <label className="text-sm" id="asset-group-type-label">
-          Type
-        </label>
+        <Label id="asset-group-type-label">Type</Label>
         <Select
           disabled={isPending}
           onValueChange={(value) => {
@@ -68,9 +66,7 @@ export function AdminAssetGroupUiForm(props: AdminAssetGroupUiFormProps) {
         </Select>
       </div>
       <div className="grid gap-1.5">
-        <label className="text-sm" htmlFor="asset-group-address">
-          Address
-        </label>
+        <Label htmlFor="asset-group-address">Address</Label>
         <Input
           id="asset-group-address"
           onChange={(event) =>
@@ -89,9 +85,7 @@ export function AdminAssetGroupUiForm(props: AdminAssetGroupUiFormProps) {
         />
       </div>
       <div className="grid gap-1.5">
-        <label className="text-sm" htmlFor="asset-group-label">
-          Label
-        </label>
+        <Label htmlFor="asset-group-label">Label</Label>
         <Input
           id="asset-group-label"
           onChange={(event) =>

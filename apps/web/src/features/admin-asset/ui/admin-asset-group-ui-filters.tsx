@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@tokengator/ui/components/button'
 import { Input } from '@tokengator/ui/components/input'
+import { Label } from '@tokengator/ui/components/label'
 
 interface AdminAssetGroupUiFiltersProps {
   initialSearch: string
@@ -19,9 +20,7 @@ export function AdminAssetGroupUiFilters(props: AdminAssetGroupUiFiltersProps) {
   return (
     <div className="flex flex-col gap-3 border p-4">
       <div className="grid gap-1.5">
-        <label className="text-sm" htmlFor="asset-group-search">
-          Search
-        </label>
+        <Label htmlFor="asset-group-search">Search</Label>
         <Input
           id="asset-group-search"
           onChange={(event) => setSearch(event.target.value)}

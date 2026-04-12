@@ -11,6 +11,7 @@ import {
   DialogTrigger,
 } from '@tokengator/ui/components/dialog'
 import { Input } from '@tokengator/ui/components/input'
+import { Label } from '@tokengator/ui/components/label'
 import { cn } from '@tokengator/ui/lib/utils'
 
 interface AdminCommunityDirectoryUiCreateDialogProps {
@@ -72,9 +73,7 @@ export function AdminCommunityDirectoryUiCreateDialog(props: AdminCommunityDirec
           </DialogHeader>
           <div className="grid gap-3">
             <div className="grid gap-1.5">
-              <label className="text-sm" htmlFor="organization-name">
-                Name
-              </label>
+              <Label htmlFor="organization-name">Name</Label>
               <Input
                 id="organization-name"
                 onBlur={onNameBlur}
@@ -85,9 +84,7 @@ export function AdminCommunityDirectoryUiCreateDialog(props: AdminCommunityDirec
               />
             </div>
             <div className="grid gap-1.5">
-              <label className="text-sm" htmlFor="organization-slug">
-                Slug
-              </label>
+              <Label htmlFor="organization-slug">Slug</Label>
               <Input
                 id="organization-slug"
                 onChange={(event) => onSlugChange(event.target.value)}
@@ -97,9 +94,7 @@ export function AdminCommunityDirectoryUiCreateDialog(props: AdminCommunityDirec
               />
             </div>
             <div className="grid gap-1.5">
-              <label className="text-sm" htmlFor="organization-logo">
-                Logo URL
-              </label>
+              <Label htmlFor="organization-logo">Logo URL</Label>
               <Input
                 id="organization-logo"
                 onChange={(event) => onLogoChange(event.target.value)}
@@ -108,9 +103,7 @@ export function AdminCommunityDirectoryUiCreateDialog(props: AdminCommunityDirec
               />
             </div>
             <div className="grid gap-1.5">
-              <label className="text-sm" htmlFor="owner-search">
-                Owner
-              </label>
+              <Label htmlFor="owner-search">Owner</Label>
               <Input
                 id="owner-search"
                 onChange={(event) => onOwnerSearchChange(event.target.value)}
@@ -129,21 +122,21 @@ export function AdminCommunityDirectoryUiCreateDialog(props: AdminCommunityDirec
                       const isSelected = candidate.id === selectedOwner.id
 
                       return (
-                        <button
+                        <Button
                           aria-pressed={isSelected}
                           className={cn(
-                            'hover:bg-muted/50 flex w-full flex-col gap-1 border-b px-3 py-2 text-left transition-colors last:border-b-0',
-                            isSelected ? 'bg-muted' : undefined,
+                            'h-auto w-full flex-col items-start justify-start gap-1 rounded-none border-b px-3 py-2 text-left font-normal last:border-b-0',
                           )}
                           key={candidate.id}
                           onClick={() => onOwnerSelect(candidate)}
                           type="button"
+                          variant={isSelected ? 'secondary' : 'ghost'}
                         >
                           <span className="text-sm">{candidate.name}</span>
                           {candidate.username ? (
                             <span className="text-muted-foreground text-xs">@{candidate.username}</span>
                           ) : null}
-                        </button>
+                        </Button>
                       )
                     })}
                   </div>

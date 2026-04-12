@@ -2,6 +2,7 @@ import { Loader2 } from 'lucide-react'
 import { type SubmitEvent, useEffect, useState } from 'react'
 import { Button } from '@tokengator/ui/components/button'
 import { Input } from '@tokengator/ui/components/input'
+import { Label } from '@tokengator/ui/components/label'
 
 interface AdminCommunityDiscordConnectionUiFormProps {
   initialGuildId: string
@@ -25,9 +26,7 @@ export function AdminCommunityDiscordConnectionUiForm(props: AdminCommunityDisco
   return (
     <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
       <div className="grid gap-1.5">
-        <label className="text-sm" htmlFor="organization-discord-guild-id">
-          Server ID
-        </label>
+        <Label htmlFor="organization-discord-guild-id">Server ID</Label>
         <Input
           id="organization-discord-guild-id"
           inputMode="numeric"

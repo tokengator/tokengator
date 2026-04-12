@@ -2,6 +2,7 @@ import { Loader2 } from 'lucide-react'
 import { type SubmitEvent, useEffect, useState } from 'react'
 import { Button } from '@tokengator/ui/components/button'
 import { Input } from '@tokengator/ui/components/input'
+import { Label } from '@tokengator/ui/components/label'
 
 export interface AdminCommunitySettingsUiFormValues {
   logo: string
@@ -31,9 +32,7 @@ export function AdminCommunitySettingsUiForm(props: AdminCommunitySettingsUiForm
   return (
     <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
       <div className="grid gap-1.5">
-        <label className="text-sm" htmlFor="organization-detail-name">
-          Name
-        </label>
+        <Label htmlFor="organization-detail-name">Name</Label>
         <Input
           id="organization-detail-name"
           onChange={(event) =>
@@ -47,9 +46,7 @@ export function AdminCommunitySettingsUiForm(props: AdminCommunitySettingsUiForm
         />
       </div>
       <div className="grid gap-1.5">
-        <label className="text-sm" htmlFor="organization-detail-slug">
-          Slug
-        </label>
+        <Label htmlFor="organization-detail-slug">Slug</Label>
         <Input
           id="organization-detail-slug"
           onChange={(event) =>
@@ -63,9 +60,7 @@ export function AdminCommunitySettingsUiForm(props: AdminCommunitySettingsUiForm
         />
       </div>
       <div className="grid gap-1.5">
-        <label className="text-sm" htmlFor="organization-detail-logo">
-          Logo URL
-        </label>
+        <Label htmlFor="organization-detail-logo">Logo URL</Label>
         <Input
           id="organization-detail-logo"
           onChange={(event) =>

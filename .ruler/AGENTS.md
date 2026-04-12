@@ -29,6 +29,13 @@ Default to using Bun instead of Node.js.
 - Hono and oRPC power the backend API surface
 - Shared UI components live in `packages/ui`
 
+## Shadcn UI
+
+- Add shadcn components with `bun x shadcn@latest add -c packages/ui <components>`.
+- Build forms only with shadcn components.
+- Keep the entire shadcn config in `packages/ui`.
+- Never add shadcn components anywhere other than `packages/ui`.
+
 ## TanStack Start SSR and data loading
 
 - Treat SSR-visible state as a server-data problem first, not a client-fetch problem.

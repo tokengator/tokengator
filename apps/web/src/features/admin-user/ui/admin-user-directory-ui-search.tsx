@@ -1,13 +1,14 @@
 import { Input } from '@tokengator/ui/components/input'
+import { Label } from '@tokengator/ui/components/label'
 
 export function AdminUserDirectoryUiSearch(props: { onChange: (value: string) => void; value: string }) {
   const { onChange, value } = props
 
   return (
     <div className="max-w-md">
-      <label className="sr-only" htmlFor="admin-user-directory-search">
+      <Label className="sr-only" htmlFor="admin-user-directory-search">
         Search users
-      </label>
+      </Label>
       <Input
         id="admin-user-directory-search"
         onChange={(event) => onChange(event.target.value)}

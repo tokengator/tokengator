@@ -1,7 +1,9 @@
 import { Loader2 } from 'lucide-react'
 import { type SubmitEvent, useEffect, useRef, useState } from 'react'
 import { Button } from '@tokengator/ui/components/button'
+import { Checkbox } from '@tokengator/ui/components/checkbox'
 import { Input } from '@tokengator/ui/components/input'
+import { Label } from '@tokengator/ui/components/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@tokengator/ui/components/select'
 
 export interface AdminUserSettingsUiFormValues {
@@ -66,9 +68,7 @@ export function AdminUserSettingsUiForm(props: {
   return (
     <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
       <div className="grid gap-1.5">
-        <label className="text-sm" htmlFor="user-detail-name">
-          Name
-        </label>
+        <Label htmlFor="user-detail-name">Name</Label>
         <Input
           id="user-detail-name"
           onChange={(event) =>
@@ -82,9 +82,7 @@ export function AdminUserSettingsUiForm(props: {
         />
       </div>
       <div className="grid gap-1.5">
-        <label className="text-sm" htmlFor="user-detail-email">
-          Email
-        </label>
+        <Label htmlFor="user-detail-email">Email</Label>
         <Input
           id="user-detail-email"
           onChange={(event) =>
@@ -99,9 +97,7 @@ export function AdminUserSettingsUiForm(props: {
         />
       </div>
       <div className="grid gap-1.5">
-        <label className="text-sm" htmlFor="user-detail-username">
-          Username
-        </label>
+        <Label htmlFor="user-detail-username">Username</Label>
         <Input
           id="user-detail-username"
           onChange={(event) =>
@@ -114,9 +110,7 @@ export function AdminUserSettingsUiForm(props: {
         />
       </div>
       <div className="grid gap-1.5">
-        <label className="text-sm" htmlFor="user-detail-image">
-          Avatar URL
-        </label>
+        <Label htmlFor="user-detail-image">Avatar URL</Label>
         <Input
           id="user-detail-image"
           onChange={(event) =>
@@ -129,9 +123,7 @@ export function AdminUserSettingsUiForm(props: {
         />
       </div>
       <div className="grid gap-1.5">
-        <label className="text-sm" id="user-detail-role-label">
-          Role
-        </label>
+        <Label id="user-detail-role-label">Role</Label>
         <Select
           disabled={isPending}
           onValueChange={(value) => {
@@ -164,49 +156,47 @@ export function AdminUserSettingsUiForm(props: {
           </SelectContent>
         </Select>
       </div>
-      <label className="flex items-center gap-2 text-sm">
-        <input
+      <div className="flex items-center gap-2">
+        <Checkbox
           checked={formValues.banned}
-          onChange={(event) =>
+          id="user-detail-banned"
+          onCheckedChange={(checked) =>
             setFormValues((currentValues) => ({
               ...currentValues,
-              banned: event.target.checked,
+              banned: Boolean(checked),
             }))
           }
-          type="checkbox"
         />
-        Banned
-      </label>
-      <label className="flex items-center gap-2 text-sm">
-        <input
+        <Label htmlFor="user-detail-banned">Banned</Label>
+      </div>
+      <div className="flex items-center gap-2">
+        <Checkbox
           checked={formValues.developerMode}
-          onChange={(event) =>
+          id="user-detail-developer-mode"
+          onCheckedChange={(checked) =>
             setFormValues((currentValues) => ({
               ...currentValues,
-              developerMode: event.target.checked,
+              developerMode: Boolean(checked),
             }))
           }
-          type="checkbox"
         />
-        Developer Mode
-      </label>
-      <label className="flex items-center gap-2 text-sm">
-        <input
+        <Label htmlFor="user-detail-developer-mode">Developer Mode</Label>
+      </div>
+      <div className="flex items-center gap-2">
+        <Checkbox
           checked={formValues.private}
-          onChange={(event) =>
+          id="user-detail-private"
+          onCheckedChange={(checked) =>
             setFormValues((currentValues) => ({
               ...currentValues,
-              private: event.target.checked,
+              private: Boolean(checked),
             }))
           }
-          type="checkbox"
         />
-        Private
-      </label>
+        <Label htmlFor="user-detail-private">Private</Label>
+      </div>
       <div className="grid gap-1.5">
-        <label className="text-sm" htmlFor="user-detail-ban-reason">
-          Ban Reason
-        </label>
+        <Label htmlFor="user-detail-ban-reason">Ban Reason</Label>
         <Input
           disabled={!formValues.banned}
           id="user-detail-ban-reason"
@@ -220,9 +210,7 @@ export function AdminUserSettingsUiForm(props: {
         />
       </div>
       <div className="grid gap-1.5">
-        <label className="text-sm" htmlFor="user-detail-ban-expires">
-          Ban Expires
-        </label>
+        <Label htmlFor="user-detail-ban-expires">Ban Expires</Label>
         <Input
           disabled={!formValues.banned}
           id="user-detail-ban-expires"

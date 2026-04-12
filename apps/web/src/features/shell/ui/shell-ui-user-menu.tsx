@@ -12,12 +12,20 @@ const ShellUiSignedInUserMenu = lazy(async () => ({
 interface ShellUiUserMenuProps {
   isPending: boolean
   onAdminClick: () => void
+  onDevelopmentClick: () => void
   onProfileClick: () => void
   onSignOut: () => void
   session: AppSession | null
 }
 
-export function ShellUiUserMenu({ isPending, onAdminClick, onProfileClick, onSignOut, session }: ShellUiUserMenuProps) {
+export function ShellUiUserMenu({
+  isPending,
+  onAdminClick,
+  onDevelopmentClick,
+  onProfileClick,
+  onSignOut,
+  session,
+}: ShellUiUserMenuProps) {
   if (isPending) {
     return <Skeleton className="h-8 w-24" />
   }
@@ -40,6 +48,7 @@ export function ShellUiUserMenu({ isPending, onAdminClick, onProfileClick, onSig
     >
       <ShellUiSignedInUserMenu
         onAdminClick={onAdminClick}
+        onDevelopmentClick={onDevelopmentClick}
         onProfileClick={onProfileClick}
         onSignOut={onSignOut}
         session={session}

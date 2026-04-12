@@ -22,6 +22,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as ProfileSettingsRouteImport } from './routes/profile/settings'
 import { Route as ProfileIdentitiesRouteImport } from './routes/profile/identities'
 import { Route as ProfileAssetsRouteImport } from './routes/profile/assets'
+import { Route as DevWalletsRouteImport } from './routes/dev/wallets'
 import { Route as DevUiRouteImport } from './routes/dev/ui'
 import { Route as DevShadcnRouteImport } from './routes/dev/shadcn'
 import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
@@ -118,6 +119,11 @@ const ProfileAssetsRoute = ProfileAssetsRouteImport.update({
   id: '/assets',
   path: '/assets',
   getParentRoute: () => ProfileRouteRoute,
+} as any)
+const DevWalletsRoute = DevWalletsRouteImport.update({
+  id: '/wallets',
+  path: '/wallets',
+  getParentRoute: () => DevRoute,
 } as any)
 const DevUiRoute = DevUiRouteImport.update({
   id: '/ui',
@@ -304,6 +310,7 @@ export interface FileRoutesByFullPath {
   '/admin/dashboard': typeof AdminDashboardRoute
   '/dev/shadcn': typeof DevShadcnRoute
   '/dev/ui': typeof DevUiRoute
+  '/dev/wallets': typeof DevWalletsRoute
   '/profile/assets': typeof ProfileAssetsRoute
   '/profile/identities': typeof ProfileIdentitiesRoute
   '/profile/settings': typeof ProfileSettingsRoute
@@ -346,6 +353,7 @@ export interface FileRoutesByTo {
   '/admin/dashboard': typeof AdminDashboardRoute
   '/dev/shadcn': typeof DevShadcnRoute
   '/dev/ui': typeof DevUiRoute
+  '/dev/wallets': typeof DevWalletsRoute
   '/profile/assets': typeof ProfileAssetsRoute
   '/profile/identities': typeof ProfileIdentitiesRoute
   '/profile/settings': typeof ProfileSettingsRoute
@@ -390,6 +398,7 @@ export interface FileRoutesById {
   '/admin/dashboard': typeof AdminDashboardRoute
   '/dev/shadcn': typeof DevShadcnRoute
   '/dev/ui': typeof DevUiRoute
+  '/dev/wallets': typeof DevWalletsRoute
   '/profile/assets': typeof ProfileAssetsRoute
   '/profile/identities': typeof ProfileIdentitiesRoute
   '/profile/settings': typeof ProfileSettingsRoute
@@ -438,6 +447,7 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/dev/shadcn'
     | '/dev/ui'
+    | '/dev/wallets'
     | '/profile/assets'
     | '/profile/identities'
     | '/profile/settings'
@@ -480,6 +490,7 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/dev/shadcn'
     | '/dev/ui'
+    | '/dev/wallets'
     | '/profile/assets'
     | '/profile/identities'
     | '/profile/settings'
@@ -523,6 +534,7 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/dev/shadcn'
     | '/dev/ui'
+    | '/dev/wallets'
     | '/profile/assets'
     | '/profile/identities'
     | '/profile/settings'
@@ -660,6 +672,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/profile/assets'
       preLoaderRoute: typeof ProfileAssetsRouteImport
       parentRoute: typeof ProfileRouteRoute
+    }
+    '/dev/wallets': {
+      id: '/dev/wallets'
+      path: '/wallets'
+      fullPath: '/dev/wallets'
+      preLoaderRoute: typeof DevWalletsRouteImport
+      parentRoute: typeof DevRoute
     }
     '/dev/ui': {
       id: '/dev/ui'
@@ -1023,12 +1042,14 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 interface DevRouteChildren {
   DevShadcnRoute: typeof DevShadcnRoute
   DevUiRoute: typeof DevUiRoute
+  DevWalletsRoute: typeof DevWalletsRoute
   DevIndexRoute: typeof DevIndexRoute
 }
 
 const DevRouteChildren: DevRouteChildren = {
   DevShadcnRoute: DevShadcnRoute,
   DevUiRoute: DevUiRoute,
+  DevWalletsRoute: DevWalletsRoute,
   DevIndexRoute: DevIndexRoute,
 }
 

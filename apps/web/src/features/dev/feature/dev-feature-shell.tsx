@@ -13,6 +13,11 @@ const devTabs = [
     to: '/dev/ui',
     value: 'ui',
   },
+  {
+    label: 'Wallets',
+    to: '/dev/wallets',
+    value: 'wallets',
+  },
 ] as const
 
 function getCurrentTab(pathname: string) {

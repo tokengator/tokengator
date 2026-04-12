@@ -1,0 +1,23 @@
+{
+  "name": "@tokengator/wallet-ui",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tokengator/ui": "workspace:*",
+    "@wallet-ui/react": "catalog:",
+    "react": "catalog:"
+  },
+  "devDependencies": {
+    "@tokengator/config": "workspace:*",
+    "@types/react": "catalog:",
+    "typescript": "^5"
+  }
+}

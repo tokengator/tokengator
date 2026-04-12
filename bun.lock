@@ -63,6 +63,7 @@
         "@tokengator/env": "workspace:*",
         "@tokengator/sdk": "workspace:*",
         "@tokengator/ui": "workspace:*",
+        "@tokengator/wallet-ui": "workspace:*",
         "@wallet-ui/react": "catalog:",
         "better-auth": "catalog:",
         "better-auth-solana": "catalog:",
@@ -244,6 +245,19 @@
         "@types/react-dom": "catalog:",
         "tailwindcss": "catalog:",
         "typescript": "^5.9.3",
+      },
+    },
+    "packages/wallet-ui": {
+      "name": "@tokengator/wallet-ui",
+      "dependencies": {
+        "@tokengator/ui": "workspace:*",
+        "@wallet-ui/react": "catalog:",
+        "react": "catalog:",
+      },
+      "devDependencies": {
+        "@tokengator/config": "workspace:*",
+        "@types/react": "catalog:",
+        "typescript": "^5",
       },
     },
   },
@@ -1010,6 +1024,8 @@
     "@tokengator/sdk": ["@tokengator/sdk@workspace:packages/sdk"],
 
     "@tokengator/ui": ["@tokengator/ui@workspace:packages/ui"],
+
+    "@tokengator/wallet-ui": ["@tokengator/wallet-ui@workspace:packages/wallet-ui"],
 
     "@ts-morph/common": ["@ts-morph/common@0.27.0", "", { "dependencies": { "fast-glob": "^3.3.3", "minimatch": "^10.0.1", "path-browserify": "^1.0.1" } }, "sha512-Wf29UqxWDpc+i61k3oIOzcUfQt79PIT9y/MWfAGlrkjg6lBC1hwDECLXPVJAhWjiGbfBCxZd65F/LIZF3+jeJQ=="],
 

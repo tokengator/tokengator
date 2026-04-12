@@ -24,6 +24,7 @@
     "@tokengator/env": "workspace:*",
     "@tokengator/sdk": "workspace:*",
     "@tokengator/ui": "workspace:*",
+    "@tokengator/wallet-ui": "workspace:*",
     "@wallet-ui/react": "catalog:",
     "better-auth": "catalog:",
     "better-auth-solana": "catalog:",

@@ -16,7 +16,6 @@ function normalizeOptionalString(value: string | null | undefined) {
 function normalizeUpdateData(input: AdminUserUpdateInput['data']) {
   const nextData: {
     email?: string
-    image?: string | null
     name?: string
     role?: 'admin' | 'user'
     username?: string | null
@@ -24,10 +23,6 @@ function normalizeUpdateData(input: AdminUserUpdateInput['data']) {
 
   if (input.email !== undefined) {
     nextData.email = input.email.trim().toLowerCase()
-  }
-
-  if (input.image !== undefined) {
-    nextData.image = normalizeOptionalString(input.image)
   }
 
   if (input.name !== undefined) {
@@ -77,6 +72,7 @@ export async function adminUserUpdate(input: {
   userId: string
 }) {
   const existingUser = await adminUserRecordGet(input.userId)
+  const nextImage = input.data.image === undefined ? undefined : normalizeOptionalString(input.data.image)
 
   if (!existingUser) {
     return {
@@ -94,6 +90,16 @@ export async function adminUserUpdate(input: {
       },
       headers: input.requestHeaders,
     })
+  }
+
+  if (nextImage !== undefined) {
+    // Better Auth's admin update endpoint does not persist the core image field here.
+    await db
+      .update(user)
+      .set({
+        image: nextImage,
+      })
+      .where(eq(user.id, input.userId))
   }
 
   const nextBanned = input.data.banned ?? existingUser.banned

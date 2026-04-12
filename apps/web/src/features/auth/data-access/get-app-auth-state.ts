@@ -9,6 +9,7 @@ import { getAppAuthState } from './get-app-auth-state-fn'
 
 export interface AppSessionUser {
   id: string
+  image?: string | null
   name: string
   role?: string | null
   username?: string | null

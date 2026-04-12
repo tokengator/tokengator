@@ -1,33 +1,55 @@
-import { beforeAll, describe, expect, mock, test } from 'bun:test'
+import { beforeAll, describe, expect, test } from 'bun:test'
 import { renderToStaticMarkup } from 'react-dom/server'
 
-let ProfileUiAccountCard: typeof import('../src/features/profile/ui/profile-ui-account-card').ProfileUiAccountCard
+let ProfileUiItem: typeof import('../src/features/profile/ui/profile-ui-item').ProfileUiItem
 
 beforeAll(async () => {
-  mock.module('@/features/auth/data-access/use-app-auth-state-query', () => ({
-    useAppAuthStateQuery: () => ({
-      data: {
-        profileSettings: {
-          settings: {
-            developerMode: false,
-          },
-        },
-      },
-    }),
-  }))
-
-  ;({ ProfileUiAccountCard } = await import('../src/features/profile/ui/profile-ui-account-card'))
+  ;({ ProfileUiItem } = await import('../src/features/profile/ui/profile-ui-item'))
 })
 
-describe('ProfileUiAccountCard', () => {
-  test('renders the user role fallback when the session role is missing', () => {
+describe('ProfileUiItem', () => {
+  test('renders the profile avatar shell when image is present', () => {
     const markup = renderToStaticMarkup(
-      <ProfileUiAccountCard
+      <ProfileUiItem
         user={{
           id: 'user-1',
+          image: 'https://example.com/avatar.png',
+          name: 'Alice Example',
+          role: 'user',
+          username: 'alice',
+        }}
+      />,
+    )
+
+    expect(markup).toContain('data-slot="avatar"')
+    expect(markup).toContain('data-size="lg"')
+  })
+
+  test('renders the profile avatar shell when image is missing', () => {
+    const markup = renderToStaticMarkup(
+      <ProfileUiItem
+        user={{
+          id: 'user-1',
+          image: null,
+          name: 'Alice Example',
+          role: 'user',
+          username: 'alice',
+        }}
+      />,
+    )
+
+    expect(markup).toContain('data-slot="avatar"')
+  })
+
+  test('renders the user role fallback when the session role is missing', () => {
+    const markup = renderToStaticMarkup(
+      <ProfileUiItem
+        user={{
+          id: 'user-1',
+          image: null,
           name: 'Alice',
           role: null,
-          username: 'alice',
+          username: null,
         }}
       />,
     )

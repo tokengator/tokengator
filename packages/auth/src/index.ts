@@ -361,6 +361,7 @@ export async function reconcileLocalUserIdentities(args: { requestHeaders?: Head
     }),
     createDesiredSolanaIdentities(userId),
   ])
+  const primaryAvatarUrl = discordIdentities[0]?.avatarUrl ?? null
   const desiredIdentities = [...discordIdentities, ...solanaIdentities].sort((left, right) => {
     const providerComparison = left.provider.localeCompare(right.provider)
 
@@ -447,6 +448,15 @@ export async function reconcileLocalUserIdentities(args: { requestHeaders?: Head
         })
     }
   })
+
+  if (primaryAvatarUrl) {
+    await db
+      .update(schema.user)
+      .set({
+        image: primaryAvatarUrl,
+      })
+      .where(eq(schema.user.id, userId))
+  }
 }
 
 export async function reconcileLocalUserState(args: { requestHeaders?: Headers; userId: string }) {

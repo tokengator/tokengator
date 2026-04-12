@@ -1,7 +1,10 @@
+import type { authClientServer } from '@/features/auth/data-access/auth-client-server'
 import type { AppAuthState, AppSession } from '@/features/auth/data-access/get-app-auth-state'
 import { serverOrpcClient } from '@/lib/orpc-server'
 
-function toAppSession(session: AppSession | null | undefined): AppSession | null {
+type AuthSession = Awaited<ReturnType<typeof authClientServer.getSession>>
+
+function toAppSession(session: AuthSession): AppSession | null {
   if (!session) {
     return null
   }
@@ -9,6 +12,7 @@ function toAppSession(session: AppSession | null | undefined): AppSession | null
   return {
     user: {
       id: session.user.id,
+      image: session.user.image,
       name: session.user.name,
       role: session.user.role,
       username: session.user.username,
@@ -23,7 +27,7 @@ function getPersistedDiscordUsername(args: { identities: NonNullable<AppAuthStat
   )
 }
 
-export async function loadAppAuthState(args: { hasDiscordAccount?: boolean; session: AppSession | null | undefined }) {
+export async function loadAppAuthState(args: { hasDiscordAccount?: boolean; session: AuthSession }) {
   const session = toAppSession(args.session)
 
   if (!session) {

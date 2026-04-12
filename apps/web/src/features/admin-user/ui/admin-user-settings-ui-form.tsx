@@ -110,7 +110,7 @@ export function AdminUserSettingsUiForm(props: {
       </div>
       <div className="grid gap-1.5">
         <label className="text-sm" htmlFor="user-detail-image">
-          Image URL
+          Avatar URL
         </label>
         <Input
           id="user-detail-image"

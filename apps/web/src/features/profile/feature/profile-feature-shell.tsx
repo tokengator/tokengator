@@ -3,7 +3,8 @@ import { Link, useLocation } from '@tanstack/react-router'
 import { Tabs, TabsList, TabsTrigger } from '@tokengator/ui/components/tabs'
 
 import { useAppSession } from '@/features/auth/data-access/use-app-session'
-import { ProfileUiAccountCard } from '../ui/profile-ui-account-card'
+import { ProfileUiItem } from '@/features/profile/ui/profile-ui-item.tsx'
+import { ShellUiDebugButton } from '@/features/shell/ui/shell-ui-debug-button.tsx'
 
 const profileTabs = [
   {
@@ -41,7 +42,10 @@ export function ProfileFeatureShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-full overflow-y-auto px-4 py-6">
       <div className="mx-auto grid w-full max-w-xl gap-6">
-        <ProfileUiAccountCard user={session.user} />
+        <ProfileUiItem
+          action={<ShellUiDebugButton data={session.user} label="Profile debug data" />}
+          user={session.user}
+        />
         <Tabs value={currentTab}>
           <TabsList className="w-full justify-start">
             {profileTabs.map((tab) => (

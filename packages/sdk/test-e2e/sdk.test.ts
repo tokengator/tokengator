@@ -871,51 +871,60 @@ describe('createOrpcClient e2e', () => {
     )
   })
 
-  test('profile settings expose developer mode with user-scoped updates', async () => {
+  test('profile settings expose developer mode and privacy with user-scoped updates', async () => {
     await expect(bobSession.client.profile.getSettings()).resolves.toEqual({
       settings: {
         developerMode: false,
+        private: false,
       },
     })
     await expect(carolSession.client.profile.getSettings()).resolves.toEqual({
       settings: {
         developerMode: false,
+        private: false,
       },
     })
 
     await expect(
       bobSession.client.profile.updateSettings({
         developerMode: true,
+        private: true,
       }),
     ).resolves.toEqual({
       settings: {
         developerMode: true,
+        private: true,
       },
     })
 
     await expect(bobSession.client.profile.getSettings()).resolves.toEqual({
       settings: {
         developerMode: true,
+        private: true,
       },
     })
     await expect(carolSession.client.profile.getSettings()).resolves.toEqual({
       settings: {
         developerMode: false,
+        private: false,
       },
     })
 
     await expect(
       bobSession.client.profile.updateSettings({
         developerMode: false,
+        private: false,
       }),
     ).resolves.toEqual({
       settings: {
         developerMode: false,
+        private: false,
       },
     })
     await expect(bobSession.client.profile.getSettings()).resolves.toEqual({
       settings: {
         developerMode: false,
+        private: false,
       },
     })
   })

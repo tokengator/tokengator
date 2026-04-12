@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@toke
 
 interface ProfileUiCommunitiesCardProps {
   communities: OrganizationMembershipEntity[]
+  description?: string
   isPending?: boolean
 }
 
@@ -13,12 +14,16 @@ function formatCommunityRole(role: string) {
   return role.replaceAll('-', ' ')
 }
 
-export function ProfileUiCommunitiesCard({ communities, isPending = false }: ProfileUiCommunitiesCardProps) {
+export function ProfileUiCommunitiesCard({
+  communities,
+  description = 'Communities you belong to in TokenGator.',
+  isPending = false,
+}: ProfileUiCommunitiesCardProps) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Communities</CardTitle>
-        <CardDescription>Communities you belong to in TokenGator.</CardDescription>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3 text-sm">
         {isPending ? <p className="text-muted-foreground">Loading communities...</p> : null}

@@ -72,7 +72,9 @@ export async function adminUserUpdate(input: {
   userId: string
 }) {
   const existingUser = await adminUserRecordGet(input.userId)
+  const nextDeveloperMode = input.data.developerMode
   const nextImage = input.data.image === undefined ? undefined : normalizeOptionalString(input.data.image)
+  const nextPrivate = input.data.private
 
   if (!existingUser) {
     return {
@@ -92,12 +94,14 @@ export async function adminUserUpdate(input: {
     })
   }
 
-  if (nextImage !== undefined) {
-    // Better Auth's admin update endpoint does not persist the core image field here.
+  if (nextDeveloperMode !== undefined || nextImage !== undefined || nextPrivate !== undefined) {
+    // Better Auth's admin update endpoint does not persist image and does not manage app-specific flags.
     await db
       .update(user)
       .set({
+        developerMode: nextDeveloperMode,
         image: nextImage,
+        private: nextPrivate,
       })
       .where(eq(user.id, input.userId))
   }

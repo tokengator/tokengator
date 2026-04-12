@@ -1,3 +1,5 @@
+import type { OrganizationMembershipEntity } from '../../organization'
+
 import { profileSolanaWalletAddressEllipsify } from '../util/profile-solana-wallet-address-ellipsify'
 import { profileSolanaWalletNameNormalize } from '../util/profile-solana-wallet-name-normalize'
 
@@ -25,9 +27,10 @@ export function toProfileIdentityEntity(identity: {
   }
 }
 
-export function toProfileSettingsEntity(settings: { developerMode: boolean }) {
+export function toProfileSettingsEntity(settings: { developerMode: boolean; private: boolean }) {
   return {
     developerMode: settings.developerMode,
+    private: settings.private,
   }
 }
 
@@ -48,6 +51,22 @@ export function toProfileSolanaWalletEntity(wallet: {
   }
 }
 
+export function toProfileUserEntity(user: {
+  id: string
+  image: string | null
+  name: string
+  private: boolean
+  username: string
+}) {
+  return {
+    id: user.id,
+    image: user.image,
+    name: user.name,
+    private: user.private,
+    username: user.username,
+  }
+}
+
 export type ProfileIdentityEntity = ReturnType<typeof toProfileIdentityEntity>
 export type ProfileFinalizeDiscordAuthResult = {
   hasDiscordAccount: boolean
@@ -59,6 +78,13 @@ export type ProfileGetSettingsResult = {
 }
 export type ProfileListIdentitiesResult = {
   identities: ProfileIdentityEntity[]
+}
+export type ProfileListCommunitiesByUsernameResult = {
+  communities: OrganizationMembershipEntity[]
+}
+export type ProfileListIdentitiesByUsernameResult = {
+  identities: Array<Omit<ProfileIdentityEntity, 'providerId'> & { providerId: string | null }>
+  solanaWallets: ProfileSolanaWalletEntity[]
 }
 export type ProfileListSolanaWalletsResult = {
   solanaWallets: ProfileSolanaWalletEntity[]
@@ -75,6 +101,7 @@ export type ProfileSyncDiscordUsernameResult = {
   updated: boolean
   username: string | null
 }
+export type ProfileUserEntity = ReturnType<typeof toProfileUserEntity>
 export type ProfileUpdateSettingsResult = {
   settings: ProfileSettingsEntity
 }

@@ -10,10 +10,12 @@ export async function profileSettingsUpdate(input: { settings: ProfileSettingsUp
     .update(user)
     .set({
       developerMode: input.settings.developerMode,
+      private: input.settings.private,
     })
     .where(eq(user.id, input.userId))
     .returning({
       developerMode: user.developerMode,
+      private: user.private,
     })
 
   if (!updatedUser) {
@@ -23,6 +25,7 @@ export async function profileSettingsUpdate(input: { settings: ProfileSettingsUp
   return {
     settings: toProfileSettingsEntity({
       developerMode: updatedUser.developerMode,
+      private: updatedUser.private,
     }),
   }
 }

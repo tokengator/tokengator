@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, mock, test } from 'bun:test'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 let appAuthStateDeveloperMode = false
-let profileSettingsData: { settings: { developerMode: boolean } } | undefined
+let profileSettingsData: { settings: { developerMode: boolean; private: boolean } } | undefined
 let profileSettingsPending = false
 let ProfileFeatureSettings: typeof import('../src/features/profile/feature/profile-feature-settings').ProfileFeatureSettings
 
@@ -13,6 +13,7 @@ beforeAll(async () => {
         profileSettings: {
           settings: {
             developerMode: appAuthStateDeveloperMode,
+            private: false,
           },
         },
       },

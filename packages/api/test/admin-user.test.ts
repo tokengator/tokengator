@@ -278,12 +278,14 @@ async function insertUser(input: {
   banExpires?: Date | null
   banReason?: string | null
   banned?: boolean
+  developerMode?: boolean
   displayUsername?: string | null
   email: string
   emailVerified?: boolean
   id: string
   image?: string | null
   name: string
+  private?: boolean
   role: 'admin' | 'user'
   username?: string | null
 }) {
@@ -294,12 +296,14 @@ async function insertUser(input: {
     banned: input.banned ?? false,
     banReason: input.banReason ?? null,
     createdAt,
+    developerMode: input.developerMode ?? false,
     displayUsername: input.displayUsername ?? null,
     email: input.email,
     emailVerified: input.emailVerified ?? false,
     id: input.id,
     image: input.image ?? null,
     name: input.name,
+    private: input.private ?? false,
     role: input.role,
     updatedAt: createdAt,
     username: input.username ?? null,
@@ -596,10 +600,12 @@ describe('admin user router', () => {
     await insertUser({
       banned: true,
       banReason: 'Spam',
+      developerMode: true,
       email: 'target@example.com',
       id: 'target-user-id',
       image: 'https://example.com/avatar.png',
       name: 'Target User',
+      private: true,
       role: 'user',
       username: 'target',
     })
@@ -667,10 +673,12 @@ describe('admin user router', () => {
       banned: true,
       banReason: 'Spam',
       communityCount: 1,
+      developerMode: true,
       email: 'target@example.com',
       identityCount: 1,
       image: 'https://example.com/avatar.png',
       name: 'Target User',
+      private: true,
       role: 'user',
       username: 'target',
       walletCount: 2,
@@ -932,9 +940,11 @@ describe('admin user router', () => {
 
   test('updates core fields, role, and ban state for a target user', async () => {
     await insertUser({
+      developerMode: false,
       email: 'target@example.com',
       id: 'target-user-id',
       name: 'Target User',
+      private: false,
       role: 'user',
       username: 'target',
     })
@@ -957,9 +967,11 @@ describe('admin user router', () => {
         banExpires,
         banned: true,
         banReason: 'Violation',
+        developerMode: true,
         email: 'updated@example.com',
         image: 'https://example.com/updated.png',
         name: 'Updated User',
+        private: true,
         role: 'admin',
         username: 'updated',
       },
@@ -969,9 +981,11 @@ describe('admin user router', () => {
     expect(result).toMatchObject({
       banned: true,
       banReason: 'Violation',
+      developerMode: true,
       email: 'updated@example.com',
       image: 'https://example.com/updated.png',
       name: 'Updated User',
+      private: true,
       role: 'admin',
       username: 'updated',
     })

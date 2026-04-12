@@ -22,7 +22,14 @@ export function ShellUiDebugButton({ className, data, label = 'Debug data' }: Sh
     <Dialog>
       <DialogTrigger
         render={
-          <Button aria-label={label} className={className} size="icon-sm" title={label} type="button" variant="ghost" />
+          <Button
+            aria-label={label}
+            className={className}
+            size="icon-sm"
+            title={label}
+            type="button"
+            variant="outline"
+          />
         }
       >
         <Bug />

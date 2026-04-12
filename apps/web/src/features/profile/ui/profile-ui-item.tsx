@@ -1,15 +1,21 @@
-import type { AppSessionUser } from '@/features/auth/data-access/get-app-auth-state'
-
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@tokengator/ui/components/item'
 
 import type { ReactNode } from 'react'
 import { ProfileUiAvatar } from './profile-ui-avatar'
 
-function getProfileMetadata(user: AppSessionUser) {
+type ProfileUiItemUser = {
+  id?: string
+  image?: string | null
+  name: string
+  role?: string | null
+  username?: string | null
+}
+
+function getProfileMetadata(user: ProfileUiItemUser) {
   return user.username ? `@${user.username}` : (user.role ?? 'user')
 }
 
-export function ProfileUiItem({ action, user }: { action?: ReactNode; user: AppSessionUser }) {
+export function ProfileUiItem({ action, user }: { action?: ReactNode; user: ProfileUiItemUser }) {
   return (
     <Item variant="outline">
       <ItemMedia>

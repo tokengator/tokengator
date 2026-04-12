@@ -7,6 +7,7 @@ import { AdminUserCommunitiesUiList } from '../src/features/admin-user/ui/admin-
 import { AdminUserDirectoryUiList } from '../src/features/admin-user/ui/admin-user-directory-ui-list'
 import { AdminUserDirectoryUiSearch } from '../src/features/admin-user/ui/admin-user-directory-ui-search'
 import { AdminUserIdentitiesUiContent } from '../src/features/admin-user/ui/admin-user-identities-ui-content'
+import { AdminUserSettingsUiForm } from '../src/features/admin-user/ui/admin-user-settings-ui-form'
 import { Route as AdminUserIndexRoute } from '../src/routes/admin/users/$userId/index'
 
 function renderMarkup(element: ReactElement) {
@@ -122,5 +123,29 @@ describe('admin user UI', () => {
     const markup = renderMarkup(<AdminUserAssetsUiTable assets={[]} />)
 
     expect(markup).toContain('No assets found')
+  })
+
+  test('renders developer mode and private toggles in admin user settings', () => {
+    const markup = renderMarkup(
+      <AdminUserSettingsUiForm
+        initialValues={{
+          banExpires: '',
+          banned: false,
+          banReason: '',
+          developerMode: true,
+          email: 'alice@example.com',
+          image: '',
+          name: 'Alice',
+          private: true,
+          role: 'user',
+          username: 'alice',
+        }}
+        isPending={false}
+        onSubmit={async () => true}
+      />,
+    )
+
+    expect(markup).toContain('Developer Mode')
+    expect(markup).toContain('Private')
   })
 })

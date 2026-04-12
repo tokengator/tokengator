@@ -1,7 +1,6 @@
 import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
 
 import { getAppAuthStateQueryOptions } from '@/features/auth/data-access/get-app-auth-state'
-import { ProfileFeatureShell } from '@/features/profile/feature/profile-feature-shell'
 
 export const Route = createFileRoute('/profile')({
   beforeLoad: async ({ context }) => {
@@ -19,9 +18,5 @@ export const Route = createFileRoute('/profile')({
 })
 
 function RouteComponent() {
-  return (
-    <ProfileFeatureShell>
-      <Outlet />
-    </ProfileFeatureShell>
-  )
+  return <Outlet />
 }

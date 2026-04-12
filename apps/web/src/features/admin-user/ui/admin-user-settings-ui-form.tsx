@@ -8,9 +8,11 @@ export interface AdminUserSettingsUiFormValues {
   banExpires: string
   banReason: string
   banned: boolean
+  developerMode: boolean
   email: string
   image: string
   name: string
+  private: boolean
   role: 'admin' | 'user'
   username: string
 }
@@ -36,9 +38,11 @@ export function AdminUserSettingsUiForm(props: {
     initialValues.banExpires,
     initialValues.banReason,
     initialValues.banned,
+    initialValues.developerMode,
     initialValues.email,
     initialValues.image,
     initialValues.name,
+    initialValues.private,
     initialValues.role,
     initialValues.username,
   ])
@@ -172,6 +176,32 @@ export function AdminUserSettingsUiForm(props: {
           type="checkbox"
         />
         Banned
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          checked={formValues.developerMode}
+          onChange={(event) =>
+            setFormValues((currentValues) => ({
+              ...currentValues,
+              developerMode: event.target.checked,
+            }))
+          }
+          type="checkbox"
+        />
+        Developer Mode
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          checked={formValues.private}
+          onChange={(event) =>
+            setFormValues((currentValues) => ({
+              ...currentValues,
+              private: event.target.checked,
+            }))
+          }
+          type="checkbox"
+        />
+        Private
       </label>
       <div className="grid gap-1.5">
         <label className="text-sm" htmlFor="user-detail-ban-reason">

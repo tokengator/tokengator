@@ -8,6 +8,7 @@ export async function profileSettingsGet(userId: string) {
   const [userRecord] = await db
     .select({
       developerMode: user.developerMode,
+      private: user.private,
     })
     .from(user)
     .where(eq(user.id, userId))
@@ -16,6 +17,7 @@ export async function profileSettingsGet(userId: string) {
   return {
     settings: toProfileSettingsEntity({
       developerMode: userRecord?.developerMode ?? false,
+      private: userRecord?.private ?? false,
     }),
   }
 }

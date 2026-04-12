@@ -9,6 +9,7 @@ beforeAll(async () => {
         getSettings: async () => ({
           settings: {
             developerMode: false,
+            private: false,
           },
         }),
         listIdentities: async () => ({

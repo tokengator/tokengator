@@ -2,9 +2,11 @@ import type { ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 import { Loader2 } from 'lucide-react'
 import type { AdminUserDetailEntity } from '@tokengator/sdk'
+import { Button } from '@tokengator/ui/components/button'
 import { Card, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import { Tabs, TabsList, TabsTrigger } from '@tokengator/ui/components/tabs'
 
+import { ProfileUiItem } from '@/features/profile/ui/profile-ui-item.tsx'
 import { useAdminUserGetQuery } from '../data-access/use-admin-user-get-query'
 
 const userTabs = [
@@ -83,18 +85,25 @@ export function AdminUserFeatureShell({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div className="flex flex-col gap-1">
+        <div className="flex w-full flex-col gap-1">
           <Link className="text-muted-foreground hover:text-foreground text-sm" to="/admin/users">
             Back to users
           </Link>
           {data ? (
-            <>
-              <h2 className="text-lg font-medium">{data.name}</h2>
-              <p className="text-muted-foreground text-sm">
-                {data.username ? `@${data.username} · ` : ''}
-                {data.email}
-              </p>
-            </>
+            <ProfileUiItem
+              action={
+                data.username ? (
+                  <Button
+                    nativeButton={false}
+                    render={<Link params={{ username: data.username }} to="/profile/$username" />}
+                    variant="outline"
+                  >
+                    View Profile
+                  </Button>
+                ) : undefined
+              }
+              user={data}
+            />
           ) : (
             <div className="text-muted-foreground flex items-center gap-2 text-sm">
               <Loader2 className="size-4 animate-spin" />

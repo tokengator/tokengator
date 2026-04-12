@@ -1,8 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 
 import { getAppAuthStateQueryOptions } from '@/features/auth/data-access/get-app-auth-state'
-import { getOrganizationListMineQueryOptions } from '@/features/organization/data-access/get-organization-list-mine'
-import { ProfileFeatureAssets } from '@/features/profile/feature/profile-feature-assets'
 
 export const Route = createFileRoute('/profile/assets')({
   beforeLoad: async ({ context }) => {
@@ -14,17 +12,22 @@ export const Route = createFileRoute('/profile/assets')({
       })
     }
 
-    const organizationListMine = await context.queryClient.ensureQueryData(
-      getOrganizationListMineQueryOptions(session.user.id),
-    )
+    if (!session.user.username) {
+      throw redirect({
+        to: '/onboard',
+      })
+    }
 
-    return { organizationListMine }
+    throw redirect({
+      params: {
+        username: session.user.username,
+      },
+      to: '/profile/$username/assets',
+    })
   },
   component: RouteComponent,
 })
 
 function RouteComponent() {
-  const { organizationListMine } = Route.useRouteContext()
-
-  return <ProfileFeatureAssets initialOrganizationListMine={organizationListMine} />
+  return null
 }

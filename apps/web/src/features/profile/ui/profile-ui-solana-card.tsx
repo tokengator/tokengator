@@ -26,6 +26,7 @@ function ProfileUiSolanaWalletRow({
   onDisconnect,
   onSetPrimaryWallet,
   onUpdateWallet,
+  readOnly = false,
   setPrimaryPendingWalletCounts,
   updatePendingWalletCounts,
   wallet,
@@ -37,6 +38,7 @@ function ProfileUiSolanaWalletRow({
   onDisconnect?: () => void | Promise<void>
   onSetPrimaryWallet: (id: string) => Promise<boolean>
   onUpdateWallet: (input: { id: string; name: string }) => Promise<{ didSucceed: boolean; name: string | null }>
+  readOnly?: boolean
   setPrimaryPendingWalletCounts: Record<string, number>
   updatePendingWalletCounts: Record<string, number>
   wallet: ProfileSolanaWallet
@@ -84,7 +86,7 @@ function ProfileUiSolanaWalletRow({
         </div>
         <div className="flex items-center gap-3">
           {wallet.isPrimary ? <p className="text-muted-foreground text-xs">Primary</p> : null}
-          {!wallet.isPrimary ? (
+          {readOnly || wallet.isPrimary ? null : (
             <>
               <Button disabled={isBusy} onClick={() => void onDeleteWallet(wallet.id)} size="sm" variant="destructive">
                 {isDeleting ? 'Deleting...' : 'Delete'}
@@ -93,28 +95,36 @@ function ProfileUiSolanaWalletRow({
                 {isSettingPrimary ? 'Updating...' : 'Make Primary'}
               </Button>
             </>
-          ) : null}
-          {isConnected ? <p className="text-muted-foreground text-xs">Connected</p> : null}
-          {isConnected && onDisconnect ? (
-            <Button disabled={isBusy} onClick={() => void onDisconnect()} size="sm" variant="ghost">
-              Disconnect
-            </Button>
+          )}
+          {readOnly ? null : isConnected ? (
+            <>
+              <p className="text-muted-foreground text-xs">Connected</p>
+              {onDisconnect ? (
+                <Button disabled={isBusy} onClick={() => void onDisconnect()} size="sm" variant="ghost">
+                  Disconnect
+                </Button>
+              ) : null}
+            </>
           ) : null}
         </div>
       </div>
       {connectedWalletName ? <p className="text-muted-foreground text-xs">Wallet app: {connectedWalletName}</p> : null}
-      <form className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]" onSubmit={handleSubmit}>
-        <Input
-          disabled={isBusy}
-          onChange={(event) => setName(event.target.value)}
-          placeholder={fallbackName}
-          value={name}
-        />
-        <Button disabled={!isDirty || isBusy} size="sm" type="submit" variant="outline">
-          {isUpdating ? 'Saving...' : 'Save'}
-        </Button>
-      </form>
-      <p className="text-muted-foreground text-xs">Leave blank to use {fallbackName}.</p>
+      {readOnly ? null : (
+        <>
+          <form className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]" onSubmit={handleSubmit}>
+            <Input
+              disabled={isBusy}
+              onChange={(event) => setName(event.target.value)}
+              placeholder={fallbackName}
+              value={name}
+            />
+            <Button disabled={!isDirty || isBusy} size="sm" type="submit" variant="outline">
+              {isUpdating ? 'Saving...' : 'Save'}
+            </Button>
+          </form>
+          <p className="text-muted-foreground text-xs">Leave blank to use {fallbackName}.</p>
+        </>
+      )}
     </div>
   )
 }
@@ -129,6 +139,7 @@ export function ProfileUiSolanaCard({
   onDisconnectWallet,
   onSetPrimaryWallet,
   onUpdateWallet,
+  readOnly = false,
   setPrimaryPendingWalletCounts,
   solanaWallets,
   updatePendingWalletCounts,
@@ -145,6 +156,7 @@ export function ProfileUiSolanaCard({
   onDisconnectWallet?: () => void | Promise<void>
   onSetPrimaryWallet: (id: string) => Promise<boolean>
   onUpdateWallet: (input: { id: string; name: string }) => Promise<{ didSucceed: boolean; name: string | null }>
+  readOnly?: boolean
   setPrimaryPendingWalletCounts: Record<string, number>
   solanaWallets: ProfileSolanaWallet[]
   updatePendingWalletCounts: Record<string, number>
@@ -157,10 +169,14 @@ export function ProfileUiSolanaCard({
     <Card>
       <CardHeader>
         <CardTitle>Solana Wallets</CardTitle>
-        <CardDescription>Link one or more Solana wallets on the configured {clusterName} cluster.</CardDescription>
+        <CardDescription>
+          {readOnly
+            ? `Linked Solana wallets on the configured ${clusterName} cluster.`
+            : `Link one or more Solana wallets on the configured ${clusterName} cluster.`}
+        </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3 text-sm">
-        {connectedWallet && !connectedLinkedWallet ? (
+        {readOnly || !connectedWallet || connectedLinkedWallet ? null : (
           <div className="grid gap-2 rounded-lg border p-3">
             <div className="flex items-center justify-between gap-3">
               <p className="font-medium">{connectedWallet.name}</p>
@@ -180,7 +196,7 @@ export function ProfileUiSolanaCard({
               This connected wallet is not linked yet, so it cannot be renamed.
             </p>
           </div>
-        ) : null}
+        )}
         {isPending ? <p className="text-muted-foreground">Loading linked wallets...</p> : null}
         {!isPending && solanaWallets.length === 0 ? (
           <p className="text-muted-foreground">No linked Solana wallets yet.</p>
@@ -198,13 +214,14 @@ export function ProfileUiSolanaCard({
                 onDisconnect={connectedWallet?.address === linkedWallet.address ? onDisconnectWallet : undefined}
                 onSetPrimaryWallet={onSetPrimaryWallet}
                 onUpdateWallet={onUpdateWallet}
+                readOnly={readOnly}
                 setPrimaryPendingWalletCounts={setPrimaryPendingWalletCounts}
                 updatePendingWalletCounts={updatePendingWalletCounts}
                 wallet={linkedWallet}
               />
             ))
           : null}
-        {linkActions}
+        {readOnly ? null : linkActions}
       </CardContent>
     </Card>
   )

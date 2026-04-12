@@ -10,11 +10,12 @@ type ProfileIdentity = {
   isPrimary: boolean
   linkedAt: number
   provider: string
-  providerId: string
+  providerId: string | null
   username: string | null
 }
 
 interface ProfileUiIdentitiesCardProps {
+  description?: string
   identities: ProfileIdentity[]
   isPending?: boolean
 }
@@ -39,15 +40,25 @@ function formatProviderLabel(provider: string) {
 }
 
 function getIdentityLabel(identity: ProfileIdentity) {
-  return identity.displayName ?? identity.username ?? identity.email ?? identity.providerId
+  return (
+    identity.displayName ??
+    identity.username ??
+    identity.email ??
+    identity.providerId ??
+    formatProviderLabel(identity.provider)
+  )
 }
 
-export function ProfileUiIdentitiesCard({ identities, isPending = false }: ProfileUiIdentitiesCardProps) {
+export function ProfileUiIdentitiesCard({
+  description = 'Linked identities for your TokenGator account.',
+  identities,
+  isPending = false,
+}: ProfileUiIdentitiesCardProps) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Identities</CardTitle>
-        <CardDescription>Linked identities for your TokenGator account.</CardDescription>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3 text-sm">
         {isPending ? <p className="text-muted-foreground">Loading identities...</p> : null}
@@ -71,10 +82,12 @@ export function ProfileUiIdentitiesCard({ identities, isPending = false }: Profi
                 {identity.username && identity.username !== getIdentityLabel(identity) ? (
                   <p className="text-muted-foreground text-xs">@{identity.username}</p>
                 ) : null}
-                <div className="flex items-center gap-1.5">
-                  <p className="font-mono text-xs">{identity.providerId}</p>
-                  <UiTextCopyIcon text={identity.providerId} title="Copy identity ID" toast="Identity ID copied." />
-                </div>
+                {identity.providerId ? (
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-mono text-xs">{identity.providerId}</p>
+                    <UiTextCopyIcon text={identity.providerId} title="Copy identity ID" toast="Identity ID copied." />
+                  </div>
+                ) : null}
               </UiListCard>
             ))
           : null}

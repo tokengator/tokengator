@@ -8,13 +8,18 @@ export const user = sqliteTable('user', {
   createdAt: integer('created_at', { mode: 'timestamp_ms' })
     .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
     .notNull(),
-  developerMode: integer('developer_mode', { mode: 'boolean' }).default(false).notNull(),
+  developerMode: integer('developer_mode', { mode: 'boolean' })
+    .default(sql`0`)
+    .notNull(),
   displayUsername: text('display_username'),
   email: text('email').notNull().unique(),
   emailVerified: integer('email_verified', { mode: 'boolean' }).default(false).notNull(),
   id: text('id').primaryKey(),
   image: text('image'),
   name: text('name').notNull(),
+  private: integer('private', { mode: 'boolean' })
+    .default(sql`0`)
+    .notNull(),
   role: text('role', { enum: ['admin', 'user'] })
     .default('user')
     .notNull(),

@@ -27,6 +27,7 @@ export function useProfileUpdateSettings(userId: string) {
   async function updateSettings(input: ProfileSettingsUpdateInput) {
     setPendingSettings({
       developerMode: input.developerMode,
+      private: input.private,
     })
 
     try {

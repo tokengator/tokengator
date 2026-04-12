@@ -62,6 +62,7 @@ async function insertUser(input: {
   email: string
   id: string
   name: string
+  private?: boolean
   username: string
 }) {
   await database.insert(authSchema.user).values({
@@ -70,6 +71,7 @@ async function insertUser(input: {
     emailVerified: true,
     id: input.id,
     name: input.name,
+    private: input.private ?? false,
     role: 'user',
     username: input.username,
   })
@@ -136,12 +138,14 @@ describe('profileSettingsUpdate', () => {
     const result = await profileSettingsUpdate({
       settings: {
         developerMode: true,
+        private: true,
       },
       userId: 'user-1',
     })
     const [updatedUser] = await database
       .select({
         developerMode: authSchema.user.developerMode,
+        private: authSchema.user.private,
       })
       .from(authSchema.user)
       .where(eq(authSchema.user.id, 'user-1'))
@@ -149,10 +153,12 @@ describe('profileSettingsUpdate', () => {
     expect(result).toEqual({
       settings: {
         developerMode: true,
+        private: true,
       },
     })
     expect(updatedUser).toEqual({
       developerMode: true,
+      private: true,
     })
   })
 
@@ -161,6 +167,7 @@ describe('profileSettingsUpdate', () => {
       profileSettingsUpdate({
         settings: {
           developerMode: true,
+          private: true,
         },
         userId: 'missing-user',
       }),

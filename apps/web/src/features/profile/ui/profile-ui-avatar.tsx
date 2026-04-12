@@ -1,7 +1,12 @@
 import type { ComponentProps } from 'react'
-import type { AppSessionUser } from '@/features/auth/data-access/get-app-auth-state'
 
 import { Avatar, AvatarFallback, AvatarImage } from '@tokengator/ui/components/avatar'
+
+type ProfileUiAvatarUser = {
+  id?: string
+  image?: string | null
+  name: string
+}
 
 function getAvatarFallback(name: string) {
   const initials = name
@@ -20,7 +25,7 @@ export function ProfileUiAvatar({
   user,
 }: {
   size?: ComponentProps<typeof Avatar>['size']
-  user: AppSessionUser
+  user: ProfileUiAvatarUser
 }) {
   return (
     <Avatar size={size}>

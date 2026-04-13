@@ -40,13 +40,13 @@ export function CommunityUiItem({
       <ItemContent className="min-w-0">
         {meta ? (
           <ItemHeader className="w-full items-start">
-            <ItemTitle className="min-w-0">{title ?? community.name}</ItemTitle>
+            <ItemTitle className="min-w-0 leading-none">{title ?? community.name}</ItemTitle>
             <div className="text-muted-foreground shrink-0 text-xs">{meta}</div>
           </ItemHeader>
         ) : (
-          <ItemTitle className="min-w-0">{title ?? community.name}</ItemTitle>
+          <ItemTitle className="min-w-0 leading-none">{title ?? community.name}</ItemTitle>
         )}
-        <ItemDescription>@{community.slug}</ItemDescription>
+        <ItemDescription className="leading-none">@{community.slug}</ItemDescription>
         {footer ? <ItemFooter className="w-full justify-start">{footer}</ItemFooter> : null}
       </ItemContent>
       {action ? <ItemActions>{action}</ItemActions> : null}

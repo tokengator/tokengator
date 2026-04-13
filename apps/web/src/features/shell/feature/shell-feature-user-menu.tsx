@@ -17,6 +17,7 @@ export function ShellFeatureUserMenu() {
     <ShellUiUserMenu
       isPending={isPending}
       onAdminClick={() => void navigate({ to: '/admin' })}
+      onCommunitiesClick={() => void navigate({ to: '/communities' })}
       onDevelopmentClick={() => void navigate({ to: '/dev' })}
       onProfileClick={() => void navigate({ to: '/profile' })}
       onSignOut={() => {

@@ -13,6 +13,7 @@ import type { AppSession } from '@/features/auth/data-access/get-app-auth-state'
 
 interface ShellUiSignedInUserMenuProps {
   onAdminClick: () => void
+  onCommunitiesClick: () => void
   onDevelopmentClick: () => void
   onProfileClick: () => void
   onSignOut: () => void
@@ -21,6 +22,7 @@ interface ShellUiSignedInUserMenuProps {
 
 export function ShellUiSignedInUserMenu({
   onAdminClick,
+  onCommunitiesClick,
   onDevelopmentClick,
   onProfileClick,
   onSignOut,
@@ -39,6 +41,7 @@ export function ShellUiSignedInUserMenu({
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           {session.user.role === 'admin' ? <DropdownMenuItem onClick={onAdminClick}>Admin</DropdownMenuItem> : null}
+          <DropdownMenuItem onClick={onCommunitiesClick}>Communities</DropdownMenuItem>
           {session.user.role === 'admin' ? (
             <DropdownMenuItem onClick={onDevelopmentClick}>Development</DropdownMenuItem>
           ) : null}

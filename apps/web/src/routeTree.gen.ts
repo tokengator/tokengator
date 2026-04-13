@@ -15,9 +15,11 @@ import { Route as DevRouteImport } from './routes/dev'
 import { Route as AuthCallbackRouteImport } from './routes/auth-callback'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ProfileRouteRouteImport } from './routes/profile/route'
+import { Route as CommunitiesRouteRouteImport } from './routes/communities/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProfileIndexRouteImport } from './routes/profile/index'
 import { Route as DevIndexRouteImport } from './routes/dev/index'
+import { Route as CommunitiesIndexRouteImport } from './routes/communities/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as ProfileSettingsRouteImport } from './routes/profile/settings'
 import { Route as ProfileIdentitiesRouteImport } from './routes/profile/identities'
@@ -27,13 +29,17 @@ import { Route as DevUiRouteImport } from './routes/dev/ui'
 import { Route as DevShadcnRouteImport } from './routes/dev/shadcn'
 import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
 import { Route as ProfileUsernameRouteRouteImport } from './routes/profile/$username/route'
+import { Route as CommunitiesSlugRouteRouteImport } from './routes/communities/$slug/route'
 import { Route as ProfileUsernameIndexRouteImport } from './routes/profile/$username/index'
+import { Route as CommunitiesSlugIndexRouteImport } from './routes/communities/$slug/index'
 import { Route as AdminUsersIndexRouteImport } from './routes/admin/users/index'
 import { Route as AdminCommunitiesIndexRouteImport } from './routes/admin/communities/index'
 import { Route as AdminAssetsIndexRouteImport } from './routes/admin/assets/index'
 import { Route as ProfileUsernameSettingsRouteImport } from './routes/profile/$username/settings'
 import { Route as ProfileUsernameIdentitiesRouteImport } from './routes/profile/$username/identities'
 import { Route as ProfileUsernameAssetsRouteImport } from './routes/profile/$username/assets'
+import { Route as CommunitiesSlugOverviewRouteImport } from './routes/communities/$slug/overview'
+import { Route as CommunitiesSlugCollectionsRouteImport } from './routes/communities/$slug/collections'
 import { Route as AdminAssetsCreateRouteImport } from './routes/admin/assets/create'
 import { Route as AdminUsersUserIdRouteRouteImport } from './routes/admin/users/$userId/route'
 import { Route as AdminCommunitiesOrganizationIdRouteRouteImport } from './routes/admin/communities/$organizationId/route'
@@ -85,6 +91,11 @@ const ProfileRouteRoute = ProfileRouteRouteImport.update({
   path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CommunitiesRouteRoute = CommunitiesRouteRouteImport.update({
+  id: '/communities',
+  path: '/communities',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -99,6 +110,11 @@ const DevIndexRoute = DevIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => DevRoute,
+} as any)
+const CommunitiesIndexRoute = CommunitiesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CommunitiesRouteRoute,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
@@ -145,10 +161,20 @@ const ProfileUsernameRouteRoute = ProfileUsernameRouteRouteImport.update({
   path: '/$username',
   getParentRoute: () => ProfileRouteRoute,
 } as any)
+const CommunitiesSlugRouteRoute = CommunitiesSlugRouteRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => CommunitiesRouteRoute,
+} as any)
 const ProfileUsernameIndexRoute = ProfileUsernameIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ProfileUsernameRouteRoute,
+} as any)
+const CommunitiesSlugIndexRoute = CommunitiesSlugIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CommunitiesSlugRouteRoute,
 } as any)
 const AdminUsersIndexRoute = AdminUsersIndexRouteImport.update({
   id: '/users/',
@@ -181,6 +207,17 @@ const ProfileUsernameAssetsRoute = ProfileUsernameAssetsRouteImport.update({
   path: '/assets',
   getParentRoute: () => ProfileUsernameRouteRoute,
 } as any)
+const CommunitiesSlugOverviewRoute = CommunitiesSlugOverviewRouteImport.update({
+  id: '/overview',
+  path: '/overview',
+  getParentRoute: () => CommunitiesSlugRouteRoute,
+} as any)
+const CommunitiesSlugCollectionsRoute =
+  CommunitiesSlugCollectionsRouteImport.update({
+    id: '/collections',
+    path: '/collections',
+    getParentRoute: () => CommunitiesSlugRouteRoute,
+  } as any)
 const AdminAssetsCreateRoute = AdminAssetsCreateRouteImport.update({
   id: '/assets/create',
   path: '/assets/create',
@@ -300,12 +337,14 @@ const AdminAssetsAssetGroupIdAssetsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/communities': typeof CommunitiesRouteRouteWithChildren
   '/profile': typeof ProfileRouteRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
   '/auth-callback': typeof AuthCallbackRoute
   '/dev': typeof DevRouteWithChildren
   '/login': typeof LoginRoute
   '/onboard': typeof OnboardRoute
+  '/communities/$slug': typeof CommunitiesSlugRouteRouteWithChildren
   '/profile/$username': typeof ProfileUsernameRouteRouteWithChildren
   '/admin/dashboard': typeof AdminDashboardRoute
   '/dev/shadcn': typeof DevShadcnRoute
@@ -315,18 +354,22 @@ export interface FileRoutesByFullPath {
   '/profile/identities': typeof ProfileIdentitiesRoute
   '/profile/settings': typeof ProfileSettingsRoute
   '/admin/': typeof AdminIndexRoute
+  '/communities/': typeof CommunitiesIndexRoute
   '/dev/': typeof DevIndexRoute
   '/profile/': typeof ProfileIndexRoute
   '/admin/assets/$assetGroupId': typeof AdminAssetsAssetGroupIdRouteRouteWithChildren
   '/admin/communities/$organizationId': typeof AdminCommunitiesOrganizationIdRouteRouteWithChildren
   '/admin/users/$userId': typeof AdminUsersUserIdRouteRouteWithChildren
   '/admin/assets/create': typeof AdminAssetsCreateRoute
+  '/communities/$slug/collections': typeof CommunitiesSlugCollectionsRoute
+  '/communities/$slug/overview': typeof CommunitiesSlugOverviewRoute
   '/profile/$username/assets': typeof ProfileUsernameAssetsRoute
   '/profile/$username/identities': typeof ProfileUsernameIdentitiesRoute
   '/profile/$username/settings': typeof ProfileUsernameSettingsRoute
   '/admin/assets/': typeof AdminAssetsIndexRoute
   '/admin/communities/': typeof AdminCommunitiesIndexRoute
   '/admin/users/': typeof AdminUsersIndexRoute
+  '/communities/$slug/': typeof CommunitiesSlugIndexRoute
   '/profile/$username/': typeof ProfileUsernameIndexRoute
   '/admin/assets/$assetGroupId/assets': typeof AdminAssetsAssetGroupIdAssetsRoute
   '/admin/assets/$assetGroupId/settings': typeof AdminAssetsAssetGroupIdSettingsRoute
@@ -358,15 +401,19 @@ export interface FileRoutesByTo {
   '/profile/identities': typeof ProfileIdentitiesRoute
   '/profile/settings': typeof ProfileSettingsRoute
   '/admin': typeof AdminIndexRoute
+  '/communities': typeof CommunitiesIndexRoute
   '/dev': typeof DevIndexRoute
   '/profile': typeof ProfileIndexRoute
   '/admin/assets/create': typeof AdminAssetsCreateRoute
+  '/communities/$slug/collections': typeof CommunitiesSlugCollectionsRoute
+  '/communities/$slug/overview': typeof CommunitiesSlugOverviewRoute
   '/profile/$username/assets': typeof ProfileUsernameAssetsRoute
   '/profile/$username/identities': typeof ProfileUsernameIdentitiesRoute
   '/profile/$username/settings': typeof ProfileUsernameSettingsRoute
   '/admin/assets': typeof AdminAssetsIndexRoute
   '/admin/communities': typeof AdminCommunitiesIndexRoute
   '/admin/users': typeof AdminUsersIndexRoute
+  '/communities/$slug': typeof CommunitiesSlugIndexRoute
   '/profile/$username': typeof ProfileUsernameIndexRoute
   '/admin/assets/$assetGroupId/assets': typeof AdminAssetsAssetGroupIdAssetsRoute
   '/admin/assets/$assetGroupId/settings': typeof AdminAssetsAssetGroupIdSettingsRoute
@@ -388,12 +435,14 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/communities': typeof CommunitiesRouteRouteWithChildren
   '/profile': typeof ProfileRouteRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
   '/auth-callback': typeof AuthCallbackRoute
   '/dev': typeof DevRouteWithChildren
   '/login': typeof LoginRoute
   '/onboard': typeof OnboardRoute
+  '/communities/$slug': typeof CommunitiesSlugRouteRouteWithChildren
   '/profile/$username': typeof ProfileUsernameRouteRouteWithChildren
   '/admin/dashboard': typeof AdminDashboardRoute
   '/dev/shadcn': typeof DevShadcnRoute
@@ -403,18 +452,22 @@ export interface FileRoutesById {
   '/profile/identities': typeof ProfileIdentitiesRoute
   '/profile/settings': typeof ProfileSettingsRoute
   '/admin/': typeof AdminIndexRoute
+  '/communities/': typeof CommunitiesIndexRoute
   '/dev/': typeof DevIndexRoute
   '/profile/': typeof ProfileIndexRoute
   '/admin/assets/$assetGroupId': typeof AdminAssetsAssetGroupIdRouteRouteWithChildren
   '/admin/communities/$organizationId': typeof AdminCommunitiesOrganizationIdRouteRouteWithChildren
   '/admin/users/$userId': typeof AdminUsersUserIdRouteRouteWithChildren
   '/admin/assets/create': typeof AdminAssetsCreateRoute
+  '/communities/$slug/collections': typeof CommunitiesSlugCollectionsRoute
+  '/communities/$slug/overview': typeof CommunitiesSlugOverviewRoute
   '/profile/$username/assets': typeof ProfileUsernameAssetsRoute
   '/profile/$username/identities': typeof ProfileUsernameIdentitiesRoute
   '/profile/$username/settings': typeof ProfileUsernameSettingsRoute
   '/admin/assets/': typeof AdminAssetsIndexRoute
   '/admin/communities/': typeof AdminCommunitiesIndexRoute
   '/admin/users/': typeof AdminUsersIndexRoute
+  '/communities/$slug/': typeof CommunitiesSlugIndexRoute
   '/profile/$username/': typeof ProfileUsernameIndexRoute
   '/admin/assets/$assetGroupId/assets': typeof AdminAssetsAssetGroupIdAssetsRoute
   '/admin/assets/$assetGroupId/settings': typeof AdminAssetsAssetGroupIdSettingsRoute
@@ -437,12 +490,14 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/communities'
     | '/profile'
     | '/admin'
     | '/auth-callback'
     | '/dev'
     | '/login'
     | '/onboard'
+    | '/communities/$slug'
     | '/profile/$username'
     | '/admin/dashboard'
     | '/dev/shadcn'
@@ -452,18 +507,22 @@ export interface FileRouteTypes {
     | '/profile/identities'
     | '/profile/settings'
     | '/admin/'
+    | '/communities/'
     | '/dev/'
     | '/profile/'
     | '/admin/assets/$assetGroupId'
     | '/admin/communities/$organizationId'
     | '/admin/users/$userId'
     | '/admin/assets/create'
+    | '/communities/$slug/collections'
+    | '/communities/$slug/overview'
     | '/profile/$username/assets'
     | '/profile/$username/identities'
     | '/profile/$username/settings'
     | '/admin/assets/'
     | '/admin/communities/'
     | '/admin/users/'
+    | '/communities/$slug/'
     | '/profile/$username/'
     | '/admin/assets/$assetGroupId/assets'
     | '/admin/assets/$assetGroupId/settings'
@@ -495,15 +554,19 @@ export interface FileRouteTypes {
     | '/profile/identities'
     | '/profile/settings'
     | '/admin'
+    | '/communities'
     | '/dev'
     | '/profile'
     | '/admin/assets/create'
+    | '/communities/$slug/collections'
+    | '/communities/$slug/overview'
     | '/profile/$username/assets'
     | '/profile/$username/identities'
     | '/profile/$username/settings'
     | '/admin/assets'
     | '/admin/communities'
     | '/admin/users'
+    | '/communities/$slug'
     | '/profile/$username'
     | '/admin/assets/$assetGroupId/assets'
     | '/admin/assets/$assetGroupId/settings'
@@ -524,12 +587,14 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/communities'
     | '/profile'
     | '/admin'
     | '/auth-callback'
     | '/dev'
     | '/login'
     | '/onboard'
+    | '/communities/$slug'
     | '/profile/$username'
     | '/admin/dashboard'
     | '/dev/shadcn'
@@ -539,18 +604,22 @@ export interface FileRouteTypes {
     | '/profile/identities'
     | '/profile/settings'
     | '/admin/'
+    | '/communities/'
     | '/dev/'
     | '/profile/'
     | '/admin/assets/$assetGroupId'
     | '/admin/communities/$organizationId'
     | '/admin/users/$userId'
     | '/admin/assets/create'
+    | '/communities/$slug/collections'
+    | '/communities/$slug/overview'
     | '/profile/$username/assets'
     | '/profile/$username/identities'
     | '/profile/$username/settings'
     | '/admin/assets/'
     | '/admin/communities/'
     | '/admin/users/'
+    | '/communities/$slug/'
     | '/profile/$username/'
     | '/admin/assets/$assetGroupId/assets'
     | '/admin/assets/$assetGroupId/settings'
@@ -572,6 +641,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CommunitiesRouteRoute: typeof CommunitiesRouteRouteWithChildren
   ProfileRouteRoute: typeof ProfileRouteRouteWithChildren
   AdminRoute: typeof AdminRouteWithChildren
   AuthCallbackRoute: typeof AuthCallbackRoute
@@ -624,6 +694,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/communities': {
+      id: '/communities'
+      path: '/communities'
+      fullPath: '/communities'
+      preLoaderRoute: typeof CommunitiesRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -644,6 +721,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dev/'
       preLoaderRoute: typeof DevIndexRouteImport
       parentRoute: typeof DevRoute
+    }
+    '/communities/': {
+      id: '/communities/'
+      path: '/'
+      fullPath: '/communities/'
+      preLoaderRoute: typeof CommunitiesIndexRouteImport
+      parentRoute: typeof CommunitiesRouteRoute
     }
     '/admin/': {
       id: '/admin/'
@@ -708,12 +792,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileUsernameRouteRouteImport
       parentRoute: typeof ProfileRouteRoute
     }
+    '/communities/$slug': {
+      id: '/communities/$slug'
+      path: '/$slug'
+      fullPath: '/communities/$slug'
+      preLoaderRoute: typeof CommunitiesSlugRouteRouteImport
+      parentRoute: typeof CommunitiesRouteRoute
+    }
     '/profile/$username/': {
       id: '/profile/$username/'
       path: '/'
       fullPath: '/profile/$username/'
       preLoaderRoute: typeof ProfileUsernameIndexRouteImport
       parentRoute: typeof ProfileUsernameRouteRoute
+    }
+    '/communities/$slug/': {
+      id: '/communities/$slug/'
+      path: '/'
+      fullPath: '/communities/$slug/'
+      preLoaderRoute: typeof CommunitiesSlugIndexRouteImport
+      parentRoute: typeof CommunitiesSlugRouteRoute
     }
     '/admin/users/': {
       id: '/admin/users/'
@@ -756,6 +854,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/profile/$username/assets'
       preLoaderRoute: typeof ProfileUsernameAssetsRouteImport
       parentRoute: typeof ProfileUsernameRouteRoute
+    }
+    '/communities/$slug/overview': {
+      id: '/communities/$slug/overview'
+      path: '/overview'
+      fullPath: '/communities/$slug/overview'
+      preLoaderRoute: typeof CommunitiesSlugOverviewRouteImport
+      parentRoute: typeof CommunitiesSlugRouteRoute
+    }
+    '/communities/$slug/collections': {
+      id: '/communities/$slug/collections'
+      path: '/collections'
+      fullPath: '/communities/$slug/collections'
+      preLoaderRoute: typeof CommunitiesSlugCollectionsRouteImport
+      parentRoute: typeof CommunitiesSlugRouteRoute
     }
     '/admin/assets/create': {
       id: '/admin/assets/create'
@@ -899,6 +1011,34 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface CommunitiesSlugRouteRouteChildren {
+  CommunitiesSlugCollectionsRoute: typeof CommunitiesSlugCollectionsRoute
+  CommunitiesSlugOverviewRoute: typeof CommunitiesSlugOverviewRoute
+  CommunitiesSlugIndexRoute: typeof CommunitiesSlugIndexRoute
+}
+
+const CommunitiesSlugRouteRouteChildren: CommunitiesSlugRouteRouteChildren = {
+  CommunitiesSlugCollectionsRoute: CommunitiesSlugCollectionsRoute,
+  CommunitiesSlugOverviewRoute: CommunitiesSlugOverviewRoute,
+  CommunitiesSlugIndexRoute: CommunitiesSlugIndexRoute,
+}
+
+const CommunitiesSlugRouteRouteWithChildren =
+  CommunitiesSlugRouteRoute._addFileChildren(CommunitiesSlugRouteRouteChildren)
+
+interface CommunitiesRouteRouteChildren {
+  CommunitiesSlugRouteRoute: typeof CommunitiesSlugRouteRouteWithChildren
+  CommunitiesIndexRoute: typeof CommunitiesIndexRoute
+}
+
+const CommunitiesRouteRouteChildren: CommunitiesRouteRouteChildren = {
+  CommunitiesSlugRouteRoute: CommunitiesSlugRouteRouteWithChildren,
+  CommunitiesIndexRoute: CommunitiesIndexRoute,
+}
+
+const CommunitiesRouteRouteWithChildren =
+  CommunitiesRouteRoute._addFileChildren(CommunitiesRouteRouteChildren)
 
 interface ProfileUsernameRouteRouteChildren {
   ProfileUsernameAssetsRoute: typeof ProfileUsernameAssetsRoute
@@ -1057,6 +1197,7 @@ const DevRouteWithChildren = DevRoute._addFileChildren(DevRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CommunitiesRouteRoute: CommunitiesRouteRouteWithChildren,
   ProfileRouteRoute: ProfileRouteRouteWithChildren,
   AdminRoute: AdminRouteWithChildren,
   AuthCallbackRoute: AuthCallbackRoute,

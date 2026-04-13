@@ -12,6 +12,7 @@ const ShellUiSignedInUserMenu = lazy(async () => ({
 interface ShellUiUserMenuProps {
   isPending: boolean
   onAdminClick: () => void
+  onCommunitiesClick: () => void
   onDevelopmentClick: () => void
   onProfileClick: () => void
   onSignOut: () => void
@@ -21,6 +22,7 @@ interface ShellUiUserMenuProps {
 export function ShellUiUserMenu({
   isPending,
   onAdminClick,
+  onCommunitiesClick,
   onDevelopmentClick,
   onProfileClick,
   onSignOut,
@@ -48,6 +50,7 @@ export function ShellUiUserMenu({
     >
       <ShellUiSignedInUserMenu
         onAdminClick={onAdminClick}
+        onCommunitiesClick={onCommunitiesClick}
         onDevelopmentClick={onDevelopmentClick}
         onProfileClick={onProfileClick}
         onSignOut={onSignOut}

@@ -19,6 +19,10 @@ export interface AppSession {
   user: AppSessionUser
 }
 
+export function isOwner(session: AppSession, username: string) {
+  return session.user.username === username
+}
+
 export type AuthenticatedHomePath = '/onboard' | '/profile'
 
 export interface AppOnboardingStatus {

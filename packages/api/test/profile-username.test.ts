@@ -464,7 +464,7 @@ describe('profile username routes', () => {
           isPrimary: true,
           linkedAt: new Date('2026-04-11T00:00:00.000Z').getTime(),
           provider: 'discord',
-          providerId: null,
+          providerId: 'discord-alice',
           username: 'alice',
         },
       ],

@@ -22,8 +22,8 @@ export function ProfileUiItem({ action, user }: { action?: ReactNode; user: Prof
         <ProfileUiAvatar user={user} />
       </ItemMedia>
       <ItemContent>
-        <ItemTitle>{user.name}</ItemTitle>
-        <ItemDescription>{getProfileMetadata(user)}</ItemDescription>
+        <ItemTitle className="mb-0.5 text-lg leading-none">{user.name}</ItemTitle>
+        <ItemDescription className="leading-none">{getProfileMetadata(user)}</ItemDescription>
       </ItemContent>
       {action ? <ItemActions>{action}</ItemActions> : null}
     </Item>

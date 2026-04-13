@@ -20,7 +20,7 @@ export function useAdminCommunityOrganizationInvalidation() {
     await Promise.all([
       invalidateCommunity(organizationId),
       queryClient.invalidateQueries({
-        queryKey: orpc.organization.listMine.key(),
+        queryKey: orpc.profile.listCommunitiesByUsername.key(),
       }),
     ])
   }

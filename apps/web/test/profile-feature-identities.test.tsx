@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, mock, test } from 'bun:test'
 import { renderToStaticMarkup } from 'react-dom/server'
+import type { ProfileListIdentitiesByUsernameResult } from '@tokengator/sdk'
 
 const viewerIdentities = {
   identities: [
@@ -11,7 +12,7 @@ const viewerIdentities = {
       isPrimary: true,
       linkedAt: new Date('2026-04-11T00:00:00.000Z').getTime(),
       provider: 'discord',
-      providerId: null,
+      providerId: 'discord-alice',
       username: 'alice',
     },
   ],
@@ -24,7 +25,7 @@ const viewerIdentities = {
       name: 'Primary Wallet',
     },
   ],
-}
+} satisfies ProfileListIdentitiesByUsernameResult
 
 let ProfileFeatureIdentities: typeof import('../src/features/profile/feature/profile-feature-identities').ProfileFeatureIdentities
 let profileIdentitiesData: typeof viewerIdentities | null = viewerIdentities
@@ -97,7 +98,7 @@ describe('ProfileFeatureIdentities', () => {
     expect(markup).not.toContain('Make Primary')
     expect(markup).not.toContain('Save')
     expect(markup).not.toContain('alice@example.com')
-    expect(markup).not.toContain('discord-alice')
+    expect(markup).toContain('discord-alice')
   })
 
   test('renders a private profile notice instead of details', () => {

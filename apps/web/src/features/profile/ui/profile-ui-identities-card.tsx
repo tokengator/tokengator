@@ -1,22 +1,11 @@
+import type { IdentityProvider, ProfileIdentityEntity } from '@tokengator/sdk'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import { UiListCard, UiListCardHeader, UiListCardMeta } from '@tokengator/ui/components/ui-list-card'
 import { UiTextCopyIcon } from '@tokengator/ui/components/ui-text-copy-icon'
 
-type ProfileIdentity = {
-  avatarUrl: string | null
-  displayName: string | null
-  email: string | null
-  id: string
-  isPrimary: boolean
-  linkedAt: number
-  provider: string
-  providerId: string | null
-  username: string | null
-}
-
 interface ProfileUiIdentitiesCardProps {
   description?: string
-  identities: ProfileIdentity[]
+  identities: ProfileIdentityEntity[]
   isPending?: boolean
 }
 
@@ -28,7 +17,7 @@ function formatConnectedDate(linkedAt: number) {
   })
 }
 
-function formatProviderLabel(provider: string) {
+function formatProviderLabel(provider: IdentityProvider) {
   switch (provider) {
     case 'discord':
       return 'Discord'
@@ -39,7 +28,7 @@ function formatProviderLabel(provider: string) {
   }
 }
 
-function getIdentityLabel(identity: ProfileIdentity) {
+function getIdentityLabel(identity: ProfileIdentityEntity) {
   return (
     identity.displayName ??
     identity.username ??

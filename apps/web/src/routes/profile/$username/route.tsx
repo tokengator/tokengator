@@ -1,6 +1,6 @@
 import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
 
-import { getAppAuthStateQueryOptions } from '@/features/auth/data-access/get-app-auth-state'
+import { getAppAuthStateQueryOptions, isOwner } from '@/features/auth/data-access/get-app-auth-state'
 import { getProfileByUsernameRouteQueryOptions } from '@/features/profile/data-access/use-profile-by-username-query'
 import { ProfileFeatureShell } from '@/features/profile/feature/profile-feature-shell'
 
@@ -18,7 +18,7 @@ export const Route = createFileRoute('/profile/$username')({
 
     return {
       isAdmin: session.user.role === 'admin',
-      isOwner: session.user.username === params.username,
+      isOwner: isOwner(session, params.username),
       profile,
       session,
     }

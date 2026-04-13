@@ -1,3 +1,4 @@
+export type { IdentityProvider } from '@tokengator/db/schema/auth'
 export type {
   ProfileFinalizeDiscordAuthResult,
   ProfileGetSettingsResult,

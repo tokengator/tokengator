@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 
-import { getAppAuthStateQueryOptions } from '@/features/auth/data-access/get-app-auth-state'
+import { getAppAuthStateQueryOptions, isOwner } from '@/features/auth/data-access/get-app-auth-state'
 import { getProfileByUsernameRouteQueryOptions } from '@/features/profile/data-access/use-profile-by-username-query'
 import { getProfileIdentitiesByUsernameRouteQueryOptions } from '@/features/profile/data-access/use-profile-identities-by-username-query'
 import { ProfileFeatureIdentities } from '@/features/profile/feature/profile-feature-identities'
@@ -18,7 +18,7 @@ export const Route = createFileRoute('/profile/$username/identities')({
 
     const profile = await context.queryClient.ensureQueryData(getProfileByUsernameRouteQueryOptions(params.username))
 
-    if (!profile || session.user.username === params.username || profile.private) {
+    if (!profile || isOwner(session, params.username) || profile.private) {
       return {
         profileIdentities: null,
       }

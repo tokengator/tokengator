@@ -1,5 +1,5 @@
+import type { IdentityProvider } from '@tokengator/db/schema/auth'
 import type { OrganizationMembershipEntity } from '../../organization'
-
 import { profileSolanaWalletAddressEllipsify } from '../util/profile-solana-wallet-address-ellipsify'
 import { profileSolanaWalletNameNormalize } from '../util/profile-solana-wallet-name-normalize'
 
@@ -10,7 +10,7 @@ export function toProfileIdentityEntity(identity: {
   id: string
   isPrimary: boolean
   linkedAt: Date
-  provider: string
+  provider: IdentityProvider
   providerId: string
   username: string | null
 }) {
@@ -83,7 +83,7 @@ export type ProfileListCommunitiesByUsernameResult = {
   communities: OrganizationMembershipEntity[]
 }
 export type ProfileListIdentitiesByUsernameResult = {
-  identities: Array<Omit<ProfileIdentityEntity, 'providerId'> & { providerId: string | null }>
+  identities: ProfileIdentityEntity[]
   solanaWallets: ProfileSolanaWalletEntity[]
 }
 export type ProfileListSolanaWalletsResult = {

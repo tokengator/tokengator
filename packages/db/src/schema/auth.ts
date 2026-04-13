@@ -1,6 +1,9 @@
 import { relations, sql } from 'drizzle-orm'
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
+export const identityProviderValues = ['discord', 'solana'] as const
+export type IdentityProvider = (typeof identityProviderValues)[number]
+
 export const user = sqliteTable('user', {
   banExpires: integer('ban_expires', { mode: 'timestamp_ms' }),
   banned: integer('banned', { mode: 'boolean' }).default(false).notNull(),
@@ -115,7 +118,7 @@ export const identity = sqliteTable(
     lastSyncedAt: integer('last_synced_at', { mode: 'timestamp_ms' }).notNull(),
     linkedAt: integer('linked_at', { mode: 'timestamp_ms' }).notNull(),
     profile: text('profile'),
-    provider: text('provider', { enum: ['discord', 'solana'] }).notNull(),
+    provider: text('provider', { enum: identityProviderValues }).notNull(),
     providerId: text('provider_id').notNull(),
     referenceId: text('reference_id').notNull(),
     referenceType: text('reference_type', { enum: ['account', 'solana_wallet'] }).notNull(),

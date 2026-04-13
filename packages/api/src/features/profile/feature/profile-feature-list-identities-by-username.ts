@@ -35,7 +35,6 @@ export const profileFeatureListIdentitiesByUsername = protectedProcedure
         : identities.identities.map((identity) => ({
             ...identity,
             email: null,
-            providerId: null,
           })),
       solanaWallets: solanaWallets.solanaWallets,
     }

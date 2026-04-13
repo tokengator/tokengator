@@ -1,6 +1,6 @@
 import type { ProfileIdentityEntity, ProfileSolanaWalletEntity } from '@tokengator/sdk'
 
-import { ProfileUiIdentitiesCard } from '@/features/profile/ui/profile-ui-identities-card'
+import { ProfileUiAdminIdentitiesCard } from '@/features/profile/ui/profile-ui-admin-identities-card.tsx'
 import { ProfileUiSolanaCard } from '@/features/profile/ui/profile-ui-solana-card'
 
 export function AdminUserIdentitiesUiContent(props: {
@@ -45,7 +45,7 @@ export function AdminUserIdentitiesUiContent(props: {
         solanaWallets={wallets}
         updatePendingWalletCounts={updatePendingWalletCounts}
       />
-      <ProfileUiIdentitiesCard identities={identities} isPending={isIdentityPending} />
+      <ProfileUiAdminIdentitiesCard identities={identities} isPending={isIdentityPending} />
     </div>
   )
 }

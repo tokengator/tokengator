@@ -3,6 +3,33 @@ import type { OrganizationMembershipEntity } from '../../organization'
 import { profileSolanaWalletAddressEllipsify } from '../util/profile-solana-wallet-address-ellipsify'
 import { profileSolanaWalletNameNormalize } from '../util/profile-solana-wallet-name-normalize'
 
+export interface ProfileIdentityEntity {
+  avatarUrl: string | null
+  displayName: string | null
+  email: string | null
+  id: string
+  isPrimary: boolean
+  label: string
+  linkedAt: number
+  provider: IdentityProvider
+  providerId: string
+  referenceId?: string
+  referenceType?: 'account' | 'solana_wallet'
+  username: string | null
+}
+
+function getProfileIdentityLabel(identity: {
+  displayName: string | null
+  providerId: string
+  username: string | null
+}) {
+  const candidates = [identity.displayName, identity.username]
+    .map((value) => value?.trim() ?? null)
+    .filter((value): value is string => Boolean(value))
+
+  return candidates[0] ?? identity.providerId
+}
+
 export function toProfileIdentityEntity(identity: {
   avatarUrl: string | null
   displayName: string | null
@@ -12,17 +39,22 @@ export function toProfileIdentityEntity(identity: {
   linkedAt: Date
   provider: IdentityProvider
   providerId: string
+  referenceId: string
+  referenceType: 'account' | 'solana_wallet'
   username: string | null
-}) {
+}): ProfileIdentityEntity {
   return {
     avatarUrl: identity.avatarUrl,
     displayName: identity.displayName,
     email: identity.email,
     id: identity.id,
     isPrimary: identity.isPrimary,
+    label: getProfileIdentityLabel(identity),
     linkedAt: identity.linkedAt.getTime(),
     provider: identity.provider,
     providerId: identity.providerId,
+    referenceId: identity.referenceId,
+    referenceType: identity.referenceType,
     username: identity.username,
   }
 }
@@ -67,7 +99,6 @@ export function toProfileUserEntity(user: {
   }
 }
 
-export type ProfileIdentityEntity = ReturnType<typeof toProfileIdentityEntity>
 export type ProfileFinalizeDiscordAuthResult = {
   hasDiscordAccount: boolean
   updated: boolean

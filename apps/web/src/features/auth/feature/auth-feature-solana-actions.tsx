@@ -2,6 +2,7 @@ import { type UiWallet, useWalletUi } from '@wallet-ui/react'
 import { Button } from '@tokengator/ui/components/button'
 
 import { Route as RootRoute } from '@/routes/__root'
+import { AuthFeatureSolanaLinkDialog } from './auth-feature-solana-link-dialog'
 import { AuthFeatureSolanaWalletActionButton } from './auth-feature-solana-wallet-action-button'
 
 function getSignInWallets(wallets: readonly UiWallet[]) {
@@ -10,10 +11,22 @@ function getSignInWallets(wallets: readonly UiWallet[]) {
     .sort((left, right) => left.name.localeCompare(right.name))
 }
 
-export function AuthFeatureSolanaActions({ action, onSuccess }: { action: 'link' | 'verify'; onSuccess?: () => void }) {
+export function AuthFeatureSolanaActions({
+  action,
+  linkedProviderIds,
+  onSuccess,
+}: {
+  action: 'link' | 'verify'
+  linkedProviderIds?: string[]
+  onSuccess?: () => void
+}) {
   const { appConfig } = RootRoute.useRouteContext()
   const { wallets } = useWalletUi()
   const signInWallets = getSignInWallets(wallets)
+
+  if (action === 'link') {
+    return <AuthFeatureSolanaLinkDialog linkedProviderIds={linkedProviderIds} onSuccess={onSuccess} />
+  }
 
   if (action === 'verify' && !appConfig.solanaSignInEnabled) {
     return null

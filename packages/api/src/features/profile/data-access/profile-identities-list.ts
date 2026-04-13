@@ -15,6 +15,8 @@ export async function profileIdentitiesList(input: { userId: string }) {
       linkedAt: identity.linkedAt,
       provider: identity.provider,
       providerId: identity.providerId,
+      referenceId: identity.referenceId,
+      referenceType: identity.referenceType,
       username: identity.username,
     })
     .from(identity)

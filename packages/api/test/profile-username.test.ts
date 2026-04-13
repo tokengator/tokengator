@@ -394,9 +394,12 @@ describe('profile username routes', () => {
           email: 'alice@discord.example',
           id: 'identity-1',
           isPrimary: true,
+          label: 'alice',
           linkedAt: new Date('2026-04-11T00:00:00.000Z').getTime(),
           provider: 'discord',
           providerId: 'discord-alice',
+          referenceId: 'account-1',
+          referenceType: 'account',
           username: 'alice',
         },
       ],
@@ -462,6 +465,7 @@ describe('profile username routes', () => {
           email: null,
           id: 'identity-1',
           isPrimary: true,
+          label: 'Alice on Discord',
           linkedAt: new Date('2026-04-11T00:00:00.000Z').getTime(),
           provider: 'discord',
           providerId: 'discord-alice',
@@ -477,6 +481,59 @@ describe('profile username routes', () => {
           name: 'Primary Wallet',
         },
       ],
+    })
+  })
+
+  test('listIdentitiesByUsername does not use email as the public label fallback', async () => {
+    await insertUser({
+      email: 'alice@example.com',
+      id: 'alice-user-id',
+      name: 'Alice',
+      username: 'alice',
+    })
+    await insertUser({
+      email: 'viewer@example.com',
+      id: 'viewer-user-id',
+      name: 'Viewer',
+      username: 'viewer',
+    })
+    await insertIdentity({
+      email: 'alice@discord.example',
+      id: 'identity-1',
+      isPrimary: true,
+      provider: 'discord',
+      providerId: 'discord-alice',
+      referenceId: 'account-1',
+      referenceType: 'account',
+      userId: 'alice-user-id',
+      username: null,
+    })
+
+    const result = await profileRouter.listIdentitiesByUsername.callable(
+      createCallContext({
+        userId: 'viewer-user-id',
+        username: 'viewer',
+      }),
+    )({
+      username: 'alice',
+    })
+
+    expect(result).toEqual({
+      identities: [
+        {
+          avatarUrl: null,
+          displayName: null,
+          email: null,
+          id: 'identity-1',
+          isPrimary: true,
+          label: 'discord-alice',
+          linkedAt: new Date('2026-04-11T00:00:00.000Z').getTime(),
+          provider: 'discord',
+          providerId: 'discord-alice',
+          username: null,
+        },
+      ],
+      solanaWallets: [],
     })
   })
 

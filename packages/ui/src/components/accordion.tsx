@@ -13,6 +13,25 @@ function Accordion({ className, ...props }: AccordionPrimitive.Root.Props) {
   )
 }
 
+function AccordionContent({ children, className, ...props }: AccordionPrimitive.Panel.Props) {
+  return (
+    <AccordionPrimitive.Panel
+      className="data-open:animate-accordion-down data-closed:animate-accordion-up overflow-hidden px-2 text-xs/relaxed"
+      data-slot="accordion-content"
+      {...props}
+    >
+      <div
+        className={cn(
+          '[&_a]:hover:text-foreground h-(--accordion-panel-height) pt-0 pb-4 data-ending-style:h-0 data-starting-style:h-0 [&_a]:underline [&_a]:underline-offset-3 [&_p:not(:last-child)]:mb-4',
+          className,
+        )}
+      >
+        {children}
+      </div>
+    </AccordionPrimitive.Panel>
+  )
+}
+
 function AccordionItem({ className, ...props }: AccordionPrimitive.Item.Props) {
   return (
     <AccordionPrimitive.Item
@@ -48,23 +67,4 @@ function AccordionTrigger({ children, className, ...props }: AccordionPrimitive.
   )
 }
 
-function AccordionContent({ children, className, ...props }: AccordionPrimitive.Panel.Props) {
-  return (
-    <AccordionPrimitive.Panel
-      className="data-open:animate-accordion-down data-closed:animate-accordion-up overflow-hidden px-2 text-xs/relaxed"
-      data-slot="accordion-content"
-      {...props}
-    >
-      <div
-        className={cn(
-          '[&_a]:hover:text-foreground h-(--accordion-panel-height) pt-0 pb-4 data-ending-style:h-0 data-starting-style:h-0 [&_a]:underline [&_a]:underline-offset-3 [&_p:not(:last-child)]:mb-4',
-          className,
-        )}
-      >
-        {children}
-      </div>
-    </AccordionPrimitive.Panel>
-  )
-}
-
-export { Accordion, AccordionItem, AccordionTrigger, AccordionContent }
+export { Accordion, AccordionContent, AccordionItem, AccordionTrigger }

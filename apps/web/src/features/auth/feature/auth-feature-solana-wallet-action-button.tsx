@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { type UiWallet, useSignIn, useWalletUiWallet, WalletUiIcon } from '@wallet-ui/react'
+import { ellipsify, type UiWallet, useSignIn, useWalletUiWallet, WalletUiIcon } from '@wallet-ui/react'
 import { toast } from 'sonner'
 import { Button } from '@tokengator/ui/components/button'
 
@@ -15,12 +15,12 @@ function getActionErrorMessage(action: 'link' | 'verify') {
   }
 }
 
-function getActionLabel(action: 'link' | 'verify', walletName: string) {
+function getActionLabel(action: 'link' | 'verify', walletLabel: string) {
   switch (action) {
     case 'link':
-      return `Link ${walletName}`
+      return `Verify wallet`
     case 'verify':
-      return `Continue with ${walletName}`
+      return `Continue with ${walletLabel}`
   }
 }
 
@@ -44,10 +44,12 @@ function getSuccessMessage(action: 'link' | 'verify') {
 
 export function AuthFeatureSolanaWalletActionButton({
   action,
+  label,
   onSuccess,
   wallet,
 }: {
   action: 'link' | 'verify'
+  label?: string
   onSuccess?: () => void | Promise<void>
   wallet: UiWallet
 }) {
@@ -55,6 +57,7 @@ export function AuthFeatureSolanaWalletActionButton({
   const signIn = useSignIn(wallet)
   const { connect, isConnecting } = useWalletUiWallet({ wallet })
   const account = wallet.accounts[0]
+  const walletLabel = label ?? (account?.address ? ellipsify(account.address) : wallet.name)
   const mutation = useMutation({
     mutationFn: async () => {
       if (!account) {
@@ -91,20 +94,15 @@ export function AuthFeatureSolanaWalletActionButton({
         variant="outline"
       >
         <WalletUiIcon className="size-4" wallet={wallet} />
-        {isConnecting ? `Connecting ${wallet.name}...` : `Connect ${wallet.name}`}
+        {isConnecting ? `Connecting ${wallet.name}...` : `Connect ${walletLabel}`}
       </Button>
     )
   }
 
   return (
-    <Button
-      className="w-full justify-start gap-2"
-      disabled={mutation.isPending}
-      onClick={() => mutation.mutate()}
-      variant="outline"
-    >
+    <Button className="w-full gap-2" disabled={mutation.isPending} onClick={() => mutation.mutate()} variant="outline">
       <WalletUiIcon className="size-4" wallet={wallet} />
-      {mutation.isPending ? `${getActionLabel(action, wallet.name)}...` : getActionLabel(action, wallet.name)}
+      {mutation.isPending ? `${getActionLabel(action, walletLabel)}...` : getActionLabel(action, walletLabel)}
     </Button>
   )
 }

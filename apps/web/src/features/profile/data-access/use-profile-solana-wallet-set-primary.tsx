@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 
 import { orpc } from '@/lib/orpc'
+import { getProfileListIdentitiesQueryKey } from './use-profile-list-identities'
 import { getProfileListSolanaWalletsQueryKey } from './use-profile-list-solana-wallets'
 
 export function useProfileSolanaWalletSetPrimary(userId: string) {
@@ -14,9 +15,14 @@ export function useProfileSolanaWalletSetPrimary(userId: string) {
         toast.error(error.message)
       },
       onSuccess: async () => {
-        await queryClient.invalidateQueries({
-          queryKey: getProfileListSolanaWalletsQueryKey(userId),
-        })
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: getProfileListIdentitiesQueryKey(userId),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: getProfileListSolanaWalletsQueryKey(userId),
+          }),
+        ])
         toast.success('Primary wallet updated.')
       },
     }),

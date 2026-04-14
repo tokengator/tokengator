@@ -179,7 +179,7 @@ afterAll(() => {
 })
 
 describe('seedDatabase', () => {
-  test('creates the baseline dataset with hidden compatibility emails and seeded SIWS identities', async () => {
+  test('creates the baseline dataset with hidden compatibility emails, Discord identities, and seeded SIWS identities', async () => {
     const { devSeed, seedDatabase } = await import('../src/seed')
     const [{ db }, assetSchema, authSchema, communityRoleSchema] = await Promise.all([
       import('../src/index'),
@@ -199,7 +199,9 @@ describe('seedDatabase', () => {
       .orderBy(asc(authSchema.user.username), asc(authSchema.account.providerId))
     const identities = await db
       .select({
+        avatarUrl: authSchema.identity.avatarUrl,
         displayName: authSchema.identity.displayName,
+        email: authSchema.identity.email,
         identityUsername: authSchema.identity.username,
         isPrimary: authSchema.identity.isPrimary,
         provider: authSchema.identity.provider,
@@ -221,6 +223,7 @@ describe('seedDatabase', () => {
     const organizations = await db
       .select({
         id: authSchema.organization.id,
+        logo: authSchema.organization.logo,
         metadata: authSchema.organization.metadata,
         name: authSchema.organization.name,
         slug: authSchema.organization.slug,
@@ -287,6 +290,7 @@ describe('seedDatabase', () => {
     const users = await db
       .select({
         email: authSchema.user.email,
+        image: authSchema.user.image,
         name: authSchema.user.name,
         role: authSchema.user.role,
         username: authSchema.user.username,
@@ -306,19 +310,46 @@ describe('seedDatabase', () => {
     expect(summary.organizationIdsBySlug).toEqual(organizationIdsBySlug)
     expect(accounts).toEqual([
       {
+        accountId: 'discord-alice',
+        providerId: 'discord',
+        username: ALICE_USERNAME,
+      },
+      {
         accountId: alice.solana.publicKey,
         providerId: 'siws',
         username: ALICE_USERNAME,
+      },
+      {
+        accountId: 'discord-bob',
+        providerId: 'discord',
+        username: BOB_USERNAME,
       },
       {
         accountId: bob.solana.publicKey,
         providerId: 'siws',
         username: BOB_USERNAME,
       },
+      {
+        accountId: 'discord-carol',
+        providerId: 'discord',
+        username: CAROL_USERNAME,
+      },
     ])
     expect(identities).toEqual([
       {
+        avatarUrl: 'https://api.dicebear.com/9.x/bottts/png?seed=alice',
+        displayName: ALICE_NAME,
+        email: 'alice@example.com',
+        identityUsername: ALICE_USERNAME,
+        isPrimary: true,
+        provider: 'discord',
+        providerId: 'discord-alice',
+        userUsername: ALICE_USERNAME,
+      },
+      {
+        avatarUrl: null,
         displayName: `${alice.solana.publicKey.slice(0, 6)}…${alice.solana.publicKey.slice(-6)}`,
+        email: null,
         identityUsername: null,
         isPrimary: true,
         provider: 'solana',
@@ -326,17 +357,40 @@ describe('seedDatabase', () => {
         userUsername: ALICE_USERNAME,
       },
       {
+        avatarUrl: 'https://api.dicebear.com/9.x/bottts/png?seed=bob',
+        displayName: BOB_NAME,
+        email: 'bob@example.com',
+        identityUsername: BOB_USERNAME,
+        isPrimary: true,
+        provider: 'discord',
+        providerId: 'discord-bob',
+        userUsername: BOB_USERNAME,
+      },
+      {
+        avatarUrl: null,
         displayName: `${bob.solana.publicKey.slice(0, 6)}…${bob.solana.publicKey.slice(-6)}`,
+        email: null,
         identityUsername: null,
         isPrimary: true,
         provider: 'solana',
         providerId: bob.solana.publicKey,
         userUsername: BOB_USERNAME,
       },
+      {
+        avatarUrl: 'https://api.dicebear.com/9.x/bottts/png?seed=carol',
+        displayName: CAROL_NAME,
+        email: 'carol@example.com',
+        identityUsername: CAROL_USERNAME,
+        isPrimary: true,
+        provider: 'discord',
+        providerId: 'discord-carol',
+        userUsername: CAROL_USERNAME,
+      },
     ])
     expect(assetGroups).toEqual([...devSeed.assetGroups])
-    expect(organizations.map(({ metadata, name, slug }) => ({ metadata, name, slug }))).toEqual(
+    expect(organizations.map(({ logo, metadata, name, slug }) => ({ logo, metadata, name, slug }))).toEqual(
       devSeed.organizations.map((organization) => ({
+        logo: organization.logo,
         metadata: organization.metadata,
         name: organization.name,
         slug: organization.slug,
@@ -399,18 +453,21 @@ describe('seedDatabase', () => {
     expect(users).toEqual([
       {
         email: 'alice@example.com',
+        image: 'https://api.dicebear.com/9.x/bottts/png?seed=alice',
         name: ALICE_NAME,
         role: 'admin',
         username: ALICE_USERNAME,
       },
       {
         email: 'bob@example.com',
+        image: 'https://api.dicebear.com/9.x/bottts/png?seed=bob',
         name: BOB_NAME,
         role: 'user',
         username: BOB_USERNAME,
       },
       {
         email: 'carol@example.com',
+        image: 'https://api.dicebear.com/9.x/bottts/png?seed=carol',
         name: CAROL_NAME,
         role: 'user',
         username: CAROL_USERNAME,
@@ -482,7 +539,7 @@ describe('seedDatabase', () => {
     expect(output).not.toContain('Admin user:')
     expect(output).not.toContain('password')
     expect(output).toContain('Solana sign-in fixtures: @alice, @bob')
-    expect(await getTableCount(databaseUrl, 'account')).toBe(2)
+    expect(await getTableCount(databaseUrl, 'account')).toBe(5)
     expect(await getTableCount(databaseUrl, 'asset_group')).toBe(2)
     expect(await getTableCount(databaseUrl, 'community_discord_connection')).toBe(0)
     expect(await getTableCount(databaseUrl, 'community_role')).toBe(
@@ -492,7 +549,7 @@ describe('seedDatabase', () => {
       devSeed.organizations.length *
         devSeed.communityRoles.reduce((count, communityRole) => count + communityRole.conditions.length, 0),
     )
-    expect(await getTableCount(databaseUrl, 'identity')).toBe(2)
+    expect(await getTableCount(databaseUrl, 'identity')).toBe(5)
     expect(await getTableCount(databaseUrl, 'organization')).toBe(2)
     expect(await getTableCount(databaseUrl, 'solana_wallet')).toBe(2)
     expect(await getTableCount(databaseUrl, 'team')).toBe(devSeed.organizations.length * devSeed.communityRoles.length)

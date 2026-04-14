@@ -1,3 +1,7 @@
+type DiscordFixture = {
+  accountId: string
+}
+
 type SolanaFixture = {
   publicKey: string
   secret: readonly number[]
@@ -9,8 +13,10 @@ export type TestUser = {
 }
 
 export type SeedUser = {
+  discord: DiscordFixture
   email: string
   expectedRole: 'admin' | 'user'
+  image: string
   name: string
   solana?: SolanaFixture
   username: string
@@ -44,22 +50,34 @@ type SeedUserDefinition = SeedUser
 
 const seedUserDefinitions: SeedUserDefinition[] = [
   {
+    discord: {
+      accountId: `discord-${alice.username}`,
+    },
     email: 'alice@example.com',
     expectedRole: 'admin',
+    image: `https://api.dicebear.com/9.x/bottts/png?seed=${alice.username}`,
     name: 'Alice',
     solana: alice.solana,
     username: alice.username,
   },
   {
+    discord: {
+      accountId: `discord-${bob.username}`,
+    },
     email: 'bob@example.com',
     expectedRole: 'user',
+    image: `https://api.dicebear.com/9.x/bottts/png?seed=${bob.username}`,
     name: 'Bob',
     solana: bob.solana,
     username: bob.username,
   },
   {
+    discord: {
+      accountId: 'discord-carol',
+    },
     email: 'carol@example.com',
     expectedRole: 'user',
+    image: 'https://api.dicebear.com/9.x/bottts/png?seed=carol',
     name: 'Carol',
     username: 'carol',
   },
@@ -69,8 +87,10 @@ seedUserDefinitions.sort((left, right) => left.email.localeCompare(right.email))
 
 export function createDevSeedUsers(): SeedUser[] {
   return seedUserDefinitions.map((seedUser) => ({
+    discord: seedUser.discord,
     email: seedUser.email,
     expectedRole: seedUser.expectedRole,
+    image: seedUser.image,
     name: seedUser.name,
     ...(seedUser.solana ? { solana: seedUser.solana } : {}),
     username: seedUser.username,

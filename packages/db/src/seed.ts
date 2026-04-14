@@ -137,7 +137,7 @@ const devBobUser = getRequiredDevSeedUser(bob.username)
 const devCarolUser = getRequiredDevSeedUser('carol')
 const devSeedOrganizations = [
   {
-    logo: null,
+    logo: 'https://api.dicebear.com/9.x/identicon/png?seed=acme',
     members: [
       {
         email: devAdminUser.email,
@@ -153,7 +153,7 @@ const devSeedOrganizations = [
     slug: 'acme',
   },
   {
-    logo: null,
+    logo: 'https://api.dicebear.com/9.x/identicon/png?seed=beacon',
     members: [
       {
         email: devAdminUser.email,
@@ -326,6 +326,27 @@ function createSeedSiwsAccountValues(seedUsers: readonly SeedUser[], usersByEmai
     .sort((left, right) => left.accountId.localeCompare(right.accountId))
 }
 
+function createSeedDiscordAccountValues(seedUsers: readonly SeedUser[], usersByEmail: Map<string, SeededUserRecord>) {
+  return seedUsers
+    .map((seedUser) => {
+      const user = usersByEmail.get(seedUser.email)
+
+      if (!user) {
+        throw new Error(`Seed user ${seedUser.email} must exist before seeding Discord accounts.`)
+      }
+
+      return {
+        accountId: seedUser.discord.accountId,
+        createdAt: new Date(),
+        id: crypto.randomUUID(),
+        providerId: 'discord',
+        updatedAt: new Date(),
+        userId: user.id,
+      }
+    })
+    .sort((left, right) => left.accountId.localeCompare(right.accountId))
+}
+
 async function createSeedOrganizations(db: RuntimeModules['db'], usersByEmail: Map<string, SeededUserRecord>) {
   const organizationIdsBySlug: Record<string, string> = {}
 
@@ -414,6 +435,52 @@ function createSeedIdentityValues(seedSolanaWalletValues: ReturnType<typeof crea
     .sort((left, right) => left.providerId.localeCompare(right.providerId))
 }
 
+function createSeedDiscordIdentityValues(args: {
+  seedDiscordAccountValues: ReturnType<typeof createSeedDiscordAccountValues>
+  seedUsers: readonly SeedUser[]
+  usersByEmail: Map<string, SeededUserRecord>
+}) {
+  const { seedDiscordAccountValues, seedUsers, usersByEmail } = args
+  const seedDiscordAccountValuesByUserId = new Map(
+    seedDiscordAccountValues.map((seedDiscordAccount) => [seedDiscordAccount.userId, seedDiscordAccount] as const),
+  )
+
+  return seedUsers
+    .map((seedUser) => {
+      const user = usersByEmail.get(seedUser.email)
+
+      if (!user) {
+        throw new Error(`Seed user ${seedUser.email} must exist before seeding Discord identities.`)
+      }
+
+      const seedDiscordAccount = seedDiscordAccountValuesByUserId.get(user.id)
+
+      if (!seedDiscordAccount) {
+        throw new Error(`Seed user ${seedUser.email} must exist before seeding Discord identities.`)
+      }
+
+      return {
+        avatarUrl: seedUser.image,
+        createdAt: new Date(),
+        displayName: seedUser.name,
+        email: seedUser.email,
+        id: crypto.randomUUID(),
+        isPrimary: true,
+        lastSyncedAt: new Date(),
+        linkedAt: seedDiscordAccount.createdAt,
+        profile: null,
+        provider: 'discord' as const,
+        providerId: seedUser.discord.accountId,
+        referenceId: seedDiscordAccount.id,
+        referenceType: 'account' as const,
+        updatedAt: new Date(),
+        userId: user.id,
+        username: seedUser.username,
+      }
+    })
+    .sort((left, right) => left.providerId.localeCompare(right.providerId))
+}
+
 async function createSeedUsers(db: RuntimeModules['db']) {
   const usersByEmail = new Map<string, SeededUserRecord>()
 
@@ -422,6 +489,7 @@ async function createSeedUsers(db: RuntimeModules['db']) {
       email: seedUser.email,
       emailVerified: true,
       id: crypto.randomUUID(),
+      image: seedUser.image,
       name: seedUser.name,
       role: seedUser.expectedRole,
       username: seedUser.username,
@@ -437,12 +505,37 @@ async function createSeedUsers(db: RuntimeModules['db']) {
     })
   }
 
+  const seedDiscordAccountValues = createSeedDiscordAccountValues(devSeed.users, usersByEmail)
+  const seedDiscordIdentityValues = createSeedDiscordIdentityValues({
+    seedDiscordAccountValues,
+    seedUsers: devSeed.users,
+    usersByEmail,
+  })
   const seedSolanaWalletValues = createSeedSolanaWalletValues(devSeed.users, usersByEmail)
-  const seedIdentityValues = createSeedIdentityValues(seedSolanaWalletValues)
   const seedSiwsAccountValues = createSeedSiwsAccountValues(devSeed.users, usersByEmail)
+  const seedAccountValues = [...seedDiscordAccountValues, ...seedSiwsAccountValues].sort((left, right) => {
+    const providerComparison = left.providerId.localeCompare(right.providerId)
 
-  if (seedSiwsAccountValues.length) {
-    await db.insert(authSchema.account).values(seedSiwsAccountValues)
+    if (providerComparison !== 0) {
+      return providerComparison
+    }
+
+    return left.accountId.localeCompare(right.accountId)
+  })
+  const seedIdentityValues = [...seedDiscordIdentityValues, ...createSeedIdentityValues(seedSolanaWalletValues)].sort(
+    (left, right) => {
+      const providerComparison = left.provider.localeCompare(right.provider)
+
+      if (providerComparison !== 0) {
+        return providerComparison
+      }
+
+      return left.providerId.localeCompare(right.providerId)
+    },
+  )
+
+  if (seedAccountValues.length) {
+    await db.insert(authSchema.account).values(seedAccountValues)
   }
 
   if (seedSolanaWalletValues.length) {

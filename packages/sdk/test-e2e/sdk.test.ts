@@ -1083,7 +1083,6 @@ describe('createOrpcClient e2e', () => {
     })
     await database.insert(asset).values({
       address: `asset-${targetUser.username}`,
-      addressLower: `asset-${targetUser.username}`,
       amount: '1',
       assetGroupId: assetGroup.id,
       firstSeenAt: indexedAt,
@@ -1100,7 +1099,6 @@ describe('createOrpcClient e2e', () => {
       metadataProgramAccount: null,
       metadataSymbol: null,
       owner: ` ${secondaryWalletAddress} `,
-      ownerLower: ` ${secondaryWalletAddress} `,
       page: 1,
       raw: null,
       resolverId: assetGroup.id,
@@ -1308,7 +1306,6 @@ describe('createOrpcClient e2e', () => {
 
     await database.insert(asset).values({
       address: 'asset-acme-1',
-      addressLower: 'asset-acme-1',
       amount: '1',
       assetGroupId: createdAssetGroup.id,
       firstSeenAt: indexedAt,
@@ -1323,7 +1320,6 @@ describe('createOrpcClient e2e', () => {
         foo: 'bar',
       }),
       owner: 'wallet-owner-1',
-      ownerLower: 'wallet-owner-1',
       page: 1,
       raw: JSON.stringify({
         source: 'indexer',
@@ -1466,7 +1462,6 @@ describe('createOrpcClient e2e', () => {
     await database.insert(asset).values([
       {
         address: `asset-${gatedMemberUser.username}`,
-        addressLower: `asset-${gatedMemberUser.username}`,
         amount: '1',
         assetGroupId: assetGroup.id,
         firstSeenAt: indexedAt,
@@ -1483,7 +1478,6 @@ describe('createOrpcClient e2e', () => {
         metadataProgramAccount: null,
         metadataSymbol: null,
         owner: gatedMemberWalletAddress,
-        ownerLower: gatedMemberWalletAddress,
         page: 1,
         raw: null,
         resolverId: assetGroup.id,
@@ -1491,7 +1485,6 @@ describe('createOrpcClient e2e', () => {
       },
       {
         address: `asset-${ownerUser.username}`,
-        addressLower: `asset-${ownerUser.username}`,
         amount: '1',
         assetGroupId: assetGroup.id,
         firstSeenAt: indexedAt,
@@ -1508,7 +1501,6 @@ describe('createOrpcClient e2e', () => {
         metadataProgramAccount: null,
         metadataSymbol: null,
         owner: ownerWalletAddress,
-        ownerLower: ownerWalletAddress,
         page: 1,
         raw: null,
         resolverId: assetGroup.id,
@@ -1803,7 +1795,6 @@ describe('createOrpcClient e2e', () => {
     await database.insert(asset).values([
       {
         address: 'asset-100%',
-        addressLower: 'asset-100%',
         amount: '1',
         assetGroupId: percentGroup.id,
         firstSeenAt: indexedAt,
@@ -1812,14 +1803,26 @@ describe('createOrpcClient e2e', () => {
         indexedAt,
         lastSeenAt: indexedAt,
         owner: 'wallet_1',
-        ownerLower: 'wallet_1',
+        page: 1,
+        resolverId: percentGroup.id,
+        resolverKind: 'helius-collection-assets',
+      },
+      {
+        address: 'AssetAbC123',
+        amount: '1',
+        assetGroupId: percentGroup.id,
+        firstSeenAt: indexedAt,
+        id: crypto.randomUUID(),
+        indexedAssetId: `v2:${JSON.stringify([percentGroup.id, 'AssetAbC123', 'OwnerAbC123', 'helius-collection-assets'])}`,
+        indexedAt,
+        lastSeenAt: indexedAt,
+        owner: 'OwnerAbC123',
         page: 1,
         resolverId: percentGroup.id,
         resolverKind: 'helius-collection-assets',
       },
       {
         address: 'asset-1000',
-        addressLower: 'asset-1000',
         amount: '1',
         assetGroupId: percentGroup.id,
         firstSeenAt: indexedAt,
@@ -1828,7 +1831,6 @@ describe('createOrpcClient e2e', () => {
         indexedAt,
         lastSeenAt: indexedAt,
         owner: 'walleta1',
-        ownerLower: 'walleta1',
         page: 1,
         resolverId: percentGroup.id,
         resolverKind: 'helius-collection-assets',
@@ -1845,9 +1847,25 @@ describe('createOrpcClient e2e', () => {
       address: '100%',
       assetGroupId: percentGroup.id,
     })
+    const assetsWithCaseMatch = await adminSession.client.adminAsset.list({
+      address: 'AbC1',
+      assetGroupId: percentGroup.id,
+    })
+    const assetsWithCaseMismatch = await adminSession.client.adminAsset.list({
+      address: 'abc1',
+      assetGroupId: percentGroup.id,
+    })
     const assetsWithUnderscore = await adminSession.client.adminAsset.list({
       assetGroupId: percentGroup.id,
       owner: 'wallet_1',
+    })
+    const assetsWithOwnerCaseMatch = await adminSession.client.adminAsset.list({
+      assetGroupId: percentGroup.id,
+      owner: 'AbC1',
+    })
+    const assetsWithOwnerCaseMismatch = await adminSession.client.adminAsset.list({
+      assetGroupId: percentGroup.id,
+      owner: 'abc1',
     })
 
     expect(groupsWithPercent.assetGroups).toContainEqual(
@@ -1877,11 +1895,23 @@ describe('createOrpcClient e2e', () => {
       address: 'asset-100%',
       owner: 'wallet_1',
     })
+    expect(assetsWithCaseMatch.assets).toHaveLength(1)
+    expect(assetsWithCaseMatch.assets[0]).toMatchObject({
+      address: 'AssetAbC123',
+      owner: 'OwnerAbC123',
+    })
+    expect(assetsWithCaseMismatch.assets).toHaveLength(0)
     expect(assetsWithUnderscore.assets).toHaveLength(1)
     expect(assetsWithUnderscore.assets[0]).toMatchObject({
       address: 'asset-100%',
       owner: 'wallet_1',
     })
+    expect(assetsWithOwnerCaseMatch.assets).toHaveLength(1)
+    expect(assetsWithOwnerCaseMatch.assets[0]).toMatchObject({
+      address: 'AssetAbC123',
+      owner: 'OwnerAbC123',
+    })
+    expect(assetsWithOwnerCaseMismatch.assets).toHaveLength(0)
   })
 
   test('non-admin access to admin routes is forbidden', async () => {

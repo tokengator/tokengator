@@ -51,9 +51,18 @@ export interface OwnershipRow {
   page: number
   resolverId: string
   resolverKind: string
+  traits?: OwnershipTrait[]
+}
+
+export interface OwnershipTrait {
+  groupId: string
+  groupLabel: string
+  value: string
+  valueLabel: string
 }
 
 interface AssetLike {
+  attributes?: unknown
   content?: {
     files?: Array<{
       cdn_uri?: unknown
@@ -65,6 +74,7 @@ interface AssetLike {
       image?: unknown
     }
     metadata?: {
+      attributes?: unknown
       description?: unknown
       image?: unknown
       name?: unknown
@@ -239,6 +249,65 @@ function extractProgramAccount(asset: AssetLike): string | null {
   )
 }
 
+function extractTraits(asset: AssetLike): OwnershipTrait[] {
+  const groupLabels = new Map<string, string>()
+  const valuesByGroupId = new Map<string, Map<string, string>>()
+
+  for (const attribute of getTraitAttributes(asset)) {
+    if (!attribute || typeof attribute !== 'object' || Array.isArray(attribute)) {
+      continue
+    }
+
+    const record = attribute as Record<string, unknown>
+    const groupLabel = readDisplayString(record.trait_type ?? record.traitType ?? record.key ?? record.name)
+    const valueLabel = readDisplayString(record.value)
+
+    if (!groupLabel || !valueLabel) {
+      continue
+    }
+
+    const groupId = groupLabel.toLowerCase()
+    const value = valueLabel.toLowerCase()
+    const currentGroupLabel = groupLabels.get(groupId)
+    const currentValues = valuesByGroupId.get(groupId) ?? new Map<string, string>()
+    const currentValueLabel = currentValues.get(value)
+
+    if (!currentGroupLabel || isLexicographicallySmaller(groupLabel, currentGroupLabel)) {
+      groupLabels.set(groupId, groupLabel)
+    }
+
+    if (!currentValueLabel || isLexicographicallySmaller(valueLabel, currentValueLabel)) {
+      currentValues.set(value, valueLabel)
+    }
+
+    valuesByGroupId.set(groupId, currentValues)
+  }
+
+  return [...valuesByGroupId.entries()]
+    .sort(([leftGroupId], [rightGroupId]) => leftGroupId.localeCompare(rightGroupId))
+    .flatMap(([groupId, values]) =>
+      [...values.entries()]
+        .sort(([leftValue], [rightValue]) => leftValue.localeCompare(rightValue))
+        .map(([value, valueLabel]) => ({
+          groupId,
+          groupLabel: groupLabels.get(groupId) ?? groupId,
+          value,
+          valueLabel,
+        })),
+    )
+}
+
+function getTraitAttributes(asset: AssetLike): unknown[] {
+  return [
+    ...(Array.isArray(asset.content?.metadata?.attributes) ? asset.content.metadata.attributes : []),
+    ...(Array.isArray(asset.attributes) ? asset.attributes : []),
+  ]
+}
+
+function isLexicographicallySmaller(left: string, right: string) {
+  return left < right
+}
+
 function normalizeCollectionAssetsRows(input: {
   items: unknown[]
   page: number
@@ -268,6 +337,7 @@ function normalizeCollectionAssetsRows(input: {
       page: input.page,
       resolverId: input.resolver.id,
       resolverKind: input.resolver.kind,
+      traits: extractTraits(item),
     })
   }
 
@@ -361,6 +431,24 @@ export function normalizeAmountToString(amount: number | string | null | undefin
 
 function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value : null
+}
+
+function readDisplayString(value: unknown): string | null {
+  if (typeof value === 'boolean') {
+    return String(value)
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value)
+  }
+
+  if (typeof value === 'string') {
+    const trimmedValue = value.trim()
+
+    return trimmedValue.length > 0 ? trimmedValue : null
+  }
+
+  return null
 }
 
 function sanitizeRawPayload(value: unknown): unknown {

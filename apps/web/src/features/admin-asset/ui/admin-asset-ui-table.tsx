@@ -1,5 +1,6 @@
 import type { AdminAssetEntity } from '@tokengator/sdk'
 import { Button } from '@tokengator/ui/components/button'
+import { UiDebugDialog } from '@tokengator/ui/components/ui-debug-dialog.tsx'
 import {
   UiTable,
   UiTableBody,
@@ -53,9 +54,12 @@ export function AdminAssetUiTable(props: AdminAssetUiTableProps) {
             <UiTableCell>{asset.amount}</UiTableCell>
             <UiTableCell>{formatDate(asset.indexedAt)}</UiTableCell>
             <UiTableCell className="text-right">
-              <Button disabled={isDeletePending} onClick={() => onDelete(asset.id)} type="button" variant="outline">
-                {deletingAssetId === asset.id && isDeletePending ? 'Deleting...' : 'Delete'}
-              </Button>
+              <div className="flex justify-end gap-2">
+                <Button disabled={isDeletePending} onClick={() => onDelete(asset.id)} type="button" variant="outline">
+                  {deletingAssetId === asset.id && isDeletePending ? 'Deleting...' : 'Delete'}
+                </Button>
+                <UiDebugDialog data={asset} label="Debug asset" />
+              </div>
             </UiTableCell>
           </UiTableRow>
         ))}

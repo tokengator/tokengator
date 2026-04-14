@@ -63,6 +63,70 @@ function createInsertFailureDatabase(failingTable: unknown) {
         }
       }
 
+      if (property === 'transaction') {
+        return async (callback: Parameters<DatabaseClient['transaction']>[0]) =>
+          await target.transaction(async (transaction) => {
+            const transactionProxy = new Proxy(transaction, {
+              get(transactionTarget, transactionProperty, transactionReceiver) {
+                if (transactionProperty === 'insert') {
+                  return (table: unknown) => {
+                    if (table === failingTable) {
+                      throw new Error('Run insert failed.')
+                    }
+
+                    return transactionTarget.insert(table as never)
+                  }
+                }
+
+                const transactionValue = Reflect.get(transactionTarget, transactionProperty, transactionReceiver)
+
+                return typeof transactionValue === 'function'
+                  ? transactionValue.bind(transactionTarget)
+                  : transactionValue
+              },
+            })
+
+            return await callback(transactionProxy)
+          })
+      }
+
+      const value = Reflect.get(target, property, receiver)
+
+      return typeof value === 'function' ? value.bind(target) : value
+    },
+  })
+}
+
+function createUpdateFailureDatabase(failingTable: unknown) {
+  return new Proxy(database, {
+    get(target, property, receiver) {
+      if (property === 'transaction') {
+        return async (callback: Parameters<DatabaseClient['transaction']>[0]) =>
+          await target.transaction(async (transaction) => {
+            const transactionProxy = new Proxy(transaction, {
+              get(transactionTarget, transactionProperty, transactionReceiver) {
+                if (transactionProperty === 'update') {
+                  return (table: unknown) => {
+                    if (table === failingTable) {
+                      throw new Error('Run update failed.')
+                    }
+
+                    return transactionTarget.update(table as never)
+                  }
+                }
+
+                const transactionValue = Reflect.get(transactionTarget, transactionProperty, transactionReceiver)
+
+                return typeof transactionValue === 'function'
+                  ? transactionValue.bind(transactionTarget)
+                  : transactionValue
+              },
+            })
+
+            return await callback(transactionProxy)
+          })
+      }
+
       const value = Reflect.get(target, property, receiver)
 
       return typeof value === 'function' ? value.bind(target) : value
@@ -133,6 +197,7 @@ async function getStoredAssets(assetGroupId: string) {
       amount: assetSchema.asset.amount,
       assetGroupId: assetSchema.asset.assetGroupId,
       firstSeenAt: assetSchema.asset.firstSeenAt,
+      id: assetSchema.asset.id,
       indexedAssetId: assetSchema.asset.indexedAssetId,
       indexedAt: assetSchema.asset.indexedAt,
       metadataName: assetSchema.asset.metadataName,
@@ -144,13 +209,50 @@ async function getStoredAssets(assetGroupId: string) {
     .orderBy(asc(assetSchema.asset.address), asc(assetSchema.asset.owner))
 }
 
-async function insertAssetGroupRecord(input: { address: string; id: string; type: 'collection' | 'mint' }) {
+async function getStoredAssetTraits(assetGroupId: string) {
+  return await database
+    .select({
+      address: assetSchema.asset.address,
+      traitKey: assetSchema.assetTrait.traitKey,
+      traitLabel: assetSchema.assetTrait.traitLabel,
+      traitValue: assetSchema.assetTrait.traitValue,
+      traitValueLabel: assetSchema.assetTrait.traitValueLabel,
+    })
+    .from(assetSchema.assetTrait)
+    .innerJoin(assetSchema.asset, eq(assetSchema.assetTrait.assetId, assetSchema.asset.id))
+    .where(eq(assetSchema.assetTrait.assetGroupId, assetGroupId))
+    .orderBy(
+      asc(assetSchema.asset.address),
+      asc(assetSchema.assetTrait.traitKey),
+      asc(assetSchema.assetTrait.traitValue),
+      asc(assetSchema.assetTrait.id),
+    )
+}
+
+async function getStoredFacetTotals(assetGroupId: string) {
+  const [record] = await database
+    .select({
+      facetTotals: assetSchema.assetGroup.facetTotals,
+    })
+    .from(assetSchema.assetGroup)
+    .where(eq(assetSchema.assetGroup.id, assetGroupId))
+
+  return record?.facetTotals ? JSON.parse(record.facetTotals) : null
+}
+
+async function insertAssetGroupRecord(input: {
+  address: string
+  facetTotals?: Record<string, unknown>
+  id: string
+  type: 'collection' | 'mint'
+}) {
   const now = new Date('2026-03-31T09:00:00.000Z')
 
   await database.insert(assetSchema.assetGroup).values({
     address: input.address,
     createdAt: now,
     enabled: true,
+    facetTotals: input.facetTotals ? JSON.stringify(input.facetTotals) : null,
     id: input.id,
     label: input.address,
     type: input.type,
@@ -167,14 +269,16 @@ async function insertAssetRecord(input: {
   metadataName?: string | null
   owner: string
   resolverKind: 'helius-collection-assets' | 'helius-token-accounts'
+  traits?: Array<{ groupId: string; groupLabel: string; value: string; valueLabel: string }>
 }) {
+  const assetId = crypto.randomUUID()
+
   await database.insert(assetSchema.asset).values({
     address: input.address,
-    addressLower: input.address.toLowerCase(),
     amount: input.amount,
     assetGroupId: input.assetGroupId,
     firstSeenAt: input.firstSeenAt,
-    id: crypto.randomUUID(),
+    id: assetId,
     indexedAssetId: buildIndexedAssetId({
       address: input.address,
       assetGroupId: input.assetGroupId,
@@ -192,12 +296,25 @@ async function insertAssetRecord(input: {
     metadataProgramAccount: null,
     metadataSymbol: null,
     owner: input.owner,
-    ownerLower: input.owner.toLowerCase(),
     page: 1,
     raw: null,
     resolverId: input.assetGroupId,
     resolverKind: input.resolverKind,
   })
+
+  if ((input.traits ?? []).length > 0) {
+    await database.insert(assetSchema.assetTrait).values(
+      input.traits!.map((trait) => ({
+        assetGroupId: input.assetGroupId,
+        assetId,
+        id: crypto.randomUUID(),
+        traitKey: trait.groupId,
+        traitLabel: trait.groupLabel,
+        traitValue: trait.value,
+        traitValueLabel: trait.valueLabel,
+      })),
+    )
+  }
 }
 
 function syncDatabase(databaseUrl: string) {
@@ -256,6 +373,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await database.delete(automationSchema.automationLock).where(sql`1 = 1`)
+  await database.delete(assetSchema.assetTrait).where(sql`1 = 1`)
   await database.delete(assetSchema.asset).where(sql`1 = 1`)
   await database.delete(assetSchema.assetGroup).where(sql`1 = 1`)
 })
@@ -475,6 +593,16 @@ describe('indexAssetGroup', () => {
         {
           content: {
             metadata: {
+              attributes: [
+                {
+                  trait_type: 'Background',
+                  value: 'Forest',
+                },
+                {
+                  trait_type: 'Hat',
+                  value: 'Cap',
+                },
+              ],
               name: 'Alpha',
             },
           },
@@ -488,6 +616,16 @@ describe('indexAssetGroup', () => {
         {
           content: {
             metadata: {
+              attributes: [
+                {
+                  trait_type: 'Background',
+                  value: 'Forest',
+                },
+                {
+                  trait_type: 'Hat',
+                  value: 'Crown',
+                },
+              ],
               name: 'Beta',
             },
           },
@@ -501,6 +639,18 @@ describe('indexAssetGroup', () => {
 
     await insertAssetGroupRecord({
       address: 'collection-acme',
+      facetTotals: {
+        background: {
+          label: 'Background',
+          options: {
+            desert: {
+              label: 'Desert',
+              total: 1,
+            },
+          },
+          total: 1,
+        },
+      },
       id: assetGroupId,
       type: 'collection',
     })
@@ -513,6 +663,14 @@ describe('indexAssetGroup', () => {
       metadataName: 'Stale',
       owner: 'wallet-stale',
       resolverKind: 'helius-collection-assets',
+      traits: [
+        {
+          groupId: 'background',
+          groupLabel: 'Background',
+          value: 'desert',
+          valueLabel: 'Desert',
+        },
+      ],
     })
 
     const result = await indexAssetGroup({
@@ -567,6 +725,62 @@ describe('indexAssetGroup', () => {
         resolverKind: 'helius-collection-assets',
       },
     ])
+    expect(await getStoredAssetTraits(assetGroupId)).toEqual([
+      {
+        address: 'asset-a',
+        traitKey: 'background',
+        traitLabel: 'Background',
+        traitValue: 'forest',
+        traitValueLabel: 'Forest',
+      },
+      {
+        address: 'asset-a',
+        traitKey: 'hat',
+        traitLabel: 'Hat',
+        traitValue: 'cap',
+        traitValueLabel: 'Cap',
+      },
+      {
+        address: 'asset-b',
+        traitKey: 'background',
+        traitLabel: 'Background',
+        traitValue: 'forest',
+        traitValueLabel: 'Forest',
+      },
+      {
+        address: 'asset-b',
+        traitKey: 'hat',
+        traitLabel: 'Hat',
+        traitValue: 'crown',
+        traitValueLabel: 'Crown',
+      },
+    ])
+    await expect(getStoredFacetTotals(assetGroupId)).resolves.toEqual({
+      background: {
+        label: 'Background',
+        options: {
+          forest: {
+            label: 'Forest',
+            total: 2,
+          },
+        },
+        total: 2,
+      },
+      hat: {
+        label: 'Hat',
+        options: {
+          cap: {
+            label: 'Cap',
+            total: 1,
+          },
+          crown: {
+            label: 'Crown',
+            total: 1,
+          },
+        },
+        total: 2,
+      },
+    })
     await expect(
       listAssetGroupIndexRuns({
         assetGroupId,
@@ -640,6 +854,18 @@ describe('indexAssetGroup', () => {
 
     await insertAssetGroupRecord({
       address: 'collection-acme',
+      facetTotals: {
+        background: {
+          label: 'Background',
+          options: {
+            desert: {
+              label: 'Desert',
+              total: 1,
+            },
+          },
+          total: 1,
+        },
+      },
       id: assetGroupId,
       type: 'collection',
     })
@@ -710,6 +936,18 @@ describe('indexAssetGroup', () => {
 
     await insertAssetGroupRecord({
       address: 'collection-acme',
+      facetTotals: {
+        background: {
+          label: 'Background',
+          options: {
+            desert: {
+              label: 'Desert',
+              total: 1,
+            },
+          },
+          total: 1,
+        },
+      },
       id: assetGroupId,
       type: 'collection',
     })
@@ -748,6 +986,224 @@ describe('indexAssetGroup', () => {
         indexedAt: staleTime,
       },
     ])
+    await expect(getStoredFacetTotals(assetGroupId)).resolves.toEqual({
+      background: {
+        label: 'Background',
+        options: {
+          desert: {
+            label: 'Desert',
+            total: 1,
+          },
+        },
+        total: 1,
+      },
+    })
+  })
+
+  test('rolls back stale cleanup when refreshing facet totals fails', async () => {
+    const assetGroupId = crypto.randomUUID()
+    const initialIndexedAt = new Date('2026-03-30T12:00:00.000Z')
+    const now = new Date('2026-03-31T12:00:00.000Z')
+
+    await insertAssetGroupRecord({
+      address: 'collection-cleanup-atomicity',
+      facetTotals: {
+        background: {
+          label: 'Background',
+          options: {
+            desert: {
+              label: 'Desert',
+              total: 1,
+            },
+          },
+          total: 1,
+        },
+      },
+      id: assetGroupId,
+      type: 'collection',
+    })
+    await insertAssetRecord({
+      address: 'asset-stale',
+      amount: '1',
+      assetGroupId,
+      firstSeenAt: initialIndexedAt,
+      indexedAt: initialIndexedAt,
+      metadataName: 'Stale',
+      owner: 'wallet-stale',
+      resolverKind: 'helius-collection-assets',
+      traits: [
+        {
+          groupId: 'background',
+          groupLabel: 'Background',
+          value: 'desert',
+          valueLabel: 'Desert',
+        },
+      ],
+    })
+
+    await expect(
+      indexAssetGroup({
+        adapter: getCollectionAdapter({
+          pageOneItems: [
+            {
+              content: {
+                metadata: {
+                  attributes: [
+                    {
+                      trait_type: 'Background',
+                      value: 'Forest',
+                    },
+                  ],
+                  name: 'Alpha',
+                },
+              },
+              id: 'asset-a',
+              ownership: {
+                owner: 'wallet-a',
+              },
+            },
+          ],
+        }).adapter,
+        apiKey: 'helius-api-key',
+        assetGroup: {
+          address: 'collection-cleanup-atomicity',
+          id: assetGroupId,
+          type: 'collection',
+        },
+        database: createUpdateFailureDatabase(assetSchema.assetGroup) as never,
+        heliusCluster: 'devnet',
+        now: () => now,
+      }),
+    ).rejects.toThrow('Run update failed.')
+
+    await expect(getStoredAssets(assetGroupId)).resolves.toMatchObject([
+      {
+        address: 'asset-a',
+        indexedAt: now,
+      },
+      {
+        address: 'asset-stale',
+        indexedAt: initialIndexedAt,
+      },
+    ])
+    await expect(getStoredFacetTotals(assetGroupId)).resolves.toEqual({
+      background: {
+        label: 'Background',
+        options: {
+          desert: {
+            label: 'Desert',
+            total: 1,
+          },
+        },
+        total: 1,
+      },
+    })
+  })
+
+  test('rolls back the page asset rewrite when inserting traits fails', async () => {
+    const assetGroupId = crypto.randomUUID()
+    const initialIndexedAt = new Date('2026-03-30T09:00:00.000Z')
+    const now = new Date('2026-03-31T12:30:00.000Z')
+
+    await insertAssetGroupRecord({
+      address: 'collection-atomicity',
+      facetTotals: {
+        background: {
+          label: 'Background',
+          options: {
+            desert: {
+              label: 'Desert',
+              total: 1,
+            },
+          },
+          total: 1,
+        },
+      },
+      id: assetGroupId,
+      type: 'collection',
+    })
+    await insertAssetRecord({
+      address: 'asset-a',
+      amount: '1',
+      assetGroupId,
+      firstSeenAt: initialIndexedAt,
+      indexedAt: initialIndexedAt,
+      metadataName: 'Alpha',
+      owner: 'wallet-a',
+      resolverKind: 'helius-collection-assets',
+      traits: [
+        {
+          groupId: 'background',
+          groupLabel: 'Background',
+          value: 'desert',
+          valueLabel: 'Desert',
+        },
+      ],
+    })
+
+    await expect(
+      indexAssetGroup({
+        adapter: getCollectionAdapter({
+          pageOneItems: [
+            {
+              content: {
+                metadata: {
+                  attributes: [
+                    {
+                      trait_type: 'Background',
+                      value: 'Forest',
+                    },
+                  ],
+                  name: 'Alpha Updated',
+                },
+              },
+              id: 'asset-a',
+              ownership: {
+                owner: 'wallet-a',
+              },
+            },
+          ],
+        }).adapter,
+        apiKey: 'helius-api-key',
+        assetGroup: {
+          address: 'collection-atomicity',
+          id: assetGroupId,
+          type: 'collection',
+        },
+        database: createInsertFailureDatabase(assetSchema.assetTrait) as never,
+        heliusCluster: 'devnet',
+        now: () => now,
+      }),
+    ).rejects.toThrow('Run insert failed.')
+
+    await expect(getStoredAssets(assetGroupId)).resolves.toMatchObject([
+      {
+        address: 'asset-a',
+        indexedAt: initialIndexedAt,
+        metadataName: 'Alpha',
+      },
+    ])
+    await expect(getStoredAssetTraits(assetGroupId)).resolves.toEqual([
+      {
+        address: 'asset-a',
+        traitKey: 'background',
+        traitLabel: 'Background',
+        traitValue: 'desert',
+        traitValueLabel: 'Desert',
+      },
+    ])
+    await expect(getStoredFacetTotals(assetGroupId)).resolves.toEqual({
+      background: {
+        label: 'Background',
+        options: {
+          desert: {
+            label: 'Desert',
+            total: 1,
+          },
+        },
+        total: 1,
+      },
+    })
   })
 
   test('fails with lock_lost and stops later page writes after another run steals the lease', async () => {

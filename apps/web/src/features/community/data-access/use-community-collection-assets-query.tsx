@@ -5,6 +5,7 @@ import { orpc } from '@/lib/orpc'
 
 export interface CommunityCollectionAssetsInput {
   address: string
+  facets?: Record<string, string[]>
   owner?: string
   query?: string
   slug: string
@@ -30,6 +31,7 @@ export function getCommunityCollectionAssetsQueryKey(input: CommunityCollectionA
   return orpc.community.listCollectionAssets.key({
     input: {
       address: input.address,
+      facets: input.facets,
       owner: input.owner,
       query: input.query,
       slug: input.slug,
@@ -44,6 +46,7 @@ export function getCommunityCollectionAssetsQueryOptions(input: CommunityCollect
       getCommunityCollectionAssetsOrNull(() =>
         orpc.community.listCollectionAssets.call({
           address: input.address,
+          facets: input.facets,
           owner: input.owner,
           query: input.query,
           slug: input.slug,
@@ -62,6 +65,7 @@ export function getCommunityCollectionAssetsRouteQueryOptions(input: CommunityCo
           getCommunityCollectionAssets({
             data: {
               address: input.address,
+              facets: input.facets,
               owner: input.owner,
               query: input.query,
               slug: input.slug,

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 describe('CommunityFeatureCollectionAssets', () => {
-  test('clears the text query when switching collections while preserving owner and grid', async () => {
+  test('clears facets and text query when switching collections while preserving owner and grid', async () => {
     const { getCommunityCollectionSwitchNavigation } =
       await import('../src/features/community/feature/community-feature-collection-assets')
 
@@ -9,6 +9,9 @@ describe('CommunityFeatureCollectionAssets', () => {
       getCommunityCollectionSwitchNavigation({
         address: 'collection-beta',
         search: {
+          facets: {
+            background: ['forest'],
+          },
           grid: 8,
           owner: 'owner-alpha',
           query: 'perk',
@@ -21,6 +24,7 @@ describe('CommunityFeatureCollectionAssets', () => {
         slug: 'alpha-dao',
       },
       search: {
+        facets: undefined,
         grid: 8,
         owner: 'owner-alpha',
         query: undefined,

@@ -9,6 +9,7 @@ export const assetGroup = sqliteTable(
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),
     enabled: integer('enabled', { mode: 'boolean' }).default(true).notNull(),
+    facetTotals: text('facet_totals'),
     id: text('id')
       .$defaultFn(() => crypto.randomUUID())
       .primaryKey(),
@@ -65,7 +66,6 @@ export const asset = sqliteTable(
   'asset',
   {
     address: text('address').notNull(),
-    addressLower: text('address_lower').notNull(),
     amount: text('amount').notNull(),
     assetGroupId: text('asset_group_id')
       .notNull()
@@ -86,30 +86,67 @@ export const asset = sqliteTable(
     metadataProgramAccount: text('metadata_program_account'),
     metadataSymbol: text('metadata_symbol'),
     owner: text('owner').notNull(),
-    ownerLower: text('owner_lower').notNull(),
     page: integer('page').notNull(),
     raw: text('raw'),
     resolverId: text('resolver_id').notNull(),
     resolverKind: text('resolver_kind', { enum: ['helius-collection-assets', 'helius-token-accounts'] }).notNull(),
   },
   (table) => [
-    index('asset_assetGroupId_addressLower_idx').on(table.assetGroupId, table.addressLower),
+    index('asset_assetGroupId_address_idx').on(table.assetGroupId, table.address),
     index('asset_assetGroupId_idx').on(table.assetGroupId),
     index('asset_assetGroupId_indexedAt_idx').on(table.assetGroupId, table.indexedAt),
-    index('asset_assetGroupId_ownerLower_idx').on(table.assetGroupId, table.ownerLower),
+    index('asset_assetGroupId_owner_idx').on(table.assetGroupId, table.owner),
     index('asset_assetGroupId_resolverKind_idx').on(table.assetGroupId, table.resolverKind),
     uniqueIndex('asset_indexedAssetId_idx').on(table.indexedAssetId),
+  ],
+)
+
+export const assetTrait = sqliteTable(
+  'asset_trait',
+  {
+    assetGroupId: text('asset_group_id')
+      .notNull()
+      .references(() => assetGroup.id, { onDelete: 'cascade' }),
+    assetId: text('asset_id')
+      .notNull()
+      .references(() => asset.id, { onDelete: 'cascade' }),
+    id: text('id')
+      .$defaultFn(() => crypto.randomUUID())
+      .primaryKey(),
+    traitKey: text('trait_key').notNull(),
+    traitLabel: text('trait_label').notNull(),
+    traitValue: text('trait_value').notNull(),
+    traitValueLabel: text('trait_value_label').notNull(),
+  },
+  (table) => [
+    index('asset_trait_assetGroupId_assetId_idx').on(table.assetGroupId, table.assetId),
+    index('asset_trait_assetGroupId_traitKey_traitValue_idx').on(table.assetGroupId, table.traitKey, table.traitValue),
+    index('asset_trait_assetId_idx').on(table.assetId),
+    uniqueIndex('asset_trait_assetId_traitKey_traitValue_idx').on(table.assetId, table.traitKey, table.traitValue),
   ],
 )
 
 export const assetGroupRelations = relations(assetGroup, ({ many }) => ({
   assets: many(asset),
   indexRuns: many(assetGroupIndexRun),
+  traits: many(assetTrait),
 }))
 
-export const assetRelations = relations(asset, ({ one }) => ({
+export const assetRelations = relations(asset, ({ many, one }) => ({
   assetGroup: one(assetGroup, {
     fields: [asset.assetGroupId],
+    references: [assetGroup.id],
+  }),
+  traits: many(assetTrait),
+}))
+
+export const assetTraitRelations = relations(assetTrait, ({ one }) => ({
+  asset: one(asset, {
+    fields: [assetTrait.assetId],
+    references: [asset.id],
+  }),
+  assetGroup: one(assetGroup, {
+    fields: [assetTrait.assetGroupId],
     references: [assetGroup.id],
   }),
 }))

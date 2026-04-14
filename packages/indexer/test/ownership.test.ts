@@ -71,6 +71,166 @@ describe('normalizeOwnershipRows', () => {
         page: 1,
         resolverId: 'resolver-collection',
         resolverKind: 'helius-collection-assets',
+        traits: [],
+      },
+    ])
+  })
+
+  test('normalizes, deduplicates, and sorts collection asset traits', () => {
+    const rows = normalizeOwnershipRows({
+      items: [
+        {
+          content: {
+            metadata: {
+              attributes: [
+                {
+                  trait_type: 'Hat',
+                  value: 'Cap',
+                },
+                {
+                  trait_type: 'hat',
+                  value: 'cap',
+                },
+                {
+                  trait_type: 'Background',
+                  value: ' Blue ',
+                },
+                {
+                  trait_type: 'Flag',
+                  value: true,
+                },
+                {
+                  trait_type: 'Rank',
+                  value: 1,
+                },
+                {
+                  trait_type: '  ',
+                  value: 'ignored',
+                },
+                {
+                  trait_type: 'Eyes',
+                  value: '   ',
+                },
+              ],
+              name: 'Alpha',
+            },
+          },
+          id: 'asset-a',
+          ownership: {
+            owner: 'wallet-a',
+          },
+        },
+      ],
+      page: 1,
+      resolver: COLLECTION_RESOLVER,
+    })
+
+    expect(rows[0]?.traits).toEqual([
+      {
+        groupId: 'background',
+        groupLabel: 'Background',
+        value: 'blue',
+        valueLabel: 'Blue',
+      },
+      {
+        groupId: 'flag',
+        groupLabel: 'Flag',
+        value: 'true',
+        valueLabel: 'true',
+      },
+      {
+        groupId: 'hat',
+        groupLabel: 'Hat',
+        value: 'cap',
+        valueLabel: 'Cap',
+      },
+      {
+        groupId: 'rank',
+        groupLabel: 'Rank',
+        value: '1',
+        valueLabel: '1',
+      },
+    ])
+  })
+
+  test('falls back to top-level attributes when metadata attributes are missing', () => {
+    const rows = normalizeOwnershipRows({
+      items: [
+        {
+          attributes: [
+            {
+              traitType: 'Accessory',
+              value: 'Bow',
+            },
+          ],
+          content: {
+            metadata: {
+              name: 'Alpha',
+            },
+          },
+          id: 'asset-a',
+          ownership: {
+            owner: 'wallet-a',
+          },
+        },
+      ],
+      page: 1,
+      resolver: COLLECTION_RESOLVER,
+    })
+
+    expect(rows[0]?.traits).toEqual([
+      {
+        groupId: 'accessory',
+        groupLabel: 'Accessory',
+        value: 'bow',
+        valueLabel: 'Bow',
+      },
+    ])
+  })
+
+  test('merges metadata and top-level collection asset traits', () => {
+    const rows = normalizeOwnershipRows({
+      items: [
+        {
+          attributes: [
+            {
+              traitType: 'Accessory',
+              value: 'Bow',
+            },
+          ],
+          content: {
+            metadata: {
+              attributes: [
+                {
+                  trait_type: 'Background',
+                  value: 'Red',
+                },
+              ],
+              name: 'Alpha',
+            },
+          },
+          id: 'asset-a',
+          ownership: {
+            owner: 'wallet-a',
+          },
+        },
+      ],
+      page: 1,
+      resolver: COLLECTION_RESOLVER,
+    })
+
+    expect(rows[0]?.traits).toEqual([
+      {
+        groupId: 'accessory',
+        groupLabel: 'Accessory',
+        value: 'bow',
+        valueLabel: 'Bow',
+      },
+      {
+        groupId: 'background',
+        groupLabel: 'Background',
+        value: 'red',
+        valueLabel: 'Red',
       },
     ])
   })

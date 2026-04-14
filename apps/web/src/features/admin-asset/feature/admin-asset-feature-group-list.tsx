@@ -1,5 +1,6 @@
 import { Link, useNavigate } from '@tanstack/react-router'
 import { Button, buttonVariants } from '@tokengator/ui/components/button'
+import { UiDebugDialog } from '@tokengator/ui/components/ui-debug-dialog.tsx'
 import { cn } from '@tokengator/ui/lib/utils'
 
 import type { AdminAssetGroupListSearch } from '@/features/admin-asset/util/admin-asset-group-list-search'
@@ -88,6 +89,7 @@ export function AdminAssetFeatureGroupList(props: AdminAssetFeatureGroupListProp
             >
               Settings
             </Link>
+            <UiDebugDialog data={assetGroup} label="Debug asset group" />
           </div>
         )}
         renderLabel={(assetGroup) => (

@@ -5,7 +5,6 @@ import { parseStoredJsonOrValue } from '../../../lib/stored-json'
 
 export const adminAssetEntityColumns = {
   address: asset.address,
-  addressLower: asset.addressLower,
   amount: asset.amount,
   assetGroupId: asset.assetGroupId,
   firstSeenAt: asset.firstSeenAt,
@@ -22,7 +21,6 @@ export const adminAssetEntityColumns = {
   metadataProgramAccount: asset.metadataProgramAccount,
   metadataSymbol: asset.metadataSymbol,
   owner: asset.owner,
-  ownerLower: asset.ownerLower,
   page: asset.page,
   raw: asset.raw,
   resolverId: asset.resolverId,

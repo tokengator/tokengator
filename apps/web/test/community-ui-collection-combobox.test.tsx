@@ -10,6 +10,7 @@ describe('CommunityUiCollectionCombobox', () => {
         collections={[
           {
             address: '1234567890abcdefghijklmnop',
+            facetTotals: {},
             id: 'collection-1',
             label: 'Alpha Collection',
             type: 'collection',

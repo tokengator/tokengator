@@ -3,10 +3,15 @@ import z from 'zod'
 import type { CommunityListCollectionAssetsResult } from '@tokengator/sdk'
 
 import { authMiddleware } from '@/features/auth/data-access/auth-middleware'
+import { parseCommunityCollectionAssetFacetSelection } from '@/features/community/util/community-collection-asset-search'
 import { serverOrpcClient } from '@/lib/orpc-server'
 
 const communityCollectionAssetsInputSchema = z.object({
   address: z.string().trim().min(1),
+  facets: z
+    .unknown()
+    .optional()
+    .transform((value) => parseCommunityCollectionAssetFacetSelection(value)),
   owner: z.string().trim().min(1).optional(),
   query: z.string().trim().min(1).optional(),
   slug: z.string().trim().min(1),
@@ -14,12 +19,14 @@ const communityCollectionAssetsInputSchema = z.object({
 
 export const getCommunityCollectionAssets = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
-  .inputValidator((input: { address: string; owner?: string; query?: string; slug: string }) =>
-    communityCollectionAssetsInputSchema.parse(input),
+  .inputValidator(
+    (input: { address: string; facets?: Record<string, string[]>; owner?: string; query?: string; slug: string }) =>
+      communityCollectionAssetsInputSchema.parse(input),
   )
   .handler(async ({ data }) => {
     return (await serverOrpcClient.community.listCollectionAssets({
       address: data.address,
+      facets: data.facets,
       owner: data.owner,
       query: data.query,
       slug: data.slug,

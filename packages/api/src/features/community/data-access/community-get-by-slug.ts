@@ -1,11 +1,14 @@
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { db } from '@tokengator/db'
+import { assetGroup } from '@tokengator/db/schema/asset'
 import { organization } from '@tokengator/db/schema/auth'
 
 import { listCommunityRoleRecords } from '../../../features/community-role-sync'
+import { parseStoredJsonOrValue } from '../../../lib/stored-json'
 
 import {
   communityEntityColumns,
+  type CommunityCollectionFacetTotals,
   toCommunityCollectionEntity,
   toCommunityDetailEntity,
   toCommunityEntity,
@@ -34,6 +37,7 @@ export async function communityGetBySlug(slug: string) {
   }
 
   const collectionsById = new Map<string, ReturnType<typeof toCommunityCollectionEntity>>()
+  const facetTotalsByCollectionId = new Map<string, CommunityCollectionFacetTotals>()
   const communityRoles = await listCommunityRoleRecords(communityRecord.id)
 
   for (const communityRole of communityRoles) {
@@ -54,6 +58,7 @@ export async function communityGetBySlug(slug: string) {
         condition.assetGroupId,
         toCommunityCollectionEntity({
           address: condition.assetGroupAddress,
+          facetTotals: {},
           id: condition.assetGroupId,
           label: condition.assetGroupLabel,
           type: condition.assetGroupType,
@@ -62,8 +67,35 @@ export async function communityGetBySlug(slug: string) {
     }
   }
 
+  if (collectionsById.size > 0) {
+    const collectionIds = [...collectionsById.keys()]
+    const facetRows = await db
+      .select({
+        facetTotals: assetGroup.facetTotals,
+        id: assetGroup.id,
+      })
+      .from(assetGroup)
+      .where(inArray(assetGroup.id, collectionIds))
+
+    for (const facetRow of facetRows) {
+      const parsedFacetTotals = parseStoredJsonOrValue(facetRow.facetTotals)
+
+      facetTotalsByCollectionId.set(
+        facetRow.id,
+        parsedFacetTotals && typeof parsedFacetTotals === 'object' && !Array.isArray(parsedFacetTotals)
+          ? (parsedFacetTotals as CommunityCollectionFacetTotals)
+          : {},
+      )
+    }
+  }
+
   return toCommunityDetailEntity({
-    collections: [...collectionsById.values()].sort(compareCommunityCollections),
+    collections: [...collectionsById.values()]
+      .map((collection) => ({
+        ...collection,
+        facetTotals: facetTotalsByCollectionId.get(collection.id) ?? {},
+      }))
+      .sort(compareCommunityCollections),
     community: toCommunityEntity(communityRecord),
   })
 }

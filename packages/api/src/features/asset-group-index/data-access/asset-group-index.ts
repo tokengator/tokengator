@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, inArray, lt, lte, sql } from 'drizzle-orm'
 import { db, type Database } from '@tokengator/db'
-import { asset, assetGroup, assetGroupIndexRun } from '@tokengator/db/schema/asset'
+import { asset, assetGroup, assetGroupIndexRun, assetTrait } from '@tokengator/db/schema/asset'
 import {
   createHeliusResolvers,
   createHeliusSdkAdapter,
@@ -10,6 +10,7 @@ import {
   HELIUS_TOKEN_ACCOUNTS,
   normalizeOwnershipRows,
   type HeliusAdapter,
+  type OwnershipTrait,
   type ResolverInput,
   type ResolverKind,
 } from '@tokengator/indexer'
@@ -127,9 +128,21 @@ export interface IndexAssetGroupResult {
   updated: number
 }
 
+interface AssetGroupFacetOptionTotals {
+  label: string
+  total: number
+}
+
+interface AssetGroupFacetTotals {
+  [groupId: string]: {
+    label: string
+    options: Record<string, AssetGroupFacetOptionTotals>
+    total: number
+  }
+}
+
 interface StoredAssetRow {
   address: string
-  addressLower: string
   amount: string
   assetGroupId: string
   firstSeenAt: Date
@@ -146,11 +159,20 @@ interface StoredAssetRow {
   metadataProgramAccount: string | null
   metadataSymbol: string | null
   owner: string
-  ownerLower: string
   page: number
   raw: null
   resolverId: string
   resolverKind: ResolverKind
+}
+
+interface StoredAssetTraitRow {
+  assetGroupId: string
+  assetId: string
+  id: string
+  traitKey: string
+  traitLabel: string
+  traitValue: string
+  traitValueLabel: string
 }
 
 const HELIUS_NETWORK_BY_CLUSTER = {
@@ -225,7 +247,6 @@ function getStoredRow(input: {
 
   return {
     address,
-    addressLower: address.toLowerCase(),
     amount: input.row.amount,
     assetGroupId: input.assetGroupId,
     firstSeenAt: input.startedAt,
@@ -247,12 +268,65 @@ function getStoredRow(input: {
     metadataProgramAccount: input.row.metadataProgramAccount ?? null,
     metadataSymbol: input.row.metadataSymbol ?? null,
     owner,
-    ownerLower: owner.toLowerCase(),
     page: input.row.page,
     raw: null,
     resolverId: input.row.resolverId,
     resolverKind: input.resolverKind,
   }
+}
+
+async function getStoredFacetTotals(input: {
+  assetGroupId: string
+  database?: AutomationTransaction | Database
+}): Promise<AssetGroupFacetTotals> {
+  const database = input.database ?? db
+  const facetOptionRows = await database
+    .select({
+      total: sql<number>`cast(count(distinct ${assetTrait.assetId}) as integer)`,
+      traitKey: assetTrait.traitKey,
+      traitLabel: sql<string>`min(${assetTrait.traitLabel})`,
+      traitValue: assetTrait.traitValue,
+      traitValueLabel: sql<string>`min(${assetTrait.traitValueLabel})`,
+    })
+    .from(assetTrait)
+    .where(eq(assetTrait.assetGroupId, input.assetGroupId))
+    .groupBy(assetTrait.traitKey, assetTrait.traitValue)
+    .orderBy(asc(assetTrait.traitKey), asc(assetTrait.traitValue))
+  const facetGroupRows = await database
+    .select({
+      total: sql<number>`cast(count(distinct ${assetTrait.assetId}) as integer)`,
+      traitKey: assetTrait.traitKey,
+      traitLabel: sql<string>`min(${assetTrait.traitLabel})`,
+    })
+    .from(assetTrait)
+    .where(eq(assetTrait.assetGroupId, input.assetGroupId))
+    .groupBy(assetTrait.traitKey)
+    .orderBy(asc(assetTrait.traitKey))
+  const facetTotals: AssetGroupFacetTotals = {}
+
+  for (const facetGroupRow of facetGroupRows) {
+    facetTotals[facetGroupRow.traitKey] = {
+      label: facetGroupRow.traitLabel,
+      options: {},
+      total: Number(facetGroupRow.total),
+    }
+  }
+
+  for (const facetOptionRow of facetOptionRows) {
+    const facetGroup = facetTotals[facetOptionRow.traitKey] ?? {
+      label: facetOptionRow.traitLabel,
+      options: {},
+      total: 0,
+    }
+
+    facetGroup.options[facetOptionRow.traitValue] = {
+      label: facetOptionRow.traitValueLabel,
+      total: Number(facetOptionRow.total),
+    }
+    facetTotals[facetOptionRow.traitKey] = facetGroup
+  }
+
+  return facetTotals
 }
 
 function getIndexedAssetId(input: {
@@ -285,7 +359,6 @@ function getSupportedHeliusNetwork(cluster: IndexAssetGroupOptions['heliusCluste
 function getUpsertSet() {
   return {
     address: getExcludedColumn(asset.address.name),
-    addressLower: getExcludedColumn(asset.addressLower.name),
     amount: getExcludedColumn(asset.amount.name),
     assetGroupId: getExcludedColumn(asset.assetGroupId.name),
     indexedAt: getExcludedColumn(asset.indexedAt.name),
@@ -299,12 +372,27 @@ function getUpsertSet() {
     metadataProgramAccount: getExcludedColumn(asset.metadataProgramAccount.name),
     metadataSymbol: getExcludedColumn(asset.metadataSymbol.name),
     owner: getExcludedColumn(asset.owner.name),
-    ownerLower: getExcludedColumn(asset.ownerLower.name),
     page: getExcludedColumn(asset.page.name),
     raw: getExcludedColumn(asset.raw.name),
     resolverId: getExcludedColumn(asset.resolverId.name),
     resolverKind: getExcludedColumn(asset.resolverKind.name),
   }
+}
+
+function getStoredTraitRows(input: {
+  assetGroupId: string
+  assetId: string
+  traits?: OwnershipTrait[]
+}): StoredAssetTraitRow[] {
+  return (input.traits ?? []).map((trait) => ({
+    assetGroupId: input.assetGroupId,
+    assetId: input.assetId,
+    id: crypto.randomUUID(),
+    traitKey: trait.groupId,
+    traitLabel: trait.groupLabel,
+    traitValue: trait.value,
+    traitValueLabel: trait.valueLabel,
+  }))
 }
 
 function toAssetGroupIndexRunRecord(row: {
@@ -401,7 +489,13 @@ async function executeAssetGroupIndex(
           page: page.page,
           resolver,
         })
-        const pageRows = new Map<string, StoredAssetRow>()
+        const pageRows = new Map<
+          string,
+          {
+            row: StoredAssetRow
+            traits: OwnershipTrait[]
+          }
+        >()
         let duplicateRows = 0
         let skippedRows = 0
 
@@ -427,7 +521,10 @@ async function executeAssetGroupIndex(
             duplicateRows += 1
           }
 
-          pageRows.set(storedRow.indexedAssetId, storedRow)
+          pageRows.set(storedRow.indexedAssetId, {
+            row: storedRow,
+            traits: row.traits ?? [],
+          })
         }
 
         const rows = [...pageRows.values()]
@@ -450,37 +547,68 @@ async function executeAssetGroupIndex(
           return true
         }
 
-        const existingRowIds = new Set<string>()
+        const existingAssetIdsByIndexedAssetId = new Map<string, string>()
 
         for (const indexedAssetIdChunk of splitIntoChunks(
-          rows.map((row) => row.indexedAssetId),
+          rows.map(({ row }) => row.indexedAssetId),
           getSqliteChunkSize(1),
         )) {
           const existingRows = await database
             .select({
+              id: asset.id,
               indexedAssetId: asset.indexedAssetId,
             })
             .from(asset)
             .where(inArray(asset.indexedAssetId, indexedAssetIdChunk))
 
           for (const existingRow of existingRows) {
-            existingRowIds.add(existingRow.indexedAssetId)
+            existingAssetIdsByIndexedAssetId.set(existingRow.indexedAssetId, existingRow.id)
           }
         }
 
-        const pageInserted = rows.filter((row) => !existingRowIds.has(row.indexedAssetId)).length
-        const pageUpdated = rows.filter((row) => existingRowIds.has(row.indexedAssetId)).length
+        const pageInserted = rows.filter(({ row }) => !existingAssetIdsByIndexedAssetId.has(row.indexedAssetId)).length
+        const pageUpdated = rows.filter(({ row }) => existingAssetIdsByIndexedAssetId.has(row.indexedAssetId)).length
+
+        const assetRows = rows.map(({ row }) => ({
+          ...row,
+          id: existingAssetIdsByIndexedAssetId.get(row.indexedAssetId) ?? row.id,
+        }))
+        const traitRows = rows.flatMap(({ row, traits }) =>
+          getStoredTraitRows({
+            assetGroupId: options.assetGroup.id,
+            assetId: existingAssetIdsByIndexedAssetId.get(row.indexedAssetId) ?? row.id,
+            traits,
+          }),
+        )
+
+        await options.leaseController.ensureOwned()
+        await database.transaction(async (transaction) => {
+          for (const rowChunk of splitIntoChunks(assetRows, getSqliteChunkSize(Object.keys(assetRows[0]!).length))) {
+            await transaction.insert(asset).values(rowChunk).onConflictDoUpdate({
+              set: getUpsertSet(),
+              target: asset.indexedAssetId,
+            })
+          }
+
+          for (const assetIdChunk of splitIntoChunks(
+            assetRows.map((row) => row.id),
+            getSqliteChunkSize(1),
+          )) {
+            await transaction.delete(assetTrait).where(inArray(assetTrait.assetId, assetIdChunk))
+          }
+
+          if (traitRows.length > 0) {
+            for (const traitRowChunk of splitIntoChunks(
+              traitRows,
+              getSqliteChunkSize(Object.keys(traitRows[0]!).length),
+            )) {
+              await transaction.insert(assetTrait).values(traitRowChunk)
+            }
+          }
+        })
 
         progress.inserted += pageInserted
         progress.updated += pageUpdated
-
-        for (const rowChunk of splitIntoChunks(rows, getSqliteChunkSize(Object.keys(rows[0]!).length))) {
-          await options.leaseController.ensureOwned()
-          await database.insert(asset).values(rowChunk).onConflictDoUpdate({
-            set: getUpsertSet(),
-            target: asset.indexedAssetId,
-          })
-        }
 
         logger.debug(
           '[asset-group-index:{resolverKind}:{assetGroupId}] page={page} inserted={inserted} updated={updated} upserted={upserted}',
@@ -490,7 +618,7 @@ async function executeAssetGroupIndex(
             page: page.page,
             resolverKind: resolver.kind,
             updated: pageUpdated,
-            upserted: rows.length,
+            upserted: assetRows.length,
           },
         )
 
@@ -508,7 +636,21 @@ async function executeAssetGroupIndex(
       .where(staleRowFilter)
 
     await options.leaseController.ensureOwned()
-    await database.delete(asset).where(staleRowFilter)
+    await database.transaction(async (transaction) => {
+      await transaction.delete(asset).where(staleRowFilter)
+
+      await transaction
+        .update(assetGroup)
+        .set({
+          facetTotals: serializeJson(
+            await getStoredFacetTotals({
+              assetGroupId: options.assetGroup.id,
+              database: transaction,
+            }),
+          ),
+        })
+        .where(eq(assetGroup.id, options.assetGroup.id))
+    })
 
     progress.deleted = deletedRowCount?.count ?? 0
     progress.pages = result.pages

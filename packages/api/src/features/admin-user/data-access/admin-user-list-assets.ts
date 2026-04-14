@@ -44,7 +44,7 @@ export async function adminUserListAssets(input: AdminUserListAssetsInput) {
       .select(adminUserAssetEntityColumns)
       .from(asset)
       .where(whereClause)
-      .orderBy(asc(asset.addressLower), asc(asset.ownerLower), asc(asset.resolverKind), asc(asset.id))
+      .orderBy(asc(asset.address), asc(asset.owner), asc(asset.resolverKind), asc(asset.id))
       .limit(limit)
       .offset(offset),
     db

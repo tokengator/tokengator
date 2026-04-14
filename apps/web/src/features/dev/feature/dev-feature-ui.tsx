@@ -1,6 +1,7 @@
 import {
   DevUiShowcaseUiDebugCard,
   DevUiShowcaseUiDetailRowCard,
+  DevUiShowcaseUiFacetFilterCard,
   DevUiShowcaseUiInfoCardCard,
   DevUiShowcaseUiListCardCard,
   DevUiShowcaseUiStatusCard,
@@ -13,6 +14,7 @@ export function DevFeatureUi() {
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       <DevUiShowcaseUiDebugCard />
       <DevUiShowcaseUiDetailRowCard />
+      <DevUiShowcaseUiFacetFilterCard />
       <DevUiShowcaseUiInfoCardCard />
       <DevUiShowcaseUiListCardCard />
       <DevUiShowcaseUiStatusCard />

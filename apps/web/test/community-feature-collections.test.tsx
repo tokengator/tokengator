@@ -68,12 +68,14 @@ describe('CommunityFeatureCollections', () => {
       collections: [
         {
           address: 'collection-alpha',
+          facetTotals: {},
           id: 'collection-1',
           label: 'Alpha Collection',
           type: 'collection',
         },
         {
           address: 'collection-beta',
+          facetTotals: {},
           id: 'collection-2',
           label: 'Beta Collection',
           type: 'collection',

@@ -111,6 +111,10 @@ async function expectORPCError(
 async function insertAssetGroup(input: {
   address: string
   enabled?: boolean
+  facetTotals?: Record<
+    string,
+    { label: string; options: Record<string, { label: string; total: number }>; total: number }
+  >
   id: string
   label: string
   type: 'collection' | 'mint'
@@ -119,6 +123,7 @@ async function insertAssetGroup(input: {
     address: input.address,
     createdAt: new Date('2026-04-11T00:00:00.000Z'),
     enabled: input.enabled ?? true,
+    facetTotals: input.facetTotals ? JSON.stringify(input.facetTotals) : null,
     id: input.id,
     indexingStartedAt: null,
     label: input.label,
@@ -135,10 +140,10 @@ async function insertAsset(input: {
   metadataName?: string | null
   metadataSymbol?: string | null
   owner: string
+  traits?: Array<{ groupId: string; groupLabel: string; value: string; valueLabel: string }>
 }) {
   await database.insert(assetSchema.asset).values({
     address: input.address,
-    addressLower: input.address.toLowerCase(),
     amount: '1',
     assetGroupId: input.assetGroupId,
     firstSeenAt: new Date('2026-04-11T00:00:00.000Z'),
@@ -155,12 +160,25 @@ async function insertAsset(input: {
     metadataProgramAccount: null,
     metadataSymbol: input.metadataSymbol ?? null,
     owner: input.owner,
-    ownerLower: input.owner.toLowerCase(),
     page: 1,
     raw: null,
     resolverId: input.assetGroupId,
     resolverKind: 'helius-collection-assets',
   })
+
+  if ((input.traits ?? []).length > 0) {
+    await database.insert(assetSchema.assetTrait).values(
+      input.traits!.map((trait) => ({
+        assetGroupId: input.assetGroupId,
+        assetId: input.id,
+        id: crypto.randomUUID(),
+        traitKey: trait.groupId,
+        traitLabel: trait.groupLabel,
+        traitValue: trait.value,
+        traitValueLabel: trait.valueLabel,
+      })),
+    )
+  }
 }
 
 async function insertCommunityRole(input: {
@@ -288,6 +306,7 @@ afterAll(() => {
 })
 
 beforeEach(async () => {
+  await database.delete(assetSchema.assetTrait).where(sql`1 = 1`)
   await database.delete(assetSchema.asset).where(sql`1 = 1`)
   await database.delete(communityRoleSchema.communityRoleCondition).where(sql`1 = 1`)
   await database.delete(communityRoleSchema.communityRole).where(sql`1 = 1`)
@@ -355,6 +374,18 @@ describe('community routes', () => {
     })
     await insertAssetGroup({
       address: 'collection-alpha',
+      facetTotals: {
+        background: {
+          label: 'Background',
+          options: {
+            forest: {
+              label: 'Forest',
+              total: 2,
+            },
+          },
+          total: 2,
+        },
+      },
       id: 'asset-group-alpha',
       label: 'Alpha Collection',
       type: 'collection',
@@ -367,6 +398,18 @@ describe('community routes', () => {
     })
     await insertAssetGroup({
       address: 'collection-gamma',
+      facetTotals: {
+        rarity: {
+          label: 'Rarity',
+          options: {
+            mythic: {
+              label: 'Mythic',
+              total: 1,
+            },
+          },
+          total: 1,
+        },
+      },
       id: 'asset-group-gamma',
       label: 'Gamma Collection',
       type: 'collection',
@@ -423,12 +466,36 @@ describe('community routes', () => {
       collections: [
         {
           address: 'collection-alpha',
+          facetTotals: {
+            background: {
+              label: 'Background',
+              options: {
+                forest: {
+                  label: 'Forest',
+                  total: 2,
+                },
+              },
+              total: 2,
+            },
+          },
           id: 'asset-group-alpha',
           label: 'Alpha Collection',
           type: 'collection',
         },
         {
           address: 'collection-gamma',
+          facetTotals: {
+            rarity: {
+              label: 'Rarity',
+              options: {
+                mythic: {
+                  label: 'Mythic',
+                  total: 1,
+                },
+              },
+              total: 1,
+            },
+          },
           id: 'asset-group-gamma',
           label: 'Gamma Collection',
           type: 'collection',
@@ -523,6 +590,7 @@ describe('community routes', () => {
       collections: [
         {
           address: 'collection-alpha',
+          facetTotals: {},
           id: 'asset-group-alpha',
           label: 'Alpha Collection',
           type: 'collection',
@@ -554,6 +622,81 @@ describe('community routes', () => {
   })
 
   test('listCollectionAssets filters assets by owner and text query while preserving alphabetical order', async () => {
+    const collectionFacetTotals = {
+      background: {
+        label: 'Background',
+        options: {
+          desert: {
+            label: 'Desert',
+            total: 1,
+          },
+          forest: {
+            label: 'Forest',
+            total: 2,
+          },
+        },
+        total: 3,
+      },
+      hat: {
+        label: 'Hat',
+        options: {
+          cap: {
+            label: 'Cap',
+            total: 1,
+          },
+          crown: {
+            label: 'Crown',
+            total: 1,
+          },
+        },
+        total: 2,
+      },
+    } as const
+
+    function getExpectedFacetTotals(input: {
+      background: {
+        desert: number
+        forest: number
+        total: number
+      }
+      hat: {
+        cap: number
+        crown: number
+        total: number
+      }
+    }) {
+      return {
+        background: {
+          label: 'Background',
+          options: {
+            desert: {
+              label: 'Desert',
+              total: input.background.desert,
+            },
+            forest: {
+              label: 'Forest',
+              total: input.background.forest,
+            },
+          },
+          total: input.background.total,
+        },
+        hat: {
+          label: 'Hat',
+          options: {
+            cap: {
+              label: 'Cap',
+              total: input.hat.cap,
+            },
+            crown: {
+              label: 'Crown',
+              total: input.hat.crown,
+            },
+          },
+          total: input.hat.total,
+        },
+      }
+    }
+
     await insertOrganization({
       id: 'org-alpha',
       name: 'Alpha DAO',
@@ -566,6 +709,7 @@ describe('community routes', () => {
     })
     await insertAssetGroup({
       address: 'collection-alpha',
+      facetTotals: collectionFacetTotals,
       id: 'asset-group-alpha',
       label: 'Alpha Collection',
       type: 'collection',
@@ -598,6 +742,20 @@ describe('community routes', () => {
       metadataName: 'Zulu',
       metadataSymbol: 'ZULU',
       owner: 'owner-zed',
+      traits: [
+        {
+          groupId: 'background',
+          groupLabel: 'Background',
+          value: 'forest',
+          valueLabel: 'Forest',
+        },
+        {
+          groupId: 'hat',
+          groupLabel: 'Hat',
+          value: 'crown',
+          valueLabel: 'Crown',
+        },
+      ],
     })
     await insertAsset({
       address: 'mint-alpha',
@@ -607,12 +765,34 @@ describe('community routes', () => {
       metadataName: 'Alpha',
       metadataSymbol: 'ALPHA',
       owner: 'owner-beta',
+      traits: [
+        {
+          groupId: 'background',
+          groupLabel: 'Background',
+          value: 'forest',
+          valueLabel: 'Forest',
+        },
+        {
+          groupId: 'hat',
+          groupLabel: 'Hat',
+          value: 'cap',
+          valueLabel: 'Cap',
+        },
+      ],
     })
     await insertAsset({
       address: 'fallback-asset',
       assetGroupId: 'asset-group-alpha',
       id: 'asset-2',
       owner: 'owner-alpha',
+      traits: [
+        {
+          groupId: 'background',
+          groupLabel: 'Background',
+          value: 'desert',
+          valueLabel: 'Desert',
+        },
+      ],
     })
     await insertAsset({
       address: 'mint-hidden',
@@ -643,6 +823,20 @@ describe('community routes', () => {
           metadataName: 'Alpha',
           metadataSymbol: 'ALPHA',
           owner: 'owner-beta',
+          traits: [
+            {
+              groupId: 'background',
+              groupLabel: 'Background',
+              value: 'forest',
+              valueLabel: 'Forest',
+            },
+            {
+              groupId: 'hat',
+              groupLabel: 'Hat',
+              value: 'cap',
+              valueLabel: 'Cap',
+            },
+          ],
         },
         {
           address: 'fallback-asset',
@@ -651,6 +845,14 @@ describe('community routes', () => {
           metadataName: null,
           metadataSymbol: null,
           owner: 'owner-alpha',
+          traits: [
+            {
+              groupId: 'background',
+              groupLabel: 'Background',
+              value: 'desert',
+              valueLabel: 'Desert',
+            },
+          ],
         },
         {
           address: 'mint-zed',
@@ -659,8 +861,34 @@ describe('community routes', () => {
           metadataName: 'Zulu',
           metadataSymbol: 'ZULU',
           owner: 'owner-zed',
+          traits: [
+            {
+              groupId: 'background',
+              groupLabel: 'Background',
+              value: 'forest',
+              valueLabel: 'Forest',
+            },
+            {
+              groupId: 'hat',
+              groupLabel: 'Hat',
+              value: 'crown',
+              valueLabel: 'Crown',
+            },
+          ],
         },
       ],
+      facetTotals: getExpectedFacetTotals({
+        background: {
+          desert: 1,
+          forest: 2,
+          total: 3,
+        },
+        hat: {
+          cap: 1,
+          crown: 1,
+          total: 2,
+        },
+      }),
     })
 
     expect(
@@ -678,8 +906,56 @@ describe('community routes', () => {
           metadataName: 'Alpha',
           metadataSymbol: 'ALPHA',
           owner: 'owner-beta',
+          traits: [
+            {
+              groupId: 'background',
+              groupLabel: 'Background',
+              value: 'forest',
+              valueLabel: 'Forest',
+            },
+            {
+              groupId: 'hat',
+              groupLabel: 'Hat',
+              value: 'cap',
+              valueLabel: 'Cap',
+            },
+          ],
         },
       ],
+      facetTotals: getExpectedFacetTotals({
+        background: {
+          desert: 0,
+          forest: 1,
+          total: 1,
+        },
+        hat: {
+          cap: 1,
+          crown: 0,
+          total: 1,
+        },
+      }),
+    })
+
+    expect(
+      await callable({
+        address: 'collection-alpha',
+        owner: 'OWNER',
+        slug: 'alpha-dao',
+      }),
+    ).toEqual({
+      assets: [],
+      facetTotals: getExpectedFacetTotals({
+        background: {
+          desert: 0,
+          forest: 0,
+          total: 0,
+        },
+        hat: {
+          cap: 0,
+          crown: 0,
+          total: 0,
+        },
+      }),
     })
 
     expect(
@@ -697,8 +973,216 @@ describe('community routes', () => {
           metadataName: null,
           metadataSymbol: null,
           owner: 'owner-alpha',
+          traits: [
+            {
+              groupId: 'background',
+              groupLabel: 'Background',
+              value: 'desert',
+              valueLabel: 'Desert',
+            },
+          ],
         },
       ],
+      facetTotals: getExpectedFacetTotals({
+        background: {
+          desert: 1,
+          forest: 0,
+          total: 1,
+        },
+        hat: {
+          cap: 0,
+          crown: 0,
+          total: 0,
+        },
+      }),
+    })
+
+    expect(
+      await callable({
+        address: 'collection-alpha',
+        facets: {
+          background: ['forest'],
+        },
+        slug: 'alpha-dao',
+      }),
+    ).toEqual({
+      assets: [
+        {
+          address: 'mint-alpha',
+          id: 'asset-1',
+          metadataImageUrl: 'https://example.com/mint-alpha.png',
+          metadataName: 'Alpha',
+          metadataSymbol: 'ALPHA',
+          owner: 'owner-beta',
+          traits: [
+            {
+              groupId: 'background',
+              groupLabel: 'Background',
+              value: 'forest',
+              valueLabel: 'Forest',
+            },
+            {
+              groupId: 'hat',
+              groupLabel: 'Hat',
+              value: 'cap',
+              valueLabel: 'Cap',
+            },
+          ],
+        },
+        {
+          address: 'mint-zed',
+          id: 'asset-3',
+          metadataImageUrl: 'https://example.com/mint-zed.png',
+          metadataName: 'Zulu',
+          metadataSymbol: 'ZULU',
+          owner: 'owner-zed',
+          traits: [
+            {
+              groupId: 'background',
+              groupLabel: 'Background',
+              value: 'forest',
+              valueLabel: 'Forest',
+            },
+            {
+              groupId: 'hat',
+              groupLabel: 'Hat',
+              value: 'crown',
+              valueLabel: 'Crown',
+            },
+          ],
+        },
+      ],
+      facetTotals: getExpectedFacetTotals({
+        background: {
+          desert: 1,
+          forest: 2,
+          total: 3,
+        },
+        hat: {
+          cap: 1,
+          crown: 1,
+          total: 2,
+        },
+      }),
+    })
+
+    expect(
+      await callable({
+        address: 'collection-alpha',
+        facets: {
+          background: ['forest', 'desert'],
+          hat: ['crown'],
+        },
+        slug: 'alpha-dao',
+      }),
+    ).toEqual({
+      assets: [
+        {
+          address: 'mint-zed',
+          id: 'asset-3',
+          metadataImageUrl: 'https://example.com/mint-zed.png',
+          metadataName: 'Zulu',
+          metadataSymbol: 'ZULU',
+          owner: 'owner-zed',
+          traits: [
+            {
+              groupId: 'background',
+              groupLabel: 'Background',
+              value: 'forest',
+              valueLabel: 'Forest',
+            },
+            {
+              groupId: 'hat',
+              groupLabel: 'Hat',
+              value: 'crown',
+              valueLabel: 'Crown',
+            },
+          ],
+        },
+      ],
+      facetTotals: getExpectedFacetTotals({
+        background: {
+          desert: 0,
+          forest: 1,
+          total: 1,
+        },
+        hat: {
+          cap: 1,
+          crown: 1,
+          total: 2,
+        },
+      }),
+    })
+
+    expect(
+      await callable({
+        address: 'collection-alpha',
+        facets: {
+          ' Background ': [' desert '],
+          background: [' Forest ', 'forest'],
+          Hat: [' Crown '],
+        },
+        slug: 'alpha-dao',
+      }),
+    ).toEqual({
+      assets: [
+        {
+          address: 'mint-zed',
+          id: 'asset-3',
+          metadataImageUrl: 'https://example.com/mint-zed.png',
+          metadataName: 'Zulu',
+          metadataSymbol: 'ZULU',
+          owner: 'owner-zed',
+          traits: [
+            {
+              groupId: 'background',
+              groupLabel: 'Background',
+              value: 'forest',
+              valueLabel: 'Forest',
+            },
+            {
+              groupId: 'hat',
+              groupLabel: 'Hat',
+              value: 'crown',
+              valueLabel: 'Crown',
+            },
+          ],
+        },
+      ],
+      facetTotals: getExpectedFacetTotals({
+        background: {
+          desert: 0,
+          forest: 1,
+          total: 1,
+        },
+        hat: {
+          cap: 1,
+          crown: 1,
+          total: 2,
+        },
+      }),
+    })
+
+    expect(
+      await callable({
+        address: 'collection-alpha',
+        query: 'FALLBACK',
+        slug: 'alpha-dao',
+      }),
+    ).toEqual({
+      assets: [],
+      facetTotals: getExpectedFacetTotals({
+        background: {
+          desert: 0,
+          forest: 0,
+          total: 0,
+        },
+        hat: {
+          cap: 0,
+          crown: 0,
+          total: 0,
+        },
+      }),
     })
   })
 

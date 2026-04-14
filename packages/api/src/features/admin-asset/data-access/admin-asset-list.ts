@@ -2,7 +2,7 @@ import { and, asc, count, eq, sql } from 'drizzle-orm'
 import { type Database, db } from '@tokengator/db'
 import { asset, assetGroup } from '@tokengator/db/schema/asset'
 
-import { adminAssetSearchPattern } from '../util/admin-asset-search-pattern'
+import { adminAssetSearchTerm } from '../util/admin-asset-search-pattern'
 
 import type { AdminAssetListInput } from './admin-asset-list-input'
 import { adminAssetEntityColumns, toAdminAssetEntity } from './admin-asset.entity'
@@ -26,18 +26,18 @@ export async function adminAssetList(db: Database, input: AdminAssetListInput) {
     return null
   }
 
-  const addressPattern = adminAssetSearchPattern(input.address)
+  const addressTerm = adminAssetSearchTerm(input.address)
   const filters = [eq(asset.assetGroupId, input.assetGroupId)]
   const limit = input.limit ?? 50
   const offset = input.offset ?? 0
-  const ownerPattern = adminAssetSearchPattern(input.owner)
+  const ownerTerm = adminAssetSearchTerm(input.owner)
 
-  if (addressPattern) {
-    filters.push(sql`${asset.addressLower} like ${addressPattern} escape '\\'`)
+  if (addressTerm) {
+    filters.push(sql`instr(trim(${asset.address}), ${addressTerm}) > 0`)
   }
 
-  if (ownerPattern) {
-    filters.push(sql`${asset.ownerLower} like ${ownerPattern} escape '\\'`)
+  if (ownerTerm) {
+    filters.push(sql`instr(trim(${asset.owner}), ${ownerTerm}) > 0`)
   }
 
   if (input.resolverKind) {
@@ -49,7 +49,7 @@ export async function adminAssetList(db: Database, input: AdminAssetListInput) {
     .select(adminAssetEntityColumns)
     .from(asset)
     .where(whereClause)
-    .orderBy(asc(asset.ownerLower), asc(asset.addressLower), asc(asset.resolverKind))
+    .orderBy(asc(asset.owner), asc(asset.address), asc(asset.resolverKind))
     .limit(limit)
     .offset(offset)
 

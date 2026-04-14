@@ -11,6 +11,7 @@ describe('CommunityFeatureCollectionDetail', () => {
       collections: [
         {
           address: 'collection-alpha',
+          facetTotals: {},
           id: 'collection-1',
           label: 'Alpha Collection',
           type: 'collection',
@@ -27,6 +28,7 @@ describe('CommunityFeatureCollectionDetail', () => {
         initialCollectionAssets={null}
         initialCommunity={community}
         search={{
+          facets: undefined,
           grid: 4,
           owner: undefined,
           query: undefined,

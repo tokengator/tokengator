@@ -108,7 +108,6 @@ async function insertAsset(input: {
 
   await database.insert(assetSchema.asset).values({
     address: input.address,
-    addressLower: input.address.toLowerCase(),
     amount: input.amount,
     assetGroupId: input.assetGroupId,
     firstSeenAt: now,
@@ -125,7 +124,6 @@ async function insertAsset(input: {
     metadataProgramAccount: null,
     metadataSymbol: null,
     owner: input.owner,
-    ownerLower: input.owner.toLowerCase(),
     page: 1,
     raw: null,
     resolverId: input.assetGroupId,

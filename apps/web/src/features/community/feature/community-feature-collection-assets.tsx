@@ -5,6 +5,7 @@ import type {
   CommunityListCollectionAssetsResult,
 } from '@tokengator/sdk'
 
+import type { UiFacetFilterGroup } from '@tokengator/ui/components/ui-facet-filter'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 
 import type { CommunityCollectionAssetSearch } from '../util/community-collection-asset-search'
@@ -24,6 +25,26 @@ function CommunityCollectionAssetNotFoundCard() {
   )
 }
 
+function getCommunityCollectionFacetGroups(
+  facetTotals: CommunityCollectionEntity['facetTotals'],
+): UiFacetFilterGroup[] {
+  return Object.entries(facetTotals)
+    .sort(([leftGroupId], [rightGroupId]) => leftGroupId.localeCompare(rightGroupId))
+    .map(([groupId, group]) => ({
+      id: groupId,
+      label: group.label,
+      meta: group.total,
+      options: Object.entries(group.options)
+        .sort(([leftValue], [rightValue]) => leftValue.localeCompare(rightValue))
+        .map(([value, option]) => ({
+          disabled: option.total === 0,
+          label: option.label,
+          meta: option.total,
+          value,
+        })),
+    }))
+}
+
 export function getCommunityCollectionSwitchNavigation(args: {
   address: string
   search: CommunityCollectionAssetSearch
@@ -35,6 +56,7 @@ export function getCommunityCollectionSwitchNavigation(args: {
       slug: args.slug,
     },
     search: {
+      facets: undefined,
       grid: args.search.grid,
       owner: args.search.owner,
       query: undefined,
@@ -59,6 +81,7 @@ export function CommunityFeatureCollectionAssets({
   const collectionAssets = useCommunityCollectionAssetsQuery(
     {
       address: selectedCollection.address,
+      facets: search.facets,
       owner: search.owner,
       query: search.query,
       slug,
@@ -68,6 +91,9 @@ export function CommunityFeatureCollectionAssets({
     },
   )
   const navigate = useNavigate()
+  const facetGroups = getCommunityCollectionFacetGroups(
+    collectionAssets.data?.facetTotals ?? selectedCollection.facetTotals,
+  )
 
   if (!collectionAssets.data && !collectionAssets.error && !collectionAssets.isPending) {
     return <CommunityCollectionAssetNotFoundCard />
@@ -87,7 +113,9 @@ export function CommunityFeatureCollectionAssets({
         </CardHeader>
         <CardContent className="grid gap-6">
           <CommunityUiCollectionAssetBrowserControls
+            facetGroups={facetGroups}
             grid={search.grid}
+            initialFacets={search.facets ?? {}}
             initialOwner={search.owner ?? ''}
             initialQuery={search.query ?? ''}
             onApply={(values) => {
@@ -97,6 +125,7 @@ export function CommunityFeatureCollectionAssets({
                   slug,
                 },
                 search: {
+                  facets: Object.keys(values.facets).length > 0 ? values.facets : undefined,
                   grid: search.grid,
                   owner: values.owner.trim() || undefined,
                   query: values.query.trim() || undefined,
@@ -111,6 +140,7 @@ export function CommunityFeatureCollectionAssets({
                   slug,
                 },
                 search: {
+                  facets: search.facets,
                   grid,
                   owner: search.owner,
                   query: search.query,
@@ -125,6 +155,7 @@ export function CommunityFeatureCollectionAssets({
                   slug,
                 },
                 search: {
+                  facets: undefined,
                   grid: search.grid,
                   owner: undefined,
                   query: undefined,

@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import type { CommunityGetBySlugResult } from '@tokengator/sdk'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
@@ -24,14 +25,27 @@ export function CommunityFeatureCollections({ initialCommunity }: { initialCommu
         {data.collections.length ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {data.collections.map((collection) => (
-              <div className="bg-card overflow-hidden rounded-lg border" key={collection.id}>
+              <Link
+                className="bg-card overflow-hidden rounded-lg border"
+                key={collection.id}
+                params={{
+                  address: collection.address,
+                  slug: data.slug,
+                }}
+                search={{
+                  grid: 8,
+                  owner: undefined,
+                  query: undefined,
+                }}
+                to="/communities/$slug/collections/$address"
+              >
                 <Skeleton className="aspect-[4/3] w-full rounded-none" />
                 <div className="grid gap-2 p-4">
                   <div className="font-medium">{collection.label}</div>
                   <div className="text-muted-foreground capitalize">{collection.type}</div>
                   <div className="text-muted-foreground font-mono text-xs break-all">{collection.address}</div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         ) : (

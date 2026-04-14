@@ -3,6 +3,10 @@ import type { AppAuthState, AppSession } from '@/features/auth/data-access/get-a
 import { serverOrpcClient } from '@/lib/orpc-server'
 
 type AuthSession = Awaited<ReturnType<typeof authClientServer.getSession>>
+type LoadAppAuthStateProfileClient = Pick<
+  typeof serverOrpcClient.profile,
+  'getSettings' | 'listIdentities' | 'listSolanaWallets'
+>
 
 function toAppSession(session: AuthSession): AppSession | null {
   if (!session) {
@@ -27,7 +31,11 @@ function getPersistedDiscordUsername(args: { identities: NonNullable<AppAuthStat
   )
 }
 
-export async function loadAppAuthState(args: { hasDiscordAccount?: boolean; session: AuthSession }) {
+export async function loadAppAuthState(args: {
+  hasDiscordAccount?: boolean
+  profileClient?: LoadAppAuthStateProfileClient
+  session: AuthSession
+}) {
   const session = toAppSession(args.session)
 
   if (!session) {
@@ -42,10 +50,11 @@ export async function loadAppAuthState(args: { hasDiscordAccount?: boolean; sess
     } satisfies AppAuthState
   }
 
+  const profileClient = args.profileClient ?? serverOrpcClient.profile
   const [identities, profileSettings, solanaWallets] = await Promise.all([
-    serverOrpcClient.profile.listIdentities(),
-    serverOrpcClient.profile.getSettings(),
-    serverOrpcClient.profile.listSolanaWallets(),
+    profileClient.listIdentities(),
+    profileClient.getSettings(),
+    profileClient.listSolanaWallets(),
   ])
   const hasDiscordAccount =
     args.hasDiscordAccount ?? identities.identities.some((identity) => identity.provider === 'discord')

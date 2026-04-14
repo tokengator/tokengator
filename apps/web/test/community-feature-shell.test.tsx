@@ -13,6 +13,8 @@ const community = {
 } satisfies CommunityGetBySlugResult
 
 let CommunityFeatureShell: typeof import('../src/features/community/feature/community-feature-shell').CommunityFeatureShell
+let getCommunityCurrentTab: typeof import('../src/features/community/feature/community-feature-shell').getCommunityCurrentTab
+let pathname = '/communities/alpha-dao/overview'
 
 beforeAll(async () => {
   mock.module('@tanstack/react-router', () => ({
@@ -21,11 +23,12 @@ beforeAll(async () => {
       <a className={className}>{children}</a>
     ),
     useLocation: () => ({
-      pathname: '/communities/alpha-dao/overview',
+      pathname,
     }),
   }))
 
-  ;({ CommunityFeatureShell } = await import('../src/features/community/feature/community-feature-shell'))
+  ;({ CommunityFeatureShell, getCommunityCurrentTab } =
+    await import('../src/features/community/feature/community-feature-shell'))
 })
 
 afterAll(() => {
@@ -34,6 +37,8 @@ afterAll(() => {
 
 describe('CommunityFeatureShell', () => {
   test('renders the detail header, back link, and route tabs', () => {
+    pathname = '/communities/alpha-dao/overview'
+
     const markup = renderToStaticMarkup(
       <CommunityFeatureShell initialCommunity={community}>
         <div>Overview content</div>
@@ -46,5 +51,10 @@ describe('CommunityFeatureShell', () => {
     expect(markup).toContain('Overview')
     expect(markup).toContain('Collections')
     expect(markup).toContain('Overview content')
+  })
+
+  test('treats nested collection detail routes as the collections tab', () => {
+    expect(getCommunityCurrentTab('/communities/alpha-dao/collections')).toBe('collections')
+    expect(getCommunityCurrentTab('/communities/alpha-dao/collections/collection-alpha')).toBe('collections')
   })
 })

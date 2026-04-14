@@ -20,8 +20,8 @@ const communityTabs = [
   },
 ] as const
 
-function getCurrentTab(pathname: string) {
-  if (pathname.endsWith('/collections')) {
+export function getCommunityCurrentTab(pathname: string) {
+  if (pathname.includes('/collections/') || pathname.endsWith('/collections')) {
     return 'collections'
   }
 
@@ -36,12 +36,12 @@ export function CommunityFeatureShell({
   initialCommunity: CommunityGetBySlugResult | null
 }) {
   const location = useLocation()
-  const currentTab = getCurrentTab(location.pathname)
+  const currentTab = getCommunityCurrentTab(location.pathname)
 
   if (!initialCommunity) {
     return (
-      <div className="min-h-full overflow-y-auto px-4 py-6">
-        <div className="mx-auto w-full max-w-4xl">
+      <div className="min-h-full overflow-y-auto px-4 py-6 sm:px-6">
+        <div className="mx-auto w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[96rem]">
           <Card>
             <CardHeader>
               <CardTitle>Community Not Found</CardTitle>
@@ -54,8 +54,8 @@ export function CommunityFeatureShell({
   }
 
   return (
-    <div className="min-h-full overflow-y-auto px-4 py-6">
-      <div className="mx-auto grid w-full max-w-4xl gap-6">
+    <div className="min-h-full overflow-y-auto px-4 py-6 sm:px-6">
+      <div className="mx-auto grid w-full max-w-6xl gap-6 xl:max-w-7xl 2xl:max-w-[96rem]">
         <div className="grid gap-3">
           <Link className="text-muted-foreground hover:text-foreground text-sm" to="/communities">
             Back to communities

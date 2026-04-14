@@ -39,14 +39,16 @@ import { Route as ProfileUsernameSettingsRouteImport } from './routes/profile/$u
 import { Route as ProfileUsernameIdentitiesRouteImport } from './routes/profile/$username/identities'
 import { Route as ProfileUsernameAssetsRouteImport } from './routes/profile/$username/assets'
 import { Route as CommunitiesSlugOverviewRouteImport } from './routes/communities/$slug/overview'
-import { Route as CommunitiesSlugCollectionsRouteImport } from './routes/communities/$slug/collections'
 import { Route as AdminAssetsCreateRouteImport } from './routes/admin/assets/create'
+import { Route as CommunitiesSlugCollectionsRouteRouteImport } from './routes/communities/$slug/collections/route'
 import { Route as AdminUsersUserIdRouteRouteImport } from './routes/admin/users/$userId/route'
 import { Route as AdminCommunitiesOrganizationIdRouteRouteImport } from './routes/admin/communities/$organizationId/route'
 import { Route as AdminAssetsAssetGroupIdRouteRouteImport } from './routes/admin/assets/$assetGroupId/route'
+import { Route as CommunitiesSlugCollectionsIndexRouteImport } from './routes/communities/$slug/collections/index'
 import { Route as AdminUsersUserIdIndexRouteImport } from './routes/admin/users/$userId/index'
 import { Route as AdminCommunitiesOrganizationIdIndexRouteImport } from './routes/admin/communities/$organizationId/index'
 import { Route as AdminAssetsAssetGroupIdIndexRouteImport } from './routes/admin/assets/$assetGroupId/index'
+import { Route as CommunitiesSlugCollectionsAddressRouteImport } from './routes/communities/$slug/collections/$address'
 import { Route as AdminUsersUserIdSettingsRouteImport } from './routes/admin/users/$userId/settings'
 import { Route as AdminUsersUserIdOverviewRouteImport } from './routes/admin/users/$userId/overview'
 import { Route as AdminUsersUserIdIdentitiesRouteImport } from './routes/admin/users/$userId/identities'
@@ -212,17 +214,17 @@ const CommunitiesSlugOverviewRoute = CommunitiesSlugOverviewRouteImport.update({
   path: '/overview',
   getParentRoute: () => CommunitiesSlugRouteRoute,
 } as any)
-const CommunitiesSlugCollectionsRoute =
-  CommunitiesSlugCollectionsRouteImport.update({
-    id: '/collections',
-    path: '/collections',
-    getParentRoute: () => CommunitiesSlugRouteRoute,
-  } as any)
 const AdminAssetsCreateRoute = AdminAssetsCreateRouteImport.update({
   id: '/assets/create',
   path: '/assets/create',
   getParentRoute: () => AdminRoute,
 } as any)
+const CommunitiesSlugCollectionsRouteRoute =
+  CommunitiesSlugCollectionsRouteRouteImport.update({
+    id: '/collections',
+    path: '/collections',
+    getParentRoute: () => CommunitiesSlugRouteRoute,
+  } as any)
 const AdminUsersUserIdRouteRoute = AdminUsersUserIdRouteRouteImport.update({
   id: '/users/$userId',
   path: '/users/$userId',
@@ -240,6 +242,12 @@ const AdminAssetsAssetGroupIdRouteRoute =
     path: '/assets/$assetGroupId',
     getParentRoute: () => AdminRoute,
   } as any)
+const CommunitiesSlugCollectionsIndexRoute =
+  CommunitiesSlugCollectionsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => CommunitiesSlugCollectionsRouteRoute,
+  } as any)
 const AdminUsersUserIdIndexRoute = AdminUsersUserIdIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -256,6 +264,12 @@ const AdminAssetsAssetGroupIdIndexRoute =
     id: '/',
     path: '/',
     getParentRoute: () => AdminAssetsAssetGroupIdRouteRoute,
+  } as any)
+const CommunitiesSlugCollectionsAddressRoute =
+  CommunitiesSlugCollectionsAddressRouteImport.update({
+    id: '/$address',
+    path: '/$address',
+    getParentRoute: () => CommunitiesSlugCollectionsRouteRoute,
   } as any)
 const AdminUsersUserIdSettingsRoute =
   AdminUsersUserIdSettingsRouteImport.update({
@@ -360,8 +374,8 @@ export interface FileRoutesByFullPath {
   '/admin/assets/$assetGroupId': typeof AdminAssetsAssetGroupIdRouteRouteWithChildren
   '/admin/communities/$organizationId': typeof AdminCommunitiesOrganizationIdRouteRouteWithChildren
   '/admin/users/$userId': typeof AdminUsersUserIdRouteRouteWithChildren
+  '/communities/$slug/collections': typeof CommunitiesSlugCollectionsRouteRouteWithChildren
   '/admin/assets/create': typeof AdminAssetsCreateRoute
-  '/communities/$slug/collections': typeof CommunitiesSlugCollectionsRoute
   '/communities/$slug/overview': typeof CommunitiesSlugOverviewRoute
   '/profile/$username/assets': typeof ProfileUsernameAssetsRoute
   '/profile/$username/identities': typeof ProfileUsernameIdentitiesRoute
@@ -384,9 +398,11 @@ export interface FileRoutesByFullPath {
   '/admin/users/$userId/identities': typeof AdminUsersUserIdIdentitiesRoute
   '/admin/users/$userId/overview': typeof AdminUsersUserIdOverviewRoute
   '/admin/users/$userId/settings': typeof AdminUsersUserIdSettingsRoute
+  '/communities/$slug/collections/$address': typeof CommunitiesSlugCollectionsAddressRoute
   '/admin/assets/$assetGroupId/': typeof AdminAssetsAssetGroupIdIndexRoute
   '/admin/communities/$organizationId/': typeof AdminCommunitiesOrganizationIdIndexRoute
   '/admin/users/$userId/': typeof AdminUsersUserIdIndexRoute
+  '/communities/$slug/collections/': typeof CommunitiesSlugCollectionsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -405,7 +421,6 @@ export interface FileRoutesByTo {
   '/dev': typeof DevIndexRoute
   '/profile': typeof ProfileIndexRoute
   '/admin/assets/create': typeof AdminAssetsCreateRoute
-  '/communities/$slug/collections': typeof CommunitiesSlugCollectionsRoute
   '/communities/$slug/overview': typeof CommunitiesSlugOverviewRoute
   '/profile/$username/assets': typeof ProfileUsernameAssetsRoute
   '/profile/$username/identities': typeof ProfileUsernameIdentitiesRoute
@@ -428,9 +443,11 @@ export interface FileRoutesByTo {
   '/admin/users/$userId/identities': typeof AdminUsersUserIdIdentitiesRoute
   '/admin/users/$userId/overview': typeof AdminUsersUserIdOverviewRoute
   '/admin/users/$userId/settings': typeof AdminUsersUserIdSettingsRoute
+  '/communities/$slug/collections/$address': typeof CommunitiesSlugCollectionsAddressRoute
   '/admin/assets/$assetGroupId': typeof AdminAssetsAssetGroupIdIndexRoute
   '/admin/communities/$organizationId': typeof AdminCommunitiesOrganizationIdIndexRoute
   '/admin/users/$userId': typeof AdminUsersUserIdIndexRoute
+  '/communities/$slug/collections': typeof CommunitiesSlugCollectionsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -458,8 +475,8 @@ export interface FileRoutesById {
   '/admin/assets/$assetGroupId': typeof AdminAssetsAssetGroupIdRouteRouteWithChildren
   '/admin/communities/$organizationId': typeof AdminCommunitiesOrganizationIdRouteRouteWithChildren
   '/admin/users/$userId': typeof AdminUsersUserIdRouteRouteWithChildren
+  '/communities/$slug/collections': typeof CommunitiesSlugCollectionsRouteRouteWithChildren
   '/admin/assets/create': typeof AdminAssetsCreateRoute
-  '/communities/$slug/collections': typeof CommunitiesSlugCollectionsRoute
   '/communities/$slug/overview': typeof CommunitiesSlugOverviewRoute
   '/profile/$username/assets': typeof ProfileUsernameAssetsRoute
   '/profile/$username/identities': typeof ProfileUsernameIdentitiesRoute
@@ -482,9 +499,11 @@ export interface FileRoutesById {
   '/admin/users/$userId/identities': typeof AdminUsersUserIdIdentitiesRoute
   '/admin/users/$userId/overview': typeof AdminUsersUserIdOverviewRoute
   '/admin/users/$userId/settings': typeof AdminUsersUserIdSettingsRoute
+  '/communities/$slug/collections/$address': typeof CommunitiesSlugCollectionsAddressRoute
   '/admin/assets/$assetGroupId/': typeof AdminAssetsAssetGroupIdIndexRoute
   '/admin/communities/$organizationId/': typeof AdminCommunitiesOrganizationIdIndexRoute
   '/admin/users/$userId/': typeof AdminUsersUserIdIndexRoute
+  '/communities/$slug/collections/': typeof CommunitiesSlugCollectionsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -513,8 +532,8 @@ export interface FileRouteTypes {
     | '/admin/assets/$assetGroupId'
     | '/admin/communities/$organizationId'
     | '/admin/users/$userId'
-    | '/admin/assets/create'
     | '/communities/$slug/collections'
+    | '/admin/assets/create'
     | '/communities/$slug/overview'
     | '/profile/$username/assets'
     | '/profile/$username/identities'
@@ -537,9 +556,11 @@ export interface FileRouteTypes {
     | '/admin/users/$userId/identities'
     | '/admin/users/$userId/overview'
     | '/admin/users/$userId/settings'
+    | '/communities/$slug/collections/$address'
     | '/admin/assets/$assetGroupId/'
     | '/admin/communities/$organizationId/'
     | '/admin/users/$userId/'
+    | '/communities/$slug/collections/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -558,7 +579,6 @@ export interface FileRouteTypes {
     | '/dev'
     | '/profile'
     | '/admin/assets/create'
-    | '/communities/$slug/collections'
     | '/communities/$slug/overview'
     | '/profile/$username/assets'
     | '/profile/$username/identities'
@@ -581,9 +601,11 @@ export interface FileRouteTypes {
     | '/admin/users/$userId/identities'
     | '/admin/users/$userId/overview'
     | '/admin/users/$userId/settings'
+    | '/communities/$slug/collections/$address'
     | '/admin/assets/$assetGroupId'
     | '/admin/communities/$organizationId'
     | '/admin/users/$userId'
+    | '/communities/$slug/collections'
   id:
     | '__root__'
     | '/'
@@ -610,8 +632,8 @@ export interface FileRouteTypes {
     | '/admin/assets/$assetGroupId'
     | '/admin/communities/$organizationId'
     | '/admin/users/$userId'
-    | '/admin/assets/create'
     | '/communities/$slug/collections'
+    | '/admin/assets/create'
     | '/communities/$slug/overview'
     | '/profile/$username/assets'
     | '/profile/$username/identities'
@@ -634,9 +656,11 @@ export interface FileRouteTypes {
     | '/admin/users/$userId/identities'
     | '/admin/users/$userId/overview'
     | '/admin/users/$userId/settings'
+    | '/communities/$slug/collections/$address'
     | '/admin/assets/$assetGroupId/'
     | '/admin/communities/$organizationId/'
     | '/admin/users/$userId/'
+    | '/communities/$slug/collections/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -862,19 +886,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CommunitiesSlugOverviewRouteImport
       parentRoute: typeof CommunitiesSlugRouteRoute
     }
-    '/communities/$slug/collections': {
-      id: '/communities/$slug/collections'
-      path: '/collections'
-      fullPath: '/communities/$slug/collections'
-      preLoaderRoute: typeof CommunitiesSlugCollectionsRouteImport
-      parentRoute: typeof CommunitiesSlugRouteRoute
-    }
     '/admin/assets/create': {
       id: '/admin/assets/create'
       path: '/assets/create'
       fullPath: '/admin/assets/create'
       preLoaderRoute: typeof AdminAssetsCreateRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/communities/$slug/collections': {
+      id: '/communities/$slug/collections'
+      path: '/collections'
+      fullPath: '/communities/$slug/collections'
+      preLoaderRoute: typeof CommunitiesSlugCollectionsRouteRouteImport
+      parentRoute: typeof CommunitiesSlugRouteRoute
     }
     '/admin/users/$userId': {
       id: '/admin/users/$userId'
@@ -897,6 +921,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAssetsAssetGroupIdRouteRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/communities/$slug/collections/': {
+      id: '/communities/$slug/collections/'
+      path: '/'
+      fullPath: '/communities/$slug/collections/'
+      preLoaderRoute: typeof CommunitiesSlugCollectionsIndexRouteImport
+      parentRoute: typeof CommunitiesSlugCollectionsRouteRoute
+    }
     '/admin/users/$userId/': {
       id: '/admin/users/$userId/'
       path: '/'
@@ -917,6 +948,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/assets/$assetGroupId/'
       preLoaderRoute: typeof AdminAssetsAssetGroupIdIndexRouteImport
       parentRoute: typeof AdminAssetsAssetGroupIdRouteRoute
+    }
+    '/communities/$slug/collections/$address': {
+      id: '/communities/$slug/collections/$address'
+      path: '/$address'
+      fullPath: '/communities/$slug/collections/$address'
+      preLoaderRoute: typeof CommunitiesSlugCollectionsAddressRouteImport
+      parentRoute: typeof CommunitiesSlugCollectionsRouteRoute
     }
     '/admin/users/$userId/settings': {
       id: '/admin/users/$userId/settings'
@@ -1012,14 +1050,32 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface CommunitiesSlugCollectionsRouteRouteChildren {
+  CommunitiesSlugCollectionsAddressRoute: typeof CommunitiesSlugCollectionsAddressRoute
+  CommunitiesSlugCollectionsIndexRoute: typeof CommunitiesSlugCollectionsIndexRoute
+}
+
+const CommunitiesSlugCollectionsRouteRouteChildren: CommunitiesSlugCollectionsRouteRouteChildren =
+  {
+    CommunitiesSlugCollectionsAddressRoute:
+      CommunitiesSlugCollectionsAddressRoute,
+    CommunitiesSlugCollectionsIndexRoute: CommunitiesSlugCollectionsIndexRoute,
+  }
+
+const CommunitiesSlugCollectionsRouteRouteWithChildren =
+  CommunitiesSlugCollectionsRouteRoute._addFileChildren(
+    CommunitiesSlugCollectionsRouteRouteChildren,
+  )
+
 interface CommunitiesSlugRouteRouteChildren {
-  CommunitiesSlugCollectionsRoute: typeof CommunitiesSlugCollectionsRoute
+  CommunitiesSlugCollectionsRouteRoute: typeof CommunitiesSlugCollectionsRouteRouteWithChildren
   CommunitiesSlugOverviewRoute: typeof CommunitiesSlugOverviewRoute
   CommunitiesSlugIndexRoute: typeof CommunitiesSlugIndexRoute
 }
 
 const CommunitiesSlugRouteRouteChildren: CommunitiesSlugRouteRouteChildren = {
-  CommunitiesSlugCollectionsRoute: CommunitiesSlugCollectionsRoute,
+  CommunitiesSlugCollectionsRouteRoute:
+    CommunitiesSlugCollectionsRouteRouteWithChildren,
   CommunitiesSlugOverviewRoute: CommunitiesSlugOverviewRoute,
   CommunitiesSlugIndexRoute: CommunitiesSlugIndexRoute,
 }

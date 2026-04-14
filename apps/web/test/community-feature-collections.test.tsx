@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+import * as TanStackReactRouter from '@tanstack/react-router'
 import { afterAll, beforeAll, describe, expect, mock, test } from 'bun:test'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { CommunityGetBySlugResult } from '@tokengator/sdk'
@@ -13,6 +15,25 @@ let community: CommunityGetBySlugResult = {
 let CommunityFeatureCollections: typeof import('../src/features/community/feature/community-feature-collections').CommunityFeatureCollections
 
 beforeAll(async () => {
+  mock.module('@tanstack/react-router', () => ({
+    ...TanStackReactRouter,
+    Link: ({
+      children,
+      className,
+      params,
+      to,
+    }: {
+      children?: ReactNode
+      className?: string
+      params?: Record<string, string>
+      to?: string
+    }) => (
+      <a className={className} data-address={params?.address} data-slug={params?.slug} data-to={to}>
+        {children}
+      </a>
+    ),
+  }))
+
   mock.module('../src/features/community/data-access/use-community-by-slug-query', () => ({
     useCommunityBySlugQuery: () => ({
       data: community,
@@ -69,6 +90,9 @@ describe('CommunityFeatureCollections', () => {
     expect(markup).toContain('Alpha Collection')
     expect(markup).toContain('Beta Collection')
     expect(markup).toContain('aspect-[4/3]')
+    expect(markup).toContain('data-address="collection-alpha"')
+    expect(markup).toContain('data-slug="alpha-dao"')
+    expect(markup).toContain('/communities/$slug/collections/$address')
     expect(markup).toContain('data-slot="skeleton"')
   })
 })

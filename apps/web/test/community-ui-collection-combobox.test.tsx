@@ -12,6 +12,7 @@ describe('CommunityUiCollectionCombobox', () => {
             address: '1234567890abcdefghijklmnop',
             facetTotals: {},
             id: 'collection-1',
+            imageUrl: 'https://example.com/alpha.png',
             label: 'Alpha Collection',
             type: 'collection',
           },
@@ -24,6 +25,7 @@ describe('CommunityUiCollectionCombobox', () => {
     expect(markup).toContain('Collection')
     expect(markup).toContain('community-collection-combobox')
     expect(markup).toContain('Alpha Collection')
+    expect(markup).toContain('https://example.com/alpha.png')
     expect(markup).toContain('1234..mnop')
   })
 })

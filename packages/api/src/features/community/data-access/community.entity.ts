@@ -66,6 +66,7 @@ export function toCommunityCollectionEntity(input: {
   address: string
   facetTotals: CommunityCollectionFacetTotals
   id: string
+  imageUrl: string | null
   label: string
   type: 'collection'
 }) {

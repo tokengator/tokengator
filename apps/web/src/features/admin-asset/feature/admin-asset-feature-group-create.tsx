@@ -24,6 +24,7 @@ export function AdminAssetFeatureGroupCreate() {
     return {
       address: suggestion.address,
       enabled: true,
+      imageUrl: suggestion.imageUrl,
       label: suggestion.label?.trim() || ellipsifyAddress(suggestion.address),
       type: suggestion.type,
     }

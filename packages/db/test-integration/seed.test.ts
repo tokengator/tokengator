@@ -215,6 +215,7 @@ describe('seedDatabase', () => {
       .select({
         address: assetSchema.assetGroup.address,
         enabled: assetSchema.assetGroup.enabled,
+        imageUrl: assetSchema.assetGroup.imageUrl,
         label: assetSchema.assetGroup.label,
         type: assetSchema.assetGroup.type,
       })

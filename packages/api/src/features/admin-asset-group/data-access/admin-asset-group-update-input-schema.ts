@@ -7,6 +7,7 @@ export const adminAssetGroupUpdateInputSchema = z.object({
   data: z.object({
     address: z.string().trim().min(1),
     enabled: z.boolean(),
+    imageUrl: z.string().trim().nullable().optional(),
     label: z.string().trim().min(1),
     type: adminAssetGroupTypeSchema,
   }),

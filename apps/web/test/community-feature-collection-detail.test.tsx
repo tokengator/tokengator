@@ -13,6 +13,7 @@ describe('CommunityFeatureCollectionDetail', () => {
           address: 'collection-alpha',
           facetTotals: {},
           id: 'collection-1',
+          imageUrl: null,
           label: 'Alpha Collection',
           type: 'collection',
         },

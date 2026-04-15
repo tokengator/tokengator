@@ -4,6 +4,7 @@ import { adminAssetGroupTypeSchema } from './admin-asset-group-type'
 export const adminAssetGroupCreateInputSchema = z.object({
   address: z.string().trim().min(1),
   enabled: z.boolean().optional(),
+  imageUrl: z.string().trim().nullable().optional(),
   label: z.string().trim().min(1),
   type: adminAssetGroupTypeSchema,
 })

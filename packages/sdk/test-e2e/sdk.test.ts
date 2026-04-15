@@ -1296,6 +1296,7 @@ describe('createOrpcClient e2e', () => {
       adminSession.client.adminAssetGroup.create({
         address: 'collection-acme',
         enabled: true,
+        imageUrl: 'https://example.com/collection-acme.png',
         label: 'Acme Collection',
         type: 'collection',
       }),
@@ -1334,6 +1335,7 @@ describe('createOrpcClient e2e', () => {
       address: 'collection-acme',
       enabled: true,
       id: createdAssetGroup.id,
+      imageUrl: 'https://example.com/collection-acme.png',
       label: 'Acme Collection',
       type: 'collection',
     })
@@ -1345,6 +1347,7 @@ describe('createOrpcClient e2e', () => {
         address: 'collection-acme',
         enabled: true,
         id: createdAssetGroup.id,
+        imageUrl: 'https://example.com/collection-acme.png',
         label: 'Acme Collection',
         type: 'collection',
       }),
@@ -1380,6 +1383,7 @@ describe('createOrpcClient e2e', () => {
         data: {
           address: 'mint-acme',
           enabled: false,
+          imageUrl: 'https://example.com/mint-acme.png',
           label: 'Acme Mint',
           type: 'mint',
         },
@@ -1388,6 +1392,7 @@ describe('createOrpcClient e2e', () => {
       address: 'mint-acme',
       enabled: false,
       id: createdAssetGroup.id,
+      imageUrl: 'https://example.com/mint-acme.png',
       label: 'Acme Mint',
       type: 'mint',
     })

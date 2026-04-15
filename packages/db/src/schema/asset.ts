@@ -13,6 +13,7 @@ export const assetGroup = sqliteTable(
     id: text('id')
       .$defaultFn(() => crypto.randomUUID())
       .primaryKey(),
+    imageUrl: text('image_url'),
     indexingStartedAt: integer('indexing_started_at', { mode: 'timestamp_ms' }),
     label: text('label').notNull(),
     type: text('type', { enum: ['collection', 'mint'] }).notNull(),

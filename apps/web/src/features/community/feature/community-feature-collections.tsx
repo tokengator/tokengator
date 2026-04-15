@@ -6,6 +6,23 @@ import { Skeleton } from '@tokengator/ui/components/skeleton'
 
 import { useCommunityBySlugQuery } from '../data-access/use-community-by-slug-query'
 
+function CommunityFeatureCollectionImage({
+  collection,
+}: {
+  collection: CommunityGetBySlugResult['collections'][number]
+}) {
+  return collection.imageUrl ? (
+    <img
+      alt={collection.label}
+      className="aspect-square w-full object-cover"
+      loading="lazy"
+      src={collection.imageUrl}
+    />
+  ) : (
+    <Skeleton className="aspect-square w-full rounded-none" />
+  )
+}
+
 export function CommunityFeatureCollections({ initialCommunity }: { initialCommunity: CommunityGetBySlugResult }) {
   const { data } = useCommunityBySlugQuery(initialCommunity.slug, {
     initialData: initialCommunity,
@@ -39,7 +56,7 @@ export function CommunityFeatureCollections({ initialCommunity }: { initialCommu
                 }}
                 to="/communities/$slug/collections/$address"
               >
-                <Skeleton className="aspect-[4/3] w-full rounded-none" />
+                <CommunityFeatureCollectionImage collection={collection} />
                 <div className="grid gap-2 p-4">
                   <div className="font-medium">{collection.label}</div>
                   <div className="text-muted-foreground capitalize">{collection.type}</div>

@@ -22,14 +22,15 @@ export function AdminAssetGroupUiCreatePreview(props: AdminAssetGroupUiCreatePre
   const existingAssetGroup = lookup.existingAssetGroup
   const { suggestion, warnings } = lookup
   const canCreate = suggestion.resolvable && Boolean(suggestion.address && suggestion.type)
+  const hasImageUrlUpdate = Boolean(existingAssetGroup && existingAssetGroup.imageUrl !== suggestion.imageUrl)
   const suggestedLabel = suggestion.label?.trim() || (suggestion.address ? ellipsifyAddress(suggestion.address) : '')
+  const hasLabelOrTypeUpdate = Boolean(
+    existingAssetGroup &&
+    suggestion.type &&
+    (existingAssetGroup.label !== suggestedLabel || existingAssetGroup.type !== suggestion.type),
+  )
   const hasMetadataUpdate =
-    canCreate &&
-    Boolean(
-      existingAssetGroup &&
-      suggestion.type &&
-      (existingAssetGroup.label !== suggestedLabel || existingAssetGroup.type !== suggestion.type),
-    )
+    canCreate && Boolean(existingAssetGroup && suggestion.type && (hasImageUrlUpdate || hasLabelOrTypeUpdate))
 
   return (
     <Card>
@@ -90,10 +91,16 @@ export function AdminAssetGroupUiCreatePreview(props: AdminAssetGroupUiCreatePre
                 <div className="text-muted-foreground">
                   {existingAssetGroup.label} already uses this address. Creating a duplicate is disabled.
                 </div>
-                {hasMetadataUpdate ? (
+                {hasLabelOrTypeUpdate ? (
                   <div className="text-muted-foreground">
                     Lookup metadata differs from the existing record. Current: {existingAssetGroup.type} /{' '}
                     {existingAssetGroup.label}. Suggested: {suggestion.type} / {suggestedLabel}.
+                  </div>
+                ) : null}
+                {hasImageUrlUpdate ? (
+                  <div className="text-muted-foreground">
+                    Image: current {existingAssetGroup.imageUrl ? 'set' : 'none'}, suggested{' '}
+                    {suggestion.imageUrl ? 'set' : 'none'}.
                   </div>
                 ) : null}
               </div>

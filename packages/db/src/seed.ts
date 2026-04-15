@@ -24,12 +24,14 @@ const devSeedAssetGroups = [
   {
     address: '5XSXoWkcmynUSiwoi7XByRDiV9eomTgZQywgWrpYzKZ8',
     enabled: true,
+    imageUrl: 'https://gateway.irys.xyz/8GYvKSGCV5NXNViixqLTyb2Y8cQqSTqGoPEQU56uifFy',
     label: 'PERK',
     type: 'collection',
   },
   {
     address: 'FLJYGHpCCcfYUdzhcfHSeSd2peb5SMajNWaCsRnhpump',
     enabled: true,
+    imageUrl: 'https://ipfs.io/ipfs/Qmd9aU8WuzDqfsGkz82KAZeNLRwnRGzL4fih4aZ3tQ6ZUv',
     label: 'STORE',
     type: 'mint',
   },
@@ -256,6 +258,7 @@ async function createSeedAssetGroups(db: RuntimeModules['db']) {
         address: assetGroup.address,
         enabled: assetGroup.enabled,
         id,
+        imageUrl: assetGroup.imageUrl,
         label: assetGroup.label,
         type: assetGroup.type,
       }

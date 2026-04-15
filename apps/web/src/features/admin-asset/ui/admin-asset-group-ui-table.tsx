@@ -20,6 +20,21 @@ interface AdminAssetGroupUiTableProps {
   renderLabel?: (assetGroup: AdminAssetGroupWithIndexingStatus) => ReactNode
 }
 
+function AdminAssetGroupUiImage({ assetGroup }: { assetGroup: AdminAssetGroupWithIndexingStatus }) {
+  const label = assetGroup.label.trim() || assetGroup.address
+
+  return assetGroup.imageUrl ? (
+    <img
+      alt={label}
+      className="bg-muted size-12 rounded-md border object-cover"
+      loading="lazy"
+      src={assetGroup.imageUrl}
+    />
+  ) : (
+    <div aria-label={`${label} image placeholder`} className="bg-muted size-12 rounded-md border" role="img" />
+  )
+}
+
 export function AdminAssetGroupUiTable(props: AdminAssetGroupUiTableProps) {
   const { assetGroups, renderActions, renderLabel } = props
 
@@ -36,6 +51,7 @@ export function AdminAssetGroupUiTable(props: AdminAssetGroupUiTableProps) {
     <UiTable>
       <UiTableHead>
         <UiTableRow>
+          <UiTableHeaderCell>Image</UiTableHeaderCell>
           <UiTableHeaderCell>Label</UiTableHeaderCell>
           <UiTableHeaderCell>Type</UiTableHeaderCell>
           <UiTableHeaderCell>Address</UiTableHeaderCell>
@@ -47,6 +63,9 @@ export function AdminAssetGroupUiTable(props: AdminAssetGroupUiTableProps) {
       <UiTableBody>
         {assetGroups.map((assetGroup) => (
           <UiTableRow className="align-top" key={assetGroup.id}>
+            <UiTableCell>
+              <AdminAssetGroupUiImage assetGroup={assetGroup} />
+            </UiTableCell>
             <UiTableCell className="font-medium">
               {renderLabel ? renderLabel(assetGroup) : assetGroup.label}
             </UiTableCell>

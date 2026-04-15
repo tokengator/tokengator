@@ -37,6 +37,7 @@ export function AdminAssetFeatureGroupSettings(props: AdminAssetFeatureGroupSett
             initialValues={{
               address: assetGroup.data.address,
               enabled: assetGroup.data.enabled,
+              imageUrl: assetGroup.data.imageUrl,
               label: assetGroup.data.label,
               type: assetGroup.data.type,
             }}

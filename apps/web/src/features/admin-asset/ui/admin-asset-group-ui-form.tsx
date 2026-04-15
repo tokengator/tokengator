@@ -36,6 +36,7 @@ export function AdminAssetGroupUiForm(props: AdminAssetGroupUiFormProps) {
         onSubmit({
           ...values,
           address,
+          imageUrl: values.imageUrl?.trim() || null,
           label: values.label.trim() || ellipsifyAddress(address),
         })
       }}
@@ -82,6 +83,20 @@ export function AdminAssetGroupUiForm(props: AdminAssetGroupUiFormProps) {
           placeholder="Collection or mint address"
           required
           value={values.address}
+        />
+      </div>
+      <div className="grid gap-1.5">
+        <Label htmlFor="asset-group-image-url">Image URL</Label>
+        <Input
+          id="asset-group-image-url"
+          onChange={(event) =>
+            setValues((currentValues) => ({
+              ...currentValues,
+              imageUrl: event.target.value,
+            }))
+          }
+          placeholder="https://example.com/collection.png"
+          value={values.imageUrl ?? ''}
         />
       </div>
       <div className="grid gap-1.5">

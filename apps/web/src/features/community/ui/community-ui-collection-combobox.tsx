@@ -18,6 +18,19 @@ interface CommunityUiCollectionComboboxProps {
   selectedCollectionAddress: string
 }
 
+function CommunityUiCollectionComboboxImage({ collection }: { collection: CommunityCollectionEntity }) {
+  return collection.imageUrl ? (
+    <img
+      alt={collection.label}
+      className="bg-muted size-10 shrink-0 rounded-md border object-cover"
+      loading="lazy"
+      src={collection.imageUrl}
+    />
+  ) : (
+    <div aria-hidden className="bg-muted size-10 shrink-0 rounded-md border" />
+  )
+}
+
 export function CommunityUiCollectionCombobox(props: CommunityUiCollectionComboboxProps) {
   const { collections, onCollectionChange, selectedCollectionAddress } = props
   const sortedCollections = [...collections].sort((collectionA, collectionB) => {
@@ -58,14 +71,17 @@ export function CommunityUiCollectionCombobox(props: CommunityUiCollectionCombob
                 }
 
                 return (
-                  <div className="grid min-w-0 gap-0.5">
-                    <span className="truncate text-sm font-medium">{selectedCollection.label}</span>
-                    <span
-                      className="text-muted-foreground truncate font-mono text-xs"
-                      title={selectedCollection.address}
-                    >
-                      {ellipsify(selectedCollection.address)}
-                    </span>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <CommunityUiCollectionComboboxImage collection={selectedCollection} />
+                    <div className="grid min-w-0 gap-0.5">
+                      <span className="truncate text-sm font-medium">{selectedCollection.label}</span>
+                      <span
+                        className="text-muted-foreground truncate font-mono text-xs"
+                        title={selectedCollection.address}
+                      >
+                        {ellipsify(selectedCollection.address)}
+                      </span>
+                    </div>
                   </div>
                 )
               }}
@@ -85,7 +101,8 @@ export function CommunityUiCollectionCombobox(props: CommunityUiCollectionCombob
           <ComboboxEmpty>No collections found.</ComboboxEmpty>
           <ComboboxList>
             {(collection: CommunityCollectionEntity) => (
-              <ComboboxItem className="items-start py-2 pr-8" key={collection.address} value={collection}>
+              <ComboboxItem className="items-center py-2 pr-8" key={collection.address} value={collection}>
+                <CommunityUiCollectionComboboxImage collection={collection} />
                 <div className="grid min-w-0 gap-0.5">
                   <span className="truncate text-sm font-medium">{collection.label}</span>
                   <span className="text-muted-foreground truncate font-mono text-xs" title={collection.address}>

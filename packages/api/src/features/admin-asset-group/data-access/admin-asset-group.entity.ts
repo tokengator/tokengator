@@ -8,6 +8,7 @@ export const adminAssetGroupEntityColumns = {
   createdAt: assetGroup.createdAt,
   enabled: assetGroup.enabled,
   id: assetGroup.id,
+  imageUrl: assetGroup.imageUrl,
   indexingStartedAt: assetGroup.indexingStartedAt,
   label: assetGroup.label,
   type: assetGroup.type,

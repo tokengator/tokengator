@@ -116,6 +116,7 @@ async function insertAssetGroup(input: {
     { label: string; options: Record<string, { label: string; total: number }>; total: number }
   >
   id: string
+  imageUrl?: string | null
   label: string
   type: 'collection' | 'mint'
 }) {
@@ -125,6 +126,7 @@ async function insertAssetGroup(input: {
     enabled: input.enabled ?? true,
     facetTotals: input.facetTotals ? JSON.stringify(input.facetTotals) : null,
     id: input.id,
+    imageUrl: input.imageUrl ?? null,
     indexingStartedAt: null,
     label: input.label,
     type: input.type,
@@ -387,6 +389,7 @@ describe('community routes', () => {
         },
       },
       id: 'asset-group-alpha',
+      imageUrl: 'https://example.com/collection-alpha.png',
       label: 'Alpha Collection',
       type: 'collection',
     })
@@ -479,6 +482,7 @@ describe('community routes', () => {
             },
           },
           id: 'asset-group-alpha',
+          imageUrl: 'https://example.com/collection-alpha.png',
           label: 'Alpha Collection',
           type: 'collection',
         },
@@ -497,6 +501,7 @@ describe('community routes', () => {
             },
           },
           id: 'asset-group-gamma',
+          imageUrl: null,
           label: 'Gamma Collection',
           type: 'collection',
         },
@@ -592,6 +597,7 @@ describe('community routes', () => {
           address: 'collection-alpha',
           facetTotals: {},
           id: 'asset-group-alpha',
+          imageUrl: null,
           label: 'Alpha Collection',
           type: 'collection',
         },

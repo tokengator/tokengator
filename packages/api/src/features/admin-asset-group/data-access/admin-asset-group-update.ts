@@ -5,18 +5,25 @@ import { assetGroup } from '@tokengator/db/schema/asset'
 import type { AdminAssetGroupUpdateInput } from './admin-asset-group-update-input'
 import type { AdminAssetGroupEntity } from './admin-asset-group.entity'
 
+function normalizeOptionalString(value: string | null | undefined) {
+  return value?.trim() || null
+}
+
 export async function adminAssetGroupUpdate(input: {
   assetGroupId: string
   data: AdminAssetGroupUpdateInput['data']
   existingAssetGroup: AdminAssetGroupEntity
 }) {
   const updatedAt = new Date()
+  const imageUrl =
+    input.data.imageUrl === undefined ? input.existingAssetGroup.imageUrl : normalizeOptionalString(input.data.imageUrl)
 
   await db
     .update(assetGroup)
     .set({
       address: input.data.address,
       enabled: input.data.enabled,
+      imageUrl,
       label: input.data.label,
       type: input.data.type,
       updatedAt,
@@ -27,6 +34,7 @@ export async function adminAssetGroupUpdate(input: {
     ...input.existingAssetGroup,
     address: input.data.address,
     enabled: input.data.enabled,
+    imageUrl,
     label: input.data.label,
     type: input.data.type,
     updatedAt,

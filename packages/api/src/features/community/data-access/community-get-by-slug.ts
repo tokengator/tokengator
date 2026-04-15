@@ -60,6 +60,7 @@ export async function communityGetBySlug(slug: string) {
           address: condition.assetGroupAddress,
           facetTotals: {},
           id: condition.assetGroupId,
+          imageUrl: null,
           label: condition.assetGroupLabel,
           type: condition.assetGroupType,
         }),
@@ -73,6 +74,7 @@ export async function communityGetBySlug(slug: string) {
       .select({
         facetTotals: assetGroup.facetTotals,
         id: assetGroup.id,
+        imageUrl: assetGroup.imageUrl,
       })
       .from(assetGroup)
       .where(inArray(assetGroup.id, collectionIds))
@@ -86,6 +88,10 @@ export async function communityGetBySlug(slug: string) {
           ? (parsedFacetTotals as CommunityCollectionFacetTotals)
           : {},
       )
+      collectionsById.set(facetRow.id, {
+        ...collectionsById.get(facetRow.id)!,
+        imageUrl: facetRow.imageUrl,
+      })
     }
   }
 

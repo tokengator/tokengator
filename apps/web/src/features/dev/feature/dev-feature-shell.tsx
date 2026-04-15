@@ -4,6 +4,11 @@ import { Tabs, TabsList, TabsTrigger } from '@tokengator/ui/components/tabs'
 
 const devTabs = [
   {
+    label: 'API',
+    to: '/dev/api',
+    value: 'api',
+  },
+  {
     label: 'Shadcn',
     to: '/dev/shadcn',
     value: 'shadcn',
@@ -37,7 +42,7 @@ export function DevFeatureShell({ children }: { children: ReactNode }) {
     <div className="space-y-4 p-4">
       <div>
         <h1 className="text-2xl font-semibold">Development</h1>
-        <p className="text-muted-foreground">Internal development tools.</p>
+        <p className="text-muted-foreground">Internal development tools and API experiments.</p>
       </div>
 
       <Tabs

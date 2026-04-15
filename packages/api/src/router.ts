@@ -7,6 +7,7 @@ import { adminOrganizationRouter } from './features/admin-organization/feature/a
 import { adminUserRouter } from './features/admin-user/feature/admin-user-router'
 import { communityRouter } from './features/community/feature/community-router'
 import { coreRouter } from './features/core/feature/core-router'
+import { devRouter } from './features/dev/feature/dev-router'
 import { organizationRouter } from './features/organization/feature/organization-router'
 import { profileRouter } from './features/profile/feature/profile-router'
 
@@ -18,6 +19,7 @@ export const appRouter = {
   adminUser: adminUserRouter,
   community: communityRouter,
   core: coreRouter,
+  dev: devRouter,
   organization: organizationRouter,
   profile: profileRouter,
 }

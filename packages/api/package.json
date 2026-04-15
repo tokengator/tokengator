@@ -26,6 +26,7 @@
     "@orpc/openapi": "catalog:",
     "@orpc/server": "catalog:",
     "@orpc/zod": "catalog:",
+    "@solana/kit": "catalog:",
     "@tokengator/auth": "workspace:*",
     "@tokengator/db": "workspace:*",
     "@tokengator/discord": "workspace:*",

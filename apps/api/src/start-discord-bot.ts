@@ -1,4 +1,4 @@
-import { db } from '@tokengator/db'
+import type { Database } from '@tokengator/db'
 import { shouldStartDiscord, startDiscordBot } from '@tokengator/discord'
 import { env } from '@tokengator/env/discord'
 
@@ -9,7 +9,7 @@ declare global {
   var __tokengatorDiscordBotRuntime: Promise<DiscordBotRuntime> | undefined
 }
 
-function createDiscordBotRuntimePromise() {
+function createDiscordBotRuntimePromise(db: Database) {
   return startDiscordBot({ db, env }).catch((error) => {
     globalThis.__tokengatorDiscordBotRuntime = undefined
 
@@ -17,12 +17,12 @@ function createDiscordBotRuntimePromise() {
   })
 }
 
-export async function startApiDiscordBot() {
+export async function startApiDiscordBot(args: { db: Database }) {
   if (!shouldStartDiscord({ env })) {
     return
   }
 
-  globalThis.__tokengatorDiscordBotRuntime ??= createDiscordBotRuntimePromise()
+  globalThis.__tokengatorDiscordBotRuntime ??= createDiscordBotRuntimePromise(args.db)
 
   await globalThis.__tokengatorDiscordBotRuntime
 }

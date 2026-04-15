@@ -9,7 +9,7 @@ type AssetSchema = typeof import('@tokengator/db/schema/asset')
 type AuthSchema = typeof import('@tokengator/db/schema/auth')
 type CommunityRoleSchema = typeof import('@tokengator/db/schema/community-role')
 type CommunityRouter = typeof import('../src/features/community/feature/community-router').communityRouter
-type DatabaseClient = (typeof import('@tokengator/db'))['db']
+type DatabaseClient = ReturnType<(typeof import('@tokengator/db'))['createDb']>
 
 const DB_PACKAGE_DIR = resolve(import.meta.dir, '..', '..', 'db')
 const ENV_KEYS = [
@@ -41,6 +41,7 @@ let database: DatabaseClient
 function createCallContext(input: { userId: string; username: string }) {
   return {
     context: {
+      db: database,
       requestHeaders: new Headers(),
       requestSignal: new AbortController().signal,
       responseHeaders: new Headers(),
@@ -77,6 +78,7 @@ function createCallContext(input: { userId: string; username: string }) {
 function createUnauthorizedContext() {
   return {
     context: {
+      db: database,
       requestHeaders: new Headers(),
       requestSignal: new AbortController().signal,
       responseHeaders: new Headers(),
@@ -280,14 +282,19 @@ beforeAll(async () => {
 
   syncDatabase(TEST_DATABASE_URL)
 
-  ;({ db: database } = await import('@tokengator/db'))
+  const dbModule = await import('@tokengator/db')
+  database = dbModule.createDb({
+    authToken: 'test-token',
+    url: TEST_DATABASE_URL,
+  })
+  dbModule.setDb(database)
   assetSchema = await import('@tokengator/db/schema/asset')
   authSchema = await import('@tokengator/db/schema/auth')
   communityRoleSchema = await import('@tokengator/db/schema/community-role')
   ;({ communityRouter } = await import('../src/features/community/feature/community-router'))
 }, 15_000)
 
-afterAll(() => {
+afterAll(async () => {
   for (const key of ENV_KEYS) {
     const previousValue = PREVIOUS_ENV[key]
 
@@ -298,6 +305,9 @@ afterAll(() => {
 
     process.env[key] = previousValue
   }
+
+  const { resetDb } = await import('@tokengator/db')
+  resetDb()
 
   rmSync(TEST_DATABASE_DIR, {
     force: true,

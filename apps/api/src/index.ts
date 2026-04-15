@@ -1,6 +1,7 @@
 import { join } from 'node:path'
 import { createTanStackStartBunServeConfig } from 'tanstack-start-bun-server'
 import { createApiApp } from '@tokengator/api/app'
+import { getDb } from '@tokengator/db'
 import { env } from '@tokengator/env/api'
 import { configureAppLogger, getAppLogger } from '@tokengator/logger'
 import { getApiPort } from './get-api-port'
@@ -9,10 +10,11 @@ import { startApiScheduledJobs } from './start-scheduled-jobs'
 
 configureAppLogger({ env })
 const logger = getAppLogger('api', 'api-server')
-const app = createApiApp()
+const db = getDb()
+const app = createApiApp({ db })
 
 async function main() {
-  await startApiDiscordBot()
+  await startApiDiscordBot({ db })
   startApiScheduledJobs()
 
   const { fetchHandler: webFetch, routes: webRoutes } = await createTanStackStartBunServeConfig({

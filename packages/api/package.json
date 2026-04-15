@@ -17,7 +17,7 @@
   },
   "scripts": {
     "check-types": "tsc -b --noEmit",
-    "test": "find ./test -name '*.test.ts' -type f | sort | xargs -n1 bun test"
+    "test": "bun test ./test"
   },
   "dependencies": {
     "@logtape/hono": "catalog:",

@@ -9,7 +9,7 @@ type AssetSchema = typeof import('@tokengator/db/schema/asset')
 type AuthSchema = typeof import('@tokengator/db/schema/auth')
 type AutomationSchema = typeof import('@tokengator/db/schema/automation')
 type CommunityRoleSchema = typeof import('@tokengator/db/schema/community-role')
-type DatabaseClient = (typeof import('@tokengator/db'))['db']
+type DatabaseClient = ReturnType<(typeof import('@tokengator/db'))['createDb']>
 type AdminCommunityRoleRouter =
   typeof import('../src/features/admin-community-role/feature/admin-community-role-router').adminCommunityRoleRouter
 type GetCommunityRoleSyncStatus = (typeof import('../src/features/community-role-sync'))['getCommunityRoleSyncStatus']
@@ -65,6 +65,7 @@ let runScheduledCommunityRoleDiscordSync: RunScheduledCommunityRoleDiscordSync
 function createAdminCallContext(): any {
   return {
     context: {
+      db: database,
       requestHeaders: new Headers(),
       requestSignal: new AbortController().signal,
       responseHeaders: new Headers(),
@@ -622,7 +623,9 @@ beforeAll(async () => {
 
   syncDatabase(TEST_DATABASE_URL)
 
-  ;({ db: database } = await import('@tokengator/db'))
+  const _dbModule = await import('@tokengator/db')
+  database = _dbModule.createDb({ authToken: 'test-token', url: TEST_DATABASE_URL })
+  _dbModule.setDb(database)
   assetSchema = await import('@tokengator/db/schema/asset')
   authSchema = await import('@tokengator/db/schema/auth')
   automationSchema = await import('@tokengator/db/schema/automation')

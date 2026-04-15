@@ -6,6 +6,7 @@ import { RPCHandler } from '@orpc/server/fetch'
 import { ZodToJsonSchemaConverter } from '@orpc/zod/zod4'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import type { Database } from '@tokengator/db'
 import { auth } from '@tokengator/auth'
 import { env } from '@tokengator/env/api'
 import { formatLogError, getAppLogger } from '@tokengator/logger'
@@ -44,8 +45,13 @@ function mergeResponseHeaders(response: Response, responseHeaders: Headers) {
   })
 }
 
-export function createApiApp() {
+export type CreateApiAppOptions = {
+  db?: Database
+}
+
+export function createApiApp(options: CreateApiAppOptions = {}) {
   const app = new Hono()
+  const appDb = options.db
   const disabledAuthRoutes = [
     ['/api/auth/sign-in/email', 'Email sign-in is disabled.'],
     ['/api/auth/sign-in/username', 'Username sign-in is disabled.'],
@@ -132,7 +138,7 @@ export function createApiApp() {
   app.on(['POST', 'GET'], '/api/auth/*', (context) => auth.handler(context.req.raw))
 
   app.use('/*', async (context, next) => {
-    const requestContext = await createContext({ context })
+    const requestContext = await createContext({ context, db: appDb })
     const rpcResult = await rpcHandler.handle(context.req.raw, {
       context: requestContext,
       prefix: '/rpc',

@@ -7,7 +7,7 @@ import { pathToFileURL } from 'node:url'
 
 type AssetSchema = typeof import('@tokengator/db/schema/asset')
 type AutomationSchema = typeof import('@tokengator/db/schema/automation')
-type DatabaseClient = (typeof import('@tokengator/db'))['db']
+type DatabaseClient = ReturnType<(typeof import('@tokengator/db'))['createDb']>
 type AcquireAutomationLock = (typeof import('../src/lib/automation-lock'))['acquireAutomationLock']
 type CreateAutomationLockLeaseController =
   (typeof import('../src/lib/automation-lock'))['createAutomationLockLeaseController']
@@ -357,7 +357,9 @@ beforeAll(async () => {
 
   syncDatabase(TEST_DATABASE_URL)
 
-  ;({ db: database } = await import('@tokengator/db'))
+  const _dbModule = await import('@tokengator/db')
+  database = _dbModule.createDb({ authToken: 'test-token', url: TEST_DATABASE_URL })
+  _dbModule.setDb(database)
   assetSchema = await import('@tokengator/db/schema/asset')
   automationSchema = await import('@tokengator/db/schema/automation')
   ;({ acquireAutomationLock, createAutomationLockLeaseController, releaseAutomationLock, renewAutomationLock } =
@@ -378,7 +380,10 @@ beforeEach(async () => {
   await database.delete(assetSchema.assetGroup).where(sql`1 = 1`)
 })
 
-afterAll(() => {})
+afterAll(async () => {
+  const { resetDb } = await import('@tokengator/db')
+  resetDb()
+})
 
 describe('acquireAutomationLock', () => {
   test('returns acquired false when a concurrent insert wins the lock key first', async () => {

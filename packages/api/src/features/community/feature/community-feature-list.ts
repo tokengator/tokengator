@@ -2,6 +2,6 @@ import { protectedProcedure } from '../../../lib/procedures'
 
 import { communityList as communityListDataAccess } from '../data-access/community-list'
 
-export const communityFeatureList = protectedProcedure.handler(async () => {
-  return await communityListDataAccess()
+export const communityFeatureList = protectedProcedure.handler(async ({ context }) => {
+  return await communityListDataAccess({ db: context.db })
 })

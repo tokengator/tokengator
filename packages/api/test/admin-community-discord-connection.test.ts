@@ -7,7 +7,7 @@ import { pathToFileURL } from 'node:url'
 
 type AuthSchema = typeof import('@tokengator/db/schema/auth')
 type CommunityRoleSchema = typeof import('@tokengator/db/schema/community-role')
-type DatabaseClient = (typeof import('@tokengator/db'))['db']
+type DatabaseClient = ReturnType<(typeof import('@tokengator/db'))['createDb']>
 type DeleteCommunityDiscordConnectionByOrganizationId =
   (typeof import('../src/features/community-discord-connection'))['deleteCommunityDiscordConnectionByOrganizationId']
 type GetCommunityDiscordConnectionByOrganizationId =
@@ -132,7 +132,9 @@ beforeAll(async () => {
 
   syncDatabase(TEST_DATABASE_URL)
 
-  ;({ db: database } = await import('@tokengator/db'))
+  const _dbModule = await import('@tokengator/db')
+  database = _dbModule.createDb({ authToken: 'test-token', url: TEST_DATABASE_URL })
+  _dbModule.setDb(database)
   authSchema = await import('@tokengator/db/schema/auth')
   communityRoleSchema = await import('@tokengator/db/schema/community-role')
   ;({

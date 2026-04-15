@@ -1,5 +1,13 @@
 export type { IdentityProvider } from '@tokengator/db/schema/auth'
 export type {
+  ProfileCommunityAssetRoleCollectionGroupEntity,
+  ProfileCommunityAssetRoleEntity,
+  ProfileCommunityAssetRoleGroupEntity,
+  ProfileCommunityAssetRoleMintGroupEntity,
+  ProfileCommunityCollectionAssetEntity,
+  ProfileCommunityCollectionAssetTraitEntity,
+  ProfileCommunityMembershipEntity,
+  ProfileCommunityMintAccountEntity,
   ProfileFinalizeDiscordAuthResult,
   ProfileGetSettingsResult,
   ProfileIdentityEntity,

@@ -3,6 +3,70 @@ import type { OrganizationMembershipEntity } from '../../organization'
 import { profileSolanaWalletAddressEllipsify } from '../util/profile-solana-wallet-address-ellipsify'
 import { profileSolanaWalletNameNormalize } from '../util/profile-solana-wallet-name-normalize'
 
+export type ProfileCommunityCollectionAssetEntity = {
+  address: string
+  amount: string
+  id: string
+  metadataImageUrl: string | null
+  metadataName: string | null
+  metadataSymbol: string | null
+  owner: string
+  traits: ProfileCommunityCollectionAssetTraitEntity[]
+}
+
+export type ProfileCommunityCollectionAssetTraitEntity = {
+  groupId: string
+  groupLabel: string
+  value: string
+  valueLabel: string
+}
+
+export type ProfileCommunityAssetRoleCollectionGroupEntity = {
+  address: string
+  id: string
+  imageUrl: string | null
+  label: string
+  maximumAmount: string | null
+  minimumAmount: string
+  ownedAssets: ProfileCommunityCollectionAssetEntity[]
+  type: 'collection'
+}
+
+export type ProfileCommunityMintAccountEntity = {
+  address: string
+  amount: string
+  id: string
+  owner: string
+}
+
+export type ProfileCommunityAssetRoleMintGroupEntity = {
+  address: string
+  id: string
+  imageUrl: string | null
+  label: string
+  maximumAmount: string | null
+  minimumAmount: string
+  ownedAccounts: ProfileCommunityMintAccountEntity[]
+  ownedAmount: string
+  type: 'mint'
+}
+
+export type ProfileCommunityAssetRoleGroupEntity =
+  | ProfileCommunityAssetRoleCollectionGroupEntity
+  | ProfileCommunityAssetRoleMintGroupEntity
+
+export type ProfileCommunityAssetRoleEntity = {
+  assetGroups: ProfileCommunityAssetRoleGroupEntity[]
+  id: string
+  matchMode: 'all' | 'any'
+  name: string
+  slug: string
+}
+
+export type ProfileCommunityMembershipEntity = OrganizationMembershipEntity & {
+  assetRoles: ProfileCommunityAssetRoleEntity[]
+}
+
 export interface ProfileIdentityEntity {
   avatarUrl: string | null
   displayName: string | null
@@ -111,7 +175,7 @@ export type ProfileListIdentitiesResult = {
   identities: ProfileIdentityEntity[]
 }
 export type ProfileListCommunitiesByUsernameResult = {
-  communities: OrganizationMembershipEntity[]
+  communities: ProfileCommunityMembershipEntity[]
 }
 export type ProfileListIdentitiesByUsernameResult = {
   identities: ProfileIdentityEntity[]

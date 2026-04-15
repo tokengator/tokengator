@@ -23,11 +23,7 @@ export function ProfileFeatureAssetsViewer({
 
   return (
     <div className="grid gap-6">
-      <ProfileUiCommunitiesCard
-        communities={communities.data?.communities ?? []}
-        description="Communities this user belongs to in TokenGator."
-        isPending={communities.isPending}
-      />
+      <ProfileUiCommunitiesCard communities={communities.data?.communities ?? []} isPending={communities.isPending} />
     </div>
   )
 }

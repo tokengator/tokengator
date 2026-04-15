@@ -5,7 +5,9 @@ import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
+type AssetSchema = typeof import('@tokengator/db/schema/asset')
 type AuthSchema = typeof import('@tokengator/db/schema/auth')
+type CommunityRoleSchema = typeof import('@tokengator/db/schema/community-role')
 type DatabaseClient = (typeof import('@tokengator/db'))['db']
 type ProfileRouter = typeof import('../src/features/profile/feature/profile-router').profileRouter
 
@@ -30,7 +32,9 @@ const PREVIOUS_ENV = {} as Partial<Record<(typeof ENV_KEYS)[number], string | un
 const TEST_DATABASE_DIR = mkdtempSync(resolve(tmpdir(), 'tokengator-api-tests-'))
 const TEST_DATABASE_URL = pathToFileURL(resolve(TEST_DATABASE_DIR, 'profile-username.sqlite')).toString()
 
+let assetSchema: AssetSchema
 let authSchema: AuthSchema
+let communityRoleSchema: CommunityRoleSchema
 let database: DatabaseClient
 let profileRouter: ProfileRouter
 
@@ -91,6 +95,131 @@ async function expectORPCError(
   }
 
   throw new Error(`Expected promise to reject with ${expected.code}.`)
+}
+
+function createIndexedAssetId(input: {
+  address: string
+  assetGroupId: string
+  owner: string
+  resolverKind: 'helius-collection-assets' | 'helius-token-accounts'
+}) {
+  return `v2:${JSON.stringify([input.assetGroupId, input.address, input.owner, input.resolverKind])}`
+}
+
+async function insertAsset(input: {
+  address: string
+  amount: string
+  assetGroupId: string
+  id: string
+  metadataImageUrl?: string | null
+  metadataName?: string | null
+  metadataSymbol?: string | null
+  owner: string
+  resolverKind: 'helius-collection-assets' | 'helius-token-accounts'
+  traits?: Array<{ groupId: string; groupLabel: string; value: string; valueLabel: string }>
+}) {
+  await database.insert(assetSchema.asset).values({
+    address: input.address,
+    amount: input.amount,
+    assetGroupId: input.assetGroupId,
+    firstSeenAt: new Date('2026-04-11T00:00:00.000Z'),
+    id: input.id,
+    indexedAssetId: createIndexedAssetId({
+      address: input.address,
+      assetGroupId: input.assetGroupId,
+      owner: input.owner,
+      resolverKind: input.resolverKind,
+    }),
+    indexedAt: new Date('2026-04-11T00:00:00.000Z'),
+    lastSeenAt: new Date('2026-04-11T00:00:00.000Z'),
+    metadata: null,
+    metadataDescription: null,
+    metadataImageUrl: input.metadataImageUrl ?? null,
+    metadataJson: null,
+    metadataJsonUrl: null,
+    metadataName: input.metadataName ?? null,
+    metadataProgramAccount: null,
+    metadataSymbol: input.metadataSymbol ?? null,
+    owner: input.owner,
+    page: 1,
+    raw: null,
+    resolverId: input.assetGroupId,
+    resolverKind: input.resolverKind,
+  })
+
+  if ((input.traits ?? []).length > 0) {
+    await database.insert(assetSchema.assetTrait).values(
+      input.traits!.map((trait) => ({
+        assetGroupId: input.assetGroupId,
+        assetId: input.id,
+        id: crypto.randomUUID(),
+        traitKey: trait.groupId,
+        traitLabel: trait.groupLabel,
+        traitValue: trait.value,
+        traitValueLabel: trait.valueLabel,
+      })),
+    )
+  }
+}
+
+async function insertAssetGroup(input: {
+  address: string
+  enabled?: boolean
+  id: string
+  imageUrl?: string | null
+  label: string
+  type: 'collection' | 'mint'
+}) {
+  await database.insert(assetSchema.assetGroup).values({
+    address: input.address,
+    createdAt: new Date('2026-04-11T00:00:00.000Z'),
+    enabled: input.enabled ?? true,
+    id: input.id,
+    imageUrl: input.imageUrl ?? null,
+    indexingStartedAt: null,
+    label: input.label,
+    type: input.type,
+    updatedAt: new Date('2026-04-11T00:00:00.000Z'),
+  })
+}
+
+async function insertCommunityRole(input: {
+  enabled: boolean
+  id: string
+  matchMode: 'all' | 'any'
+  name: string
+  organizationId: string
+  slug: string
+  teamId: string
+}) {
+  await database.insert(communityRoleSchema.communityRole).values({
+    createdAt: new Date('2026-04-11T00:00:00.000Z'),
+    enabled: input.enabled,
+    id: input.id,
+    matchMode: input.matchMode,
+    name: input.name,
+    organizationId: input.organizationId,
+    slug: input.slug,
+    teamId: input.teamId,
+    updatedAt: new Date('2026-04-11T00:00:00.000Z'),
+  })
+}
+
+async function insertCommunityRoleCondition(input: {
+  assetGroupId: string
+  communityRoleId: string
+  maximumAmount?: string | null
+  minimumAmount: string
+}) {
+  await database.insert(communityRoleSchema.communityRoleCondition).values({
+    assetGroupId: input.assetGroupId,
+    communityRoleId: input.communityRoleId,
+    createdAt: new Date('2026-04-11T00:00:00.000Z'),
+    id: crypto.randomUUID(),
+    maximumAmount: input.maximumAmount ?? null,
+    minimumAmount: input.minimumAmount,
+    updatedAt: new Date('2026-04-11T00:00:00.000Z'),
+  })
 }
 
 async function insertIdentity(input: {
@@ -171,6 +300,16 @@ async function insertSolanaWallet(input: {
   })
 }
 
+async function insertTeam(input: { id: string; name: string; organizationId: string }) {
+  await database.insert(authSchema.team).values({
+    createdAt: new Date('2026-04-11T00:00:00.000Z'),
+    id: input.id,
+    name: input.name,
+    organizationId: input.organizationId,
+    updatedAt: new Date('2026-04-11T00:00:00.000Z'),
+  })
+}
+
 async function insertUser(input: {
   email: string
   id: string
@@ -238,7 +377,9 @@ beforeAll(async () => {
   syncDatabase(TEST_DATABASE_URL)
 
   ;({ db: database } = await import('@tokengator/db'))
+  assetSchema = await import('@tokengator/db/schema/asset')
   authSchema = await import('@tokengator/db/schema/auth')
+  communityRoleSchema = await import('@tokengator/db/schema/community-role')
   ;({ profileRouter } = await import('../src/features/profile/feature/profile-router'))
 }, 15_000)
 
@@ -261,9 +402,16 @@ afterAll(() => {
 })
 
 beforeEach(async () => {
+  await database.delete(assetSchema.assetTrait).where(sql`1 = 1`)
+  await database.delete(assetSchema.asset).where(sql`1 = 1`)
+  await database.delete(communityRoleSchema.communityRoleCondition).where(sql`1 = 1`)
+  await database.delete(communityRoleSchema.communityRole).where(sql`1 = 1`)
+  await database.delete(authSchema.teamMember).where(sql`1 = 1`)
+  await database.delete(authSchema.team).where(sql`1 = 1`)
   await database.delete(authSchema.identity).where(sql`1 = 1`)
   await database.delete(authSchema.member).where(sql`1 = 1`)
   await database.delete(authSchema.solanaWallet).where(sql`1 = 1`)
+  await database.delete(assetSchema.assetGroup).where(sql`1 = 1`)
   await database.delete(authSchema.organization).where(sql`1 = 1`)
   await database.delete(authSchema.user).where(sql`1 = 1`)
 })
@@ -574,11 +722,366 @@ describe('profile username routes', () => {
     expect(result).toEqual({
       communities: [
         {
+          assetRoles: [],
           gatedRoles: [],
           id: 'org-1',
           logo: null,
           name: 'Alpha DAO',
           role: 'owner',
+          slug: 'alpha-dao',
+        },
+      ],
+    })
+  })
+
+  test('listCommunitiesByUsername returns community asset roles with owned assets and accumulated mint amounts', async () => {
+    await insertUser({
+      email: 'alice@example.com',
+      id: 'alice-user-id',
+      name: 'Alice',
+      username: 'alice',
+    })
+    await insertUser({
+      email: 'other@example.com',
+      id: 'other-user-id',
+      name: 'Other',
+      username: 'other',
+    })
+    await insertUser({
+      email: 'viewer@example.com',
+      id: 'viewer-user-id',
+      name: 'Viewer',
+      username: 'viewer',
+    })
+    await insertSolanaWallet({
+      address: ' wallet-alpha ',
+      id: 'wallet-alpha',
+      isPrimary: true,
+      userId: 'alice-user-id',
+    })
+    await insertSolanaWallet({
+      address: 'wallet-beta',
+      id: 'wallet-beta',
+      userId: 'alice-user-id',
+    })
+    await insertSolanaWallet({
+      address: 'wallet-other',
+      id: 'wallet-other',
+      isPrimary: true,
+      userId: 'other-user-id',
+    })
+    await insertOrganization({
+      id: 'org-1',
+      name: 'Alpha DAO',
+      slug: 'alpha-dao',
+    })
+    await insertMember({
+      id: 'member-1',
+      organizationId: 'org-1',
+      role: 'member',
+      userId: 'alice-user-id',
+    })
+    await insertTeam({
+      id: 'team-a',
+      name: 'Collectors',
+      organizationId: 'org-1',
+    })
+    await insertTeam({
+      id: 'team-b',
+      name: 'Supporters',
+      organizationId: 'org-1',
+    })
+    await insertTeam({
+      id: 'team-c',
+      name: 'Token Holders',
+      organizationId: 'org-1',
+    })
+    await insertTeam({
+      id: 'team-disabled',
+      name: 'Disabled',
+      organizationId: 'org-1',
+    })
+    await insertAssetGroup({
+      address: 'collection-alpha',
+      id: 'asset-group-collection',
+      imageUrl: 'https://example.com/collection-alpha.png',
+      label: 'Alpha Collection',
+      type: 'collection',
+    })
+    await insertAssetGroup({
+      address: 'collection-disabled',
+      enabled: false,
+      id: 'asset-group-disabled',
+      label: 'Disabled Collection',
+      type: 'collection',
+    })
+    await insertAssetGroup({
+      address: 'mint-island',
+      id: 'asset-group-mint',
+      imageUrl: 'https://example.com/mint-island.png',
+      label: 'Island Token',
+      type: 'mint',
+    })
+    await insertCommunityRole({
+      enabled: true,
+      id: 'role-a',
+      matchMode: 'all',
+      name: 'Collectors',
+      organizationId: 'org-1',
+      slug: 'collectors',
+      teamId: 'team-a',
+    })
+    await insertCommunityRole({
+      enabled: true,
+      id: 'role-b',
+      matchMode: 'any',
+      name: 'Supporters',
+      organizationId: 'org-1',
+      slug: 'supporters',
+      teamId: 'team-b',
+    })
+    await insertCommunityRole({
+      enabled: true,
+      id: 'role-c',
+      matchMode: 'any',
+      name: 'Token Holders',
+      organizationId: 'org-1',
+      slug: 'token-holders',
+      teamId: 'team-c',
+    })
+    await insertCommunityRole({
+      enabled: false,
+      id: 'role-disabled',
+      matchMode: 'any',
+      name: 'Disabled',
+      organizationId: 'org-1',
+      slug: 'disabled',
+      teamId: 'team-disabled',
+    })
+    await insertCommunityRoleCondition({
+      assetGroupId: 'asset-group-mint',
+      communityRoleId: 'role-a',
+      minimumAmount: '1',
+    })
+    await insertCommunityRoleCondition({
+      assetGroupId: 'asset-group-collection',
+      communityRoleId: 'role-a',
+      minimumAmount: '1',
+    })
+    await insertCommunityRoleCondition({
+      assetGroupId: 'asset-group-collection',
+      communityRoleId: 'role-b',
+      minimumAmount: '1',
+    })
+    await insertCommunityRoleCondition({
+      assetGroupId: 'asset-group-mint',
+      communityRoleId: 'role-c',
+      minimumAmount: '1',
+    })
+    await insertCommunityRoleCondition({
+      assetGroupId: 'asset-group-disabled',
+      communityRoleId: 'role-a',
+      minimumAmount: '1',
+    })
+    await insertCommunityRoleCondition({
+      assetGroupId: 'asset-group-mint',
+      communityRoleId: 'role-disabled',
+      minimumAmount: '1',
+    })
+    await insertAsset({
+      address: 'asset-owned-1-address',
+      amount: '1',
+      assetGroupId: 'asset-group-collection',
+      id: 'asset-owned-1',
+      metadataImageUrl: 'https://example.com/asset-owned-1.png',
+      metadataName: 'PEARK #100',
+      metadataSymbol: 'PEARK',
+      owner: 'wallet-alpha',
+      resolverKind: 'helius-collection-assets',
+      traits: [
+        {
+          groupId: 'background',
+          groupLabel: 'Background',
+          value: 'forest',
+          valueLabel: 'Forest',
+        },
+        {
+          groupId: 'hat',
+          groupLabel: 'Hat',
+          value: 'crown',
+          valueLabel: 'Crown',
+        },
+      ],
+    })
+    await insertAsset({
+      address: 'asset-owned-2-address',
+      amount: '1',
+      assetGroupId: 'asset-group-collection',
+      id: 'asset-owned-2',
+      metadataName: 'PEARK #101',
+      owner: ' wallet-beta ',
+      resolverKind: 'helius-collection-assets',
+      traits: [
+        {
+          groupId: 'background',
+          groupLabel: 'Background',
+          value: 'sunset',
+          valueLabel: 'Sunset',
+        },
+      ],
+    })
+    await insertAsset({
+      address: 'asset-other-address',
+      amount: '1',
+      assetGroupId: 'asset-group-collection',
+      id: 'asset-other',
+      metadataName: 'PEARK #999',
+      owner: 'wallet-other',
+      resolverKind: 'helius-collection-assets',
+    })
+    await insertAsset({
+      address: 'mint-island',
+      amount: '10',
+      assetGroupId: 'asset-group-mint',
+      id: 'mint-owned-alpha',
+      owner: 'wallet-alpha',
+      resolverKind: 'helius-token-accounts',
+    })
+    await insertAsset({
+      address: 'mint-island',
+      amount: '15',
+      assetGroupId: 'asset-group-mint',
+      id: 'mint-owned-beta',
+      owner: ' wallet-beta ',
+      resolverKind: 'helius-token-accounts',
+    })
+    await insertAsset({
+      address: 'mint-island',
+      amount: '5',
+      assetGroupId: 'asset-group-mint',
+      id: 'mint-owned-beta-extra',
+      owner: 'wallet-beta',
+      resolverKind: 'helius-token-accounts',
+    })
+    await insertAsset({
+      address: 'mint-island',
+      amount: '999',
+      assetGroupId: 'asset-group-mint',
+      id: 'mint-other',
+      owner: 'wallet-other',
+      resolverKind: 'helius-token-accounts',
+    })
+
+    const result = await profileRouter.listCommunitiesByUsername.callable(
+      createCallContext({
+        userId: 'viewer-user-id',
+        username: 'viewer',
+      }),
+    )({
+      username: 'alice',
+    })
+
+    expect(result).toEqual({
+      communities: [
+        {
+          assetRoles: [
+            {
+              assetGroups: [
+                {
+                  address: 'collection-alpha',
+                  id: 'asset-group-collection',
+                  imageUrl: 'https://example.com/collection-alpha.png',
+                  label: 'Alpha Collection',
+                  maximumAmount: null,
+                  minimumAmount: '1',
+                  ownedAssets: [
+                    {
+                      address: 'asset-owned-1-address',
+                      amount: '1',
+                      id: 'asset-owned-1',
+                      metadataImageUrl: 'https://example.com/asset-owned-1.png',
+                      metadataName: 'PEARK #100',
+                      metadataSymbol: 'PEARK',
+                      owner: 'wallet-alpha',
+                      traits: [
+                        {
+                          groupId: 'background',
+                          groupLabel: 'Background',
+                          value: 'forest',
+                          valueLabel: 'Forest',
+                        },
+                        {
+                          groupId: 'hat',
+                          groupLabel: 'Hat',
+                          value: 'crown',
+                          valueLabel: 'Crown',
+                        },
+                      ],
+                    },
+                    {
+                      address: 'asset-owned-2-address',
+                      amount: '1',
+                      id: 'asset-owned-2',
+                      metadataImageUrl: null,
+                      metadataName: 'PEARK #101',
+                      metadataSymbol: null,
+                      owner: 'wallet-beta',
+                      traits: [
+                        {
+                          groupId: 'background',
+                          groupLabel: 'Background',
+                          value: 'sunset',
+                          valueLabel: 'Sunset',
+                        },
+                      ],
+                    },
+                  ],
+                  type: 'collection',
+                },
+              ],
+              id: 'role-b',
+              matchMode: 'any',
+              name: 'Supporters',
+              slug: 'supporters',
+            },
+            {
+              assetGroups: [
+                {
+                  address: 'mint-island',
+                  id: 'asset-group-mint',
+                  imageUrl: 'https://example.com/mint-island.png',
+                  label: 'Island Token',
+                  maximumAmount: null,
+                  minimumAmount: '1',
+                  ownedAccounts: [
+                    {
+                      address: 'mint-island',
+                      amount: '10',
+                      id: 'asset-group-mint:wallet-alpha',
+                      owner: 'wallet-alpha',
+                    },
+                    {
+                      address: 'mint-island',
+                      amount: '20',
+                      id: 'asset-group-mint:wallet-beta',
+                      owner: 'wallet-beta',
+                    },
+                  ],
+                  ownedAmount: '30',
+                  type: 'mint',
+                },
+              ],
+              id: 'role-c',
+              matchMode: 'any',
+              name: 'Token Holders',
+              slug: 'token-holders',
+            },
+          ],
+          gatedRoles: [],
+          id: 'org-1',
+          logo: null,
+          name: 'Alpha DAO',
+          role: 'member',
           slug: 'alpha-dao',
         },
       ],

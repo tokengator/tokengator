@@ -8,6 +8,7 @@ export const assetGroup = sqliteTable(
     createdAt: integer('created_at', { mode: 'timestamp_ms' })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),
+    decimals: integer('decimals').default(0).notNull(),
     enabled: integer('enabled', { mode: 'boolean' }).default(true).notNull(),
     facetTotals: text('facet_totals'),
     id: text('id')

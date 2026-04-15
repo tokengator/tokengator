@@ -22,6 +22,7 @@ export function AdminAssetGroupUiCreatePreview(props: AdminAssetGroupUiCreatePre
   const existingAssetGroup = lookup.existingAssetGroup
   const { suggestion, warnings } = lookup
   const canCreate = suggestion.resolvable && Boolean(suggestion.address && suggestion.type)
+  const hasDecimalsUpdate = Boolean(existingAssetGroup && existingAssetGroup.decimals !== suggestion.decimals)
   const hasImageUrlUpdate = Boolean(existingAssetGroup && existingAssetGroup.imageUrl !== suggestion.imageUrl)
   const suggestedLabel = suggestion.label?.trim() || (suggestion.address ? ellipsifyAddress(suggestion.address) : '')
   const hasLabelOrTypeUpdate = Boolean(
@@ -30,7 +31,8 @@ export function AdminAssetGroupUiCreatePreview(props: AdminAssetGroupUiCreatePre
     (existingAssetGroup.label !== suggestedLabel || existingAssetGroup.type !== suggestion.type),
   )
   const hasMetadataUpdate =
-    canCreate && Boolean(existingAssetGroup && suggestion.type && (hasImageUrlUpdate || hasLabelOrTypeUpdate))
+    canCreate &&
+    Boolean(existingAssetGroup && suggestion.type && (hasDecimalsUpdate || hasImageUrlUpdate || hasLabelOrTypeUpdate))
 
   return (
     <Card>
@@ -62,18 +64,22 @@ export function AdminAssetGroupUiCreatePreview(props: AdminAssetGroupUiCreatePre
         </div>
 
         {canCreate ? (
-          <div className="grid gap-3 md:grid-cols-3">
-            <UiInfoCard>
-              <UiInfoCardLabel>Type</UiInfoCardLabel>
-              <UiInfoCardValue>{suggestion.type}</UiInfoCardValue>
-            </UiInfoCard>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <UiInfoCard>
               <UiInfoCardLabel>Address</UiInfoCardLabel>
               <UiInfoCardValue className="font-mono text-xs break-all">{suggestion.address}</UiInfoCardValue>
             </UiInfoCard>
             <UiInfoCard>
+              <UiInfoCardLabel>Decimals</UiInfoCardLabel>
+              <UiInfoCardValue>{suggestion.decimals}</UiInfoCardValue>
+            </UiInfoCard>
+            <UiInfoCard>
               <UiInfoCardLabel>Resolver</UiInfoCardLabel>
               <UiInfoCardValue className="font-mono text-xs break-all">{suggestion.resolverKind}</UiInfoCardValue>
+            </UiInfoCard>
+            <UiInfoCard>
+              <UiInfoCardLabel>Type</UiInfoCardLabel>
+              <UiInfoCardValue>{suggestion.type}</UiInfoCardValue>
             </UiInfoCard>
           </div>
         ) : (
@@ -95,6 +101,11 @@ export function AdminAssetGroupUiCreatePreview(props: AdminAssetGroupUiCreatePre
                   <div className="text-muted-foreground">
                     Lookup metadata differs from the existing record. Current: {existingAssetGroup.type} /{' '}
                     {existingAssetGroup.label}. Suggested: {suggestion.type} / {suggestedLabel}.
+                  </div>
+                ) : null}
+                {hasDecimalsUpdate ? (
+                  <div className="text-muted-foreground">
+                    Decimals: current {existingAssetGroup.decimals}, suggested {suggestion.decimals}.
                   </div>
                 ) : null}
                 {hasImageUrlUpdate ? (

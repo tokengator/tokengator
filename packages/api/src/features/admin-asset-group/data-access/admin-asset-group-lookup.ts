@@ -30,6 +30,7 @@ export type AdminAssetGroupLookupReason =
   | 'unsupported_without_collection'
 
 export interface AdminAssetGroupLookupAccountInfo {
+  decimals: number
   executable: boolean | null
   exists: boolean
   ownerProgram: string | null
@@ -38,6 +39,7 @@ export interface AdminAssetGroupLookupAccountInfo {
 }
 
 export interface AdminAssetGroupLookupAsset {
+  decimals: number
   exists: boolean
   grouping: Array<{ groupKey: string; groupValue: string }>
   id: string | null
@@ -50,6 +52,7 @@ export interface AdminAssetGroupLookupAsset {
 
 export interface AdminAssetGroupLookupSuggestion {
   address: string | null
+  decimals: number
   imageUrl: string | null
   label: string | null
   reason: AdminAssetGroupLookupReason
@@ -236,6 +239,7 @@ async function getCollectionSelfSuggestion(input: {
 
     return {
       address: input.account,
+      decimals: 0,
       imageUrl: input.asset.imageUrl,
       label: formatLabel({
         fallback: input.account,
@@ -275,6 +279,7 @@ async function getSuggestion(input: {
 
     return {
       address: collectionGrouping.groupValue,
+      decimals: 0,
       imageUrl: collectionAsset.imageUrl,
       label: formatLabel({
         fallback: collectionGrouping.groupValue,
@@ -292,6 +297,7 @@ async function getSuggestion(input: {
     if (input.accountInfo.parsedType === 'mint') {
       return {
         address: input.account,
+        decimals: input.accountInfo.decimals,
         imageUrl: input.asset.imageUrl,
         label: formatLabel({
           fallback: input.account,
@@ -369,6 +375,7 @@ async function lookupAccountInfo(input: {
 
   if (!account) {
     return {
+      decimals: 0,
       executable: null,
       exists: false,
       ownerProgram: null,
@@ -379,8 +386,10 @@ async function lookupAccountInfo(input: {
 
   const data = readRecord(account.data)
   const parsed = readRecord(data?.parsed)
+  const parsedInfo = readRecord(parsed?.info)
 
   return {
+    decimals: readDecimals(parsedInfo?.decimals),
     executable: readBoolean(account.executable),
     exists: true,
     ownerProgram: readString(account.owner),
@@ -418,6 +427,7 @@ async function lookupAsset(input: {
     const mintExtensions = readRecord(record.mint_extensions)
 
     return {
+      decimals: readDecimals(tokenInfo?.decimals),
       exists: true,
       grouping: normalizeGrouping(record.grouping),
       id: readString(record.id),
@@ -451,6 +461,7 @@ function formatLookupWarning(error: unknown, fallback: string) {
 
 function missingAsset(): AdminAssetGroupLookupAsset {
   return {
+    decimals: 0,
     exists: false,
     grouping: [],
     id: null,
@@ -526,6 +537,12 @@ function readBoolean(value: unknown): boolean | null {
   return typeof value === 'boolean' ? value : null
 }
 
+function readDecimals(value: unknown): number {
+  const parsed = typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value
+
+  return typeof parsed === 'number' && Number.isInteger(parsed) && parsed >= 0 && parsed <= 255 ? parsed : 0
+}
+
 function readNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
@@ -543,6 +560,7 @@ function unsupportedSuggestion(
 ) {
   return {
     address: null,
+    decimals: 0,
     imageUrl: null,
     label: null,
     reason,

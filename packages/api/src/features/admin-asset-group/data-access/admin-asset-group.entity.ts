@@ -6,6 +6,7 @@ import type { AssetGroupIndexStatusSummary } from '../../../features/asset-group
 export const adminAssetGroupEntityColumns = {
   address: assetGroup.address,
   createdAt: assetGroup.createdAt,
+  decimals: assetGroup.decimals,
   enabled: assetGroup.enabled,
   id: assetGroup.id,
   imageUrl: assetGroup.imageUrl,

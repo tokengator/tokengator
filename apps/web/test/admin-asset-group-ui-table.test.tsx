@@ -9,6 +9,7 @@ describe('AdminAssetGroupUiTable', () => {
     const assetGroup = {
       address: 'collection-alpha',
       createdAt: new Date('2026-04-15T00:00:00.000Z'),
+      decimals: 0,
       enabled: true,
       id: 'asset-group-alpha',
       imageUrl: 'https://example.com/collection-alpha.png',

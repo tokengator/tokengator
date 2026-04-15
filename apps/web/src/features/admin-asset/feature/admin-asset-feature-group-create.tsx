@@ -21,13 +21,16 @@ export function AdminAssetFeatureGroupCreate() {
       return null
     }
 
-    return {
+    const values = {
       address: suggestion.address,
+      decimals: suggestion.decimals,
       enabled: true,
       imageUrl: suggestion.imageUrl,
       label: suggestion.label?.trim() || ellipsifyAddress(suggestion.address),
       type: suggestion.type,
     }
+
+    return values
   }
 
   async function handleCreateAssetGroup() {

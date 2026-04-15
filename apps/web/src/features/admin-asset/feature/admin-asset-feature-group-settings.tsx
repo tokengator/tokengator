@@ -36,6 +36,7 @@ export function AdminAssetFeatureGroupSettings(props: AdminAssetFeatureGroupSett
           <AdminAssetGroupUiForm
             initialValues={{
               address: assetGroup.data.address,
+              decimals: assetGroup.data.decimals,
               enabled: assetGroup.data.enabled,
               imageUrl: assetGroup.data.imageUrl,
               label: assetGroup.data.label,

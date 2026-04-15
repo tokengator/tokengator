@@ -11,6 +11,7 @@ interface DevUiAssetGroupLookupCardProps {
   lookupAssetGroup: (address: string) => void
   suggestion?: {
     address: string | null
+    decimals: number
     imageUrl: string | null
     label: string | null
     reason: string
@@ -74,7 +75,7 @@ export function DevUiAssetGroupLookupCard(props: DevUiAssetGroupLookupCardProps)
                 <div className="font-medium">{suggestion.resolvable ? 'Resolvable' : 'Not resolvable'}</div>
                 <div className="text-muted-foreground text-sm break-all">
                   {suggestion.resolvable
-                    ? `${suggestion.type} / ${suggestion.address} / ${suggestion.resolverKind}`
+                    ? `${suggestion.type} / ${suggestion.address} / ${suggestion.resolverKind} / decimals ${suggestion.decimals}`
                     : suggestion.reason}
                 </div>
                 {suggestion.label ? <div className="text-muted-foreground mt-1 text-sm">{suggestion.label}</div> : null}

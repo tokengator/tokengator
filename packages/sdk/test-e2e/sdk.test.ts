@@ -1333,6 +1333,7 @@ describe('createOrpcClient e2e', () => {
       adminSession.client.adminAssetGroup.get({ assetGroupId: createdAssetGroup.id }),
     ).resolves.toMatchObject({
       address: 'collection-acme',
+      decimals: 0,
       enabled: true,
       id: createdAssetGroup.id,
       imageUrl: 'https://example.com/collection-acme.png',
@@ -1345,6 +1346,7 @@ describe('createOrpcClient e2e', () => {
     expect(assetGroups.assetGroups).toContainEqual(
       expect.objectContaining({
         address: 'collection-acme',
+        decimals: 0,
         enabled: true,
         id: createdAssetGroup.id,
         imageUrl: 'https://example.com/collection-acme.png',
@@ -1382,6 +1384,7 @@ describe('createOrpcClient e2e', () => {
         assetGroupId: createdAssetGroup.id,
         data: {
           address: 'mint-acme',
+          decimals: 6,
           enabled: false,
           imageUrl: 'https://example.com/mint-acme.png',
           label: 'Acme Mint',
@@ -1390,6 +1393,7 @@ describe('createOrpcClient e2e', () => {
       }),
     ).resolves.toMatchObject({
       address: 'mint-acme',
+      decimals: 6,
       enabled: false,
       id: createdAssetGroup.id,
       imageUrl: 'https://example.com/mint-acme.png',

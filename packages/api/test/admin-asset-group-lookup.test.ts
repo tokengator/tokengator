@@ -10,11 +10,14 @@ const TOKEN_2022_PROGRAM_ID = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb'
 const TOKEN_METADATA_PROGRAM_ID = 'metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s'
 const TOKEN_PROGRAM_ID = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
 
-function accountInfo(input: { owner: string; parsedType?: string; space?: number }) {
+function accountInfo(input: { decimals?: number; owner: string; parsedType?: string; space?: number }) {
   return {
     value: {
       data: {
         parsed: {
+          info: {
+            decimals: input.decimals,
+          },
           type: input.parsedType,
         },
         program: 'spl-token',
@@ -27,6 +30,7 @@ function accountInfo(input: { owner: string; parsedType?: string; space?: number
 }
 
 function asset(input: {
+  decimals?: number
   grouping?: Array<{ group_key?: string; group_value?: string; groupKey?: string; groupValue?: string }>
   id?: string
   interface?: string
@@ -49,6 +53,7 @@ function asset(input: {
     id: input.id ?? ACCOUNT,
     interface: input.interface,
     token_info: {
+      decimals: input.decimals,
       token_program: input.tokenProgram,
     },
   }
@@ -122,6 +127,7 @@ describe('admin asset group lookup', () => {
 
     expect(calls.map((call) => call.method)).toEqual(['getAccountInfo', 'getAsset'])
     expect(result.accountInfo).toEqual({
+      decimals: 0,
       executable: null,
       exists: false,
       ownerProgram: null,
@@ -131,6 +137,7 @@ describe('admin asset group lookup', () => {
     expect(result.asset.exists).toBe(false)
     expect(result.suggestion).toEqual({
       address: null,
+      decimals: 0,
       imageUrl: null,
       label: null,
       reason: 'not_found',
@@ -143,10 +150,12 @@ describe('admin asset group lookup', () => {
   test('suggests the token account resolver for SPL Token mints', async () => {
     const { result } = await lookupWithResponses([
       accountInfo({
+        decimals: 9,
         owner: TOKEN_PROGRAM_ID,
         parsedType: 'mint',
       }),
       asset({
+        decimals: 8,
         imageUrl: 'https://example.com/sol.png',
         name: 'Wrapped SOL',
         symbol: 'SOL',
@@ -154,8 +163,11 @@ describe('admin asset group lookup', () => {
       }),
     ])
 
+    expect(result.accountInfo.decimals).toBe(9)
+    expect(result.asset.decimals).toBe(8)
     expect(result.suggestion).toEqual({
       address: ACCOUNT,
+      decimals: 9,
       imageUrl: 'https://example.com/sol.png',
       label: 'Wrapped SOL (SOL)',
       reason: 'mint',
@@ -168,10 +180,12 @@ describe('admin asset group lookup', () => {
   test('suggests the token account resolver for Token-2022 mints', async () => {
     const { result } = await lookupWithResponses([
       accountInfo({
+        decimals: 6,
         owner: TOKEN_2022_PROGRAM_ID,
         parsedType: 'mint',
       }),
       asset({
+        decimals: 6,
         imageUrl: 'https://example.com/ext.png',
         name: 'Extension Token',
         symbol: 'EXT',
@@ -181,7 +195,35 @@ describe('admin asset group lookup', () => {
 
     expect(result.suggestion).toMatchObject({
       address: ACCOUNT,
+      decimals: 6,
       imageUrl: 'https://example.com/ext.png',
+      reason: 'mint',
+      resolvable: true,
+      resolverKind: 'helius-token-accounts',
+      type: 'mint',
+    })
+  })
+
+  test('prefers parsed mint decimals when they are zero', async () => {
+    const { result } = await lookupWithResponses([
+      accountInfo({
+        decimals: 0,
+        owner: TOKEN_PROGRAM_ID,
+        parsedType: 'mint',
+      }),
+      asset({
+        decimals: 9,
+        imageUrl: 'https://example.com/zero.png',
+        name: 'Zero Decimal Token',
+        symbol: 'ZERO',
+        tokenProgram: TOKEN_PROGRAM_ID,
+      }),
+    ])
+
+    expect(result.suggestion).toMatchObject({
+      address: ACCOUNT,
+      decimals: 0,
+      imageUrl: 'https://example.com/zero.png',
       reason: 'mint',
       resolvable: true,
       resolverKind: 'helius-token-accounts',
@@ -220,6 +262,7 @@ describe('admin asset group lookup', () => {
 
     expect(result.suggestion).toEqual({
       address: COLLECTION,
+      decimals: 0,
       imageUrl: 'https://example.com/legacy-collection.png',
       label: 'Legacy Collection (COLL)',
       reason: 'collection_asset',
@@ -265,6 +308,7 @@ describe('admin asset group lookup', () => {
     ])
     expect(result.suggestion).toEqual({
       address: COLLECTION,
+      decimals: 0,
       imageUrl: 'https://example.com/core-collection.png',
       label: 'Core Collection (COREC)',
       reason: 'collection_asset',
@@ -304,6 +348,7 @@ describe('admin asset group lookup', () => {
     })
     expect(result.suggestion).toEqual({
       address: ACCOUNT,
+      decimals: 0,
       imageUrl: 'https://example.com/core-collection.png',
       label: 'Core Collection (CORE)',
       reason: 'collection_self',
@@ -385,6 +430,7 @@ describe('admin asset group lookup', () => {
 
     expect(result.suggestion).toEqual({
       address: null,
+      decimals: 0,
       imageUrl: null,
       label: null,
       reason: 'unsupported_program',

@@ -9,5 +9,6 @@ export const adminAssetGroupCreateInputSchema = z.object({
   enabled: z.boolean().optional(),
   imageUrl: z.string().trim().nullable().optional(),
   label: z.string().trim().min(1),
+  symbol: z.string().trim().nullable().optional(),
   type: adminAssetGroupTypeSchema,
 })

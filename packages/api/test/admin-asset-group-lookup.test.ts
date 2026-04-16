@@ -143,6 +143,7 @@ describe('admin asset group lookup', () => {
       reason: 'not_found',
       resolvable: false,
       resolverKind: null,
+      symbol: null,
       type: null,
     })
   })
@@ -169,10 +170,11 @@ describe('admin asset group lookup', () => {
       address: ACCOUNT,
       decimals: 9,
       imageUrl: 'https://example.com/sol.png',
-      label: 'Wrapped SOL (SOL)',
+      label: 'Wrapped SOL',
       reason: 'mint',
       resolvable: true,
       resolverKind: 'helius-token-accounts',
+      symbol: 'SOL',
       type: 'mint',
     })
   })
@@ -187,6 +189,7 @@ describe('admin asset group lookup', () => {
       asset({
         decimals: 6,
         imageUrl: 'https://example.com/ext.png',
+        interface: 'FungibleAsset',
         name: 'Extension Token',
         symbol: 'EXT',
         tokenProgram: TOKEN_2022_PROGRAM_ID,
@@ -200,6 +203,7 @@ describe('admin asset group lookup', () => {
       reason: 'mint',
       resolvable: true,
       resolverKind: 'helius-token-accounts',
+      symbol: 'EXT',
       type: 'mint',
     })
   })
@@ -227,6 +231,34 @@ describe('admin asset group lookup', () => {
       reason: 'mint',
       resolvable: true,
       resolverKind: 'helius-token-accounts',
+      symbol: 'ZERO',
+      type: 'mint',
+    })
+  })
+
+  test('allows null symbol for NFT mints', async () => {
+    const { result } = await lookupWithResponses([
+      accountInfo({
+        owner: TOKEN_PROGRAM_ID,
+        parsedType: 'mint',
+      }),
+      asset({
+        imageUrl: 'https://example.com/nft.png',
+        interface: 'ProgrammableNFT',
+        name: 'NFT Mint',
+        symbol: 'NFT',
+        tokenProgram: TOKEN_PROGRAM_ID,
+      }),
+    ])
+
+    expect(result.suggestion).toMatchObject({
+      address: ACCOUNT,
+      decimals: 0,
+      imageUrl: 'https://example.com/nft.png',
+      reason: 'mint',
+      resolvable: true,
+      resolverKind: 'helius-token-accounts',
+      symbol: null,
       type: 'mint',
     })
   })
@@ -264,10 +296,11 @@ describe('admin asset group lookup', () => {
       address: COLLECTION,
       decimals: 0,
       imageUrl: 'https://example.com/legacy-collection.png',
-      label: 'Legacy Collection (COLL)',
+      label: 'Legacy Collection',
       reason: 'collection_asset',
       resolvable: true,
       resolverKind: 'helius-collection-assets',
+      symbol: null,
       type: 'collection',
     })
   })
@@ -310,10 +343,11 @@ describe('admin asset group lookup', () => {
       address: COLLECTION,
       decimals: 0,
       imageUrl: 'https://example.com/core-collection.png',
-      label: 'Core Collection (COREC)',
+      label: 'Core Collection',
       reason: 'collection_asset',
       resolvable: true,
       resolverKind: 'helius-collection-assets',
+      symbol: null,
       type: 'collection',
     })
   })
@@ -350,10 +384,11 @@ describe('admin asset group lookup', () => {
       address: ACCOUNT,
       decimals: 0,
       imageUrl: 'https://example.com/core-collection.png',
-      label: 'Core Collection (CORE)',
+      label: 'Core Collection',
       reason: 'collection_self',
       resolvable: true,
       resolverKind: 'helius-collection-assets',
+      symbol: null,
       type: 'collection',
     })
   })
@@ -436,6 +471,7 @@ describe('admin asset group lookup', () => {
       reason: 'unsupported_program',
       resolvable: false,
       resolverKind: null,
+      symbol: null,
       type: null,
     })
   })

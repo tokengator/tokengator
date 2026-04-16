@@ -24,6 +24,7 @@ export function AdminAssetGroupUiCreatePreview(props: AdminAssetGroupUiCreatePre
   const canCreate = suggestion.resolvable && Boolean(suggestion.address && suggestion.type)
   const hasDecimalsUpdate = Boolean(existingAssetGroup && existingAssetGroup.decimals !== suggestion.decimals)
   const hasImageUrlUpdate = Boolean(existingAssetGroup && existingAssetGroup.imageUrl !== suggestion.imageUrl)
+  const hasSymbolUpdate = Boolean(existingAssetGroup && existingAssetGroup.symbol !== suggestion.symbol)
   const suggestedLabel = suggestion.label?.trim() || (suggestion.address ? ellipsifyAddress(suggestion.address) : '')
   const hasLabelOrTypeUpdate = Boolean(
     existingAssetGroup &&
@@ -32,7 +33,11 @@ export function AdminAssetGroupUiCreatePreview(props: AdminAssetGroupUiCreatePre
   )
   const hasMetadataUpdate =
     canCreate &&
-    Boolean(existingAssetGroup && suggestion.type && (hasDecimalsUpdate || hasImageUrlUpdate || hasLabelOrTypeUpdate))
+    Boolean(
+      existingAssetGroup &&
+      suggestion.type &&
+      (hasDecimalsUpdate || hasImageUrlUpdate || hasLabelOrTypeUpdate || hasSymbolUpdate),
+    )
 
   return (
     <Card>
@@ -55,8 +60,13 @@ export function AdminAssetGroupUiCreatePreview(props: AdminAssetGroupUiCreatePre
               {canCreate ? 'Resolvable' : 'Not resolvable'}
             </Badge>
             <div>
-              <div className="font-medium break-words">
-                {suggestion.label ?? suggestion.address ?? formatLookupReason(suggestion.reason)}
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <div className="font-medium break-words">
+                  {suggestion.label ?? suggestion.address ?? formatLookupReason(suggestion.reason)}
+                </div>
+                {suggestion.symbol ? (
+                  <div className="text-muted-foreground text-xs font-normal">${suggestion.symbol}</div>
+                ) : null}
               </div>
               <div className="text-muted-foreground font-mono text-xs break-all">{lookup.account}</div>
             </div>
@@ -64,7 +74,7 @@ export function AdminAssetGroupUiCreatePreview(props: AdminAssetGroupUiCreatePre
         </div>
 
         {canCreate ? (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
             <UiInfoCard>
               <UiInfoCardLabel>Address</UiInfoCardLabel>
               <UiInfoCardValue className="font-mono text-xs break-all">{suggestion.address}</UiInfoCardValue>
@@ -76,6 +86,10 @@ export function AdminAssetGroupUiCreatePreview(props: AdminAssetGroupUiCreatePre
             <UiInfoCard>
               <UiInfoCardLabel>Resolver</UiInfoCardLabel>
               <UiInfoCardValue className="font-mono text-xs break-all">{suggestion.resolverKind}</UiInfoCardValue>
+            </UiInfoCard>
+            <UiInfoCard>
+              <UiInfoCardLabel>Symbol</UiInfoCardLabel>
+              <UiInfoCardValue>{suggestion.symbol ?? 'None'}</UiInfoCardValue>
             </UiInfoCard>
             <UiInfoCard>
               <UiInfoCardLabel>Type</UiInfoCardLabel>
@@ -106,6 +120,11 @@ export function AdminAssetGroupUiCreatePreview(props: AdminAssetGroupUiCreatePre
                 {hasDecimalsUpdate ? (
                   <div className="text-muted-foreground">
                     Decimals: current {existingAssetGroup.decimals}, suggested {suggestion.decimals}.
+                  </div>
+                ) : null}
+                {hasSymbolUpdate ? (
+                  <div className="text-muted-foreground">
+                    Symbol: current {existingAssetGroup.symbol ?? 'none'}, suggested {suggestion.symbol ?? 'none'}.
                   </div>
                 ) : null}
                 {hasImageUrlUpdate ? (

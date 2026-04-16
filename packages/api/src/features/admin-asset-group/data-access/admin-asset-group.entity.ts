@@ -12,6 +12,7 @@ export const adminAssetGroupEntityColumns = {
   imageUrl: assetGroup.imageUrl,
   indexingStartedAt: assetGroup.indexingStartedAt,
   label: assetGroup.label,
+  symbol: assetGroup.symbol,
   type: assetGroup.type,
   updatedAt: assetGroup.updatedAt,
 }

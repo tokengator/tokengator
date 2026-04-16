@@ -58,6 +58,7 @@ export interface AdminAssetGroupLookupSuggestion {
   reason: AdminAssetGroupLookupReason
   resolvable: boolean
   resolverKind: ResolverKind | null
+  symbol: string | null
   type: 'collection' | 'mint' | null
 }
 
@@ -204,11 +205,7 @@ async function callHeliusRpc<T>(input: {
 }
 
 function formatLabel(input: { fallback: string; name: string | null; symbol: string | null }) {
-  if (input.name && input.symbol) {
-    return `${input.name} (${input.symbol})`
-  }
-
-  return input.name ?? input.symbol ?? input.fallback
+  return input.name ?? input.fallback
 }
 
 async function getCollectionSelfSuggestion(input: {
@@ -249,6 +246,7 @@ async function getCollectionSelfSuggestion(input: {
       reason: 'collection_self',
       resolvable: true,
       resolverKind: HELIUS_COLLECTION_ASSETS,
+      symbol: null,
       type: 'collection',
     }
   } catch (error) {
@@ -289,6 +287,7 @@ async function getSuggestion(input: {
       reason: 'collection_asset',
       resolvable: true,
       resolverKind: HELIUS_COLLECTION_ASSETS,
+      symbol: null,
       type: 'collection',
     }
   }
@@ -307,6 +306,7 @@ async function getSuggestion(input: {
         reason: 'mint',
         resolvable: true,
         resolverKind: HELIUS_TOKEN_ACCOUNTS,
+        symbol: getMintSuggestionSymbol(input.asset),
         type: 'mint',
       }
     }
@@ -351,6 +351,12 @@ function isNotFoundError(error: unknown) {
 
 function isTokenProgram(programId: string | null) {
   return Boolean(programId && TOKEN_PROGRAM_IDS.has(programId))
+}
+
+function getMintSuggestionSymbol(asset: AdminAssetGroupLookupAsset) {
+  return asset.interface && asset.interface !== 'FungibleAsset' && asset.interface !== 'FungibleToken'
+    ? null
+    : asset.symbol
 }
 
 async function lookupAccountInfo(input: {
@@ -566,6 +572,7 @@ function unsupportedSuggestion(
     reason,
     resolvable: false,
     resolverKind: null,
+    symbol: null,
     type: null,
   }
 }

@@ -1338,6 +1338,7 @@ describe('createOrpcClient e2e', () => {
       id: createdAssetGroup.id,
       imageUrl: 'https://example.com/collection-acme.png',
       label: 'Acme Collection',
+      symbol: null,
       type: 'collection',
     })
 
@@ -1351,6 +1352,7 @@ describe('createOrpcClient e2e', () => {
         id: createdAssetGroup.id,
         imageUrl: 'https://example.com/collection-acme.png',
         label: 'Acme Collection',
+        symbol: null,
         type: 'collection',
       }),
     )
@@ -1388,6 +1390,7 @@ describe('createOrpcClient e2e', () => {
           enabled: false,
           imageUrl: 'https://example.com/mint-acme.png',
           label: 'Acme Mint',
+          symbol: 'ACME',
           type: 'mint',
         },
       }),
@@ -1398,6 +1401,7 @@ describe('createOrpcClient e2e', () => {
       id: createdAssetGroup.id,
       imageUrl: 'https://example.com/mint-acme.png',
       label: 'Acme Mint',
+      symbol: 'ACME',
       type: 'mint',
     })
 

@@ -20,10 +20,12 @@ interface AdminAssetGroupUiFormProps {
 export function AdminAssetGroupUiForm(props: AdminAssetGroupUiFormProps) {
   const { initialValues, isPending, onSubmit, showEnabled = true, submitLabel } = props
   const [values, setValues] = useState(initialValues)
+  const [decimalsInputValue, setDecimalsInputValue] = useState(() => String(initialValues.decimals))
   const fallbackLabel = ellipsifyAddress(values.address)
 
   useEffect(() => {
     setValues(initialValues)
+    setDecimalsInputValue(String(initialValues.decimals))
   }, [initialValues])
 
   return (
@@ -38,6 +40,7 @@ export function AdminAssetGroupUiForm(props: AdminAssetGroupUiFormProps) {
           address,
           imageUrl: values.imageUrl?.trim() || null,
           label: values.label.trim() || ellipsifyAddress(address),
+          symbol: values.symbol?.trim() || null,
         })
       }}
     >
@@ -83,6 +86,66 @@ export function AdminAssetGroupUiForm(props: AdminAssetGroupUiFormProps) {
           placeholder="Collection or mint address"
           required
           value={values.address}
+        />
+      </div>
+      <div className="grid gap-1.5">
+        <Label htmlFor="asset-group-decimals">Decimals</Label>
+        <Input
+          id="asset-group-decimals"
+          max={255}
+          min={0}
+          onBlur={() => {
+            const trimmedValue = decimalsInputValue.trim()
+            const parsedValue = Number.parseInt(trimmedValue, 10)
+            const isValid =
+              /^\d+$/.test(trimmedValue) && Number.isInteger(parsedValue) && parsedValue >= 0 && parsedValue <= 255
+
+            if (!isValid) {
+              setDecimalsInputValue(String(values.decimals))
+            }
+          }}
+          onChange={(event) => {
+            const nextValue = event.currentTarget.value
+
+            if (nextValue === '') {
+              setDecimalsInputValue(nextValue)
+
+              return
+            }
+
+            if (!/^\d+$/.test(nextValue)) {
+              return
+            }
+
+            const nextDecimals = Number.parseInt(nextValue, 10)
+
+            if (!Number.isInteger(nextDecimals) || nextDecimals < 0 || nextDecimals > 255) {
+              return
+            }
+
+            setDecimalsInputValue(nextValue)
+            setValues((currentValues) => ({
+              ...currentValues,
+              decimals: nextDecimals,
+            }))
+          }}
+          step={1}
+          type="number"
+          value={decimalsInputValue}
+        />
+      </div>
+      <div className="grid gap-1.5">
+        <Label htmlFor="asset-group-symbol">Symbol</Label>
+        <Input
+          id="asset-group-symbol"
+          onChange={(event) =>
+            setValues((currentValues) => ({
+              ...currentValues,
+              symbol: event.target.value,
+            }))
+          }
+          placeholder="Optional"
+          value={values.symbol ?? ''}
         />
       </div>
       <div className="grid gap-1.5">

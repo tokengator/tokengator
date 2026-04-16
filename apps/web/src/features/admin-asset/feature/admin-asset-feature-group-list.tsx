@@ -104,7 +104,12 @@ export function AdminAssetFeatureGroupList(props: AdminAssetFeatureGroupListProp
             }}
             to="/admin/assets/$assetGroupId/assets"
           >
-            {assetGroup.label}
+            <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <span>{assetGroup.label}</span>
+              {assetGroup.symbol ? (
+                <span className="text-muted-foreground text-xs font-normal">${assetGroup.symbol}</span>
+              ) : null}
+            </span>
           </Link>
         )}
       />

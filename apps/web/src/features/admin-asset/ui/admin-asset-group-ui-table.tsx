@@ -35,6 +35,19 @@ function AdminAssetGroupUiImage({ assetGroup }: { assetGroup: AdminAssetGroupWit
   )
 }
 
+function AdminAssetGroupUiLabel({ assetGroup }: { assetGroup: AdminAssetGroupWithIndexingStatus }) {
+  const label = assetGroup.label.trim() || assetGroup.address
+
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+      <span>{label}</span>
+      {assetGroup.symbol ? (
+        <span className="text-muted-foreground text-xs font-normal">${assetGroup.symbol}</span>
+      ) : null}
+    </div>
+  )
+}
+
 export function AdminAssetGroupUiTable(props: AdminAssetGroupUiTableProps) {
   const { assetGroups, renderActions, renderLabel } = props
 
@@ -67,7 +80,7 @@ export function AdminAssetGroupUiTable(props: AdminAssetGroupUiTableProps) {
               <AdminAssetGroupUiImage assetGroup={assetGroup} />
             </UiTableCell>
             <UiTableCell className="font-medium">
-              {renderLabel ? renderLabel(assetGroup) : assetGroup.label}
+              {renderLabel ? renderLabel(assetGroup) : <AdminAssetGroupUiLabel assetGroup={assetGroup} />}
             </UiTableCell>
             <UiTableCell>{assetGroup.type}</UiTableCell>
             <UiTableCell className="font-mono text-xs">{assetGroup.address}</UiTableCell>

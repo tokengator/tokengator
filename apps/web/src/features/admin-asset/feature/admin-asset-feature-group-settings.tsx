@@ -40,6 +40,7 @@ export function AdminAssetFeatureGroupSettings(props: AdminAssetFeatureGroupSett
               enabled: assetGroup.data.enabled,
               imageUrl: assetGroup.data.imageUrl,
               label: assetGroup.data.label,
+              symbol: assetGroup.data.symbol,
               type: assetGroup.data.type,
             }}
             isPending={updateAssetGroup.isPending}

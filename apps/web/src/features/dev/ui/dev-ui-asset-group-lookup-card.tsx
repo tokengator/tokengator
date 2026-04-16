@@ -17,6 +17,7 @@ interface DevUiAssetGroupLookupCardProps {
     reason: string
     resolvable: boolean
     resolverKind: string | null
+    symbol: string | null
     type: string | null
   }
   warnings: string[]
@@ -73,12 +74,19 @@ export function DevUiAssetGroupLookupCard(props: DevUiAssetGroupLookupCardProps)
               ) : null}
               <div className="min-w-0">
                 <div className="font-medium">{suggestion.resolvable ? 'Resolvable' : 'Not resolvable'}</div>
+                {suggestion.label ? (
+                  <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <div>{suggestion.label}</div>
+                    {suggestion.symbol ? (
+                      <div className="text-muted-foreground text-xs font-normal">${suggestion.symbol}</div>
+                    ) : null}
+                  </div>
+                ) : null}
                 <div className="text-muted-foreground text-sm break-all">
                   {suggestion.resolvable
                     ? `${suggestion.type} / ${suggestion.address} / ${suggestion.resolverKind} / decimals ${suggestion.decimals}`
                     : suggestion.reason}
                 </div>
-                {suggestion.label ? <div className="text-muted-foreground mt-1 text-sm">{suggestion.label}</div> : null}
               </div>
             </div>
           </div>

@@ -17,6 +17,7 @@ export const assetGroup = sqliteTable(
     imageUrl: text('image_url'),
     indexingStartedAt: integer('indexing_started_at', { mode: 'timestamp_ms' }),
     label: text('label').notNull(),
+    symbol: text('symbol'),
     type: text('type', { enum: ['collection', 'mint'] }).notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)

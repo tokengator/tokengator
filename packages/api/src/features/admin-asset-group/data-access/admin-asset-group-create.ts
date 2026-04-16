@@ -24,6 +24,7 @@ export async function adminAssetGroupCreate(input: AdminAssetGroupCreateInput) {
     id,
     imageUrl: normalizeOptionalString(input.imageUrl),
     label: input.label,
+    symbol: normalizeOptionalString(input.symbol),
     type: input.type,
     updatedAt: now,
   })

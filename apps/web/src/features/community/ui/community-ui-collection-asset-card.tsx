@@ -1,13 +1,21 @@
+import { Link } from '@tanstack/react-router'
 import type { CommunityCollectionAssetEntity } from '@tokengator/sdk'
+
+import type { CommunityCollectionAssetNavigation } from '../util/community-collection-asset-navigation'
 
 function getCommunityCollectionAssetTitle(asset: CommunityCollectionAssetEntity) {
   return asset.metadataName?.trim() || asset.address
 }
 
-export function CommunityUiCollectionAssetCard({ asset }: { asset: CommunityCollectionAssetEntity }) {
+export function CommunityUiCollectionAssetCard({
+  asset,
+  navigation,
+}: {
+  asset: CommunityCollectionAssetEntity
+  navigation?: CommunityCollectionAssetNavigation
+}) {
   const title = getCommunityCollectionAssetTitle(asset)
-
-  return (
+  const content = (
     <div className="bg-card overflow-hidden rounded-lg border">
       {asset.metadataImageUrl ? (
         <img alt={title} className="aspect-square w-full object-cover" loading="lazy" src={asset.metadataImageUrl} />
@@ -18,5 +26,15 @@ export function CommunityUiCollectionAssetCard({ asset }: { asset: CommunityColl
         <div className="line-clamp-2 font-medium">{title}</div>
       </div>
     </div>
+  )
+
+  if (!navigation) {
+    return content
+  }
+
+  return (
+    <Link className="block" params={navigation.params} search={navigation.search} to={navigation.to}>
+      {content}
+    </Link>
   )
 }

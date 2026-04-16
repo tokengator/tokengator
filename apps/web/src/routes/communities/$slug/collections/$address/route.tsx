@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { Outlet, createFileRoute } from '@tanstack/react-router'
 
 import { getCommunityCollectionAssetsRouteQueryOptions } from '@/features/community/data-access/use-community-collection-assets-query'
 import { CommunityFeatureCollectionDetail } from '@/features/community/feature/community-feature-collection-detail'
@@ -34,11 +34,14 @@ function RouteComponent() {
   }
 
   return (
-    <CommunityFeatureCollectionDetail
-      address={address}
-      initialCollectionAssets={collectionAssets}
-      initialCommunity={community}
-      search={search}
-    />
+    <>
+      <CommunityFeatureCollectionDetail
+        address={address}
+        initialCollectionAssets={collectionAssets}
+        initialCommunity={community}
+        search={search}
+      />
+      <Outlet />
+    </>
   )
 }

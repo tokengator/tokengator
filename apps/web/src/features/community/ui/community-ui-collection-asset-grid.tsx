@@ -3,6 +3,7 @@ import type { CommunityCollectionAssetEntity } from '@tokengator/sdk'
 import { Skeleton } from '@tokengator/ui/components/skeleton'
 import { cn } from '@tokengator/ui/lib/utils'
 
+import type { CommunityCollectionAssetNavigation } from '../util/community-collection-asset-navigation'
 import type { CommunityCollectionAssetGrid } from '../util/community-collection-asset-search'
 
 import { CommunityUiCollectionAssetCard } from './community-ui-collection-asset-card'
@@ -21,10 +22,12 @@ function getCommunityCollectionAssetGridClassName(grid: CommunityCollectionAsset
 
 export function CommunityUiCollectionAssetGrid({
   assets,
+  getAssetNavigation,
   grid,
   isPending,
 }: {
   assets: CommunityCollectionAssetEntity[]
+  getAssetNavigation?: (asset: CommunityCollectionAssetEntity) => CommunityCollectionAssetNavigation
   grid: CommunityCollectionAssetGrid
   isPending: boolean
 }) {
@@ -61,7 +64,7 @@ export function CommunityUiCollectionAssetGrid({
   return (
     <div className={cn('grid gap-4', gridClassName)}>
       {assets.map((asset) => (
-        <CommunityUiCollectionAssetCard asset={asset} key={asset.id} />
+        <CommunityUiCollectionAssetCard asset={asset} key={asset.id} navigation={getAssetNavigation?.(asset)} />
       ))}
     </div>
   )

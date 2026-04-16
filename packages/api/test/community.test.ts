@@ -139,6 +139,8 @@ async function insertAsset(input: {
   assetGroupId: string
   id: string
   metadataImageUrl?: string | null
+  metadataJson?: unknown | null
+  metadataJsonUrl?: string | null
   metadataName?: string | null
   metadataSymbol?: string | null
   owner: string
@@ -156,8 +158,8 @@ async function insertAsset(input: {
     metadata: null,
     metadataDescription: null,
     metadataImageUrl: input.metadataImageUrl ?? null,
-    metadataJson: null,
-    metadataJsonUrl: null,
+    metadataJson: input.metadataJson == null ? null : JSON.stringify(input.metadataJson),
+    metadataJsonUrl: input.metadataJsonUrl ?? null,
     metadataName: input.metadataName ?? null,
     metadataProgramAccount: null,
     metadataSymbol: input.metadataSymbol ?? null,
@@ -1237,6 +1239,176 @@ describe('community routes', () => {
       {
         code: 'NOT_FOUND',
         message: 'Collection not found.',
+        status: 404,
+      },
+    )
+  })
+
+  test('getCollectionAsset returns asset detail with parsed metadata json and alphabetized traits', async () => {
+    await insertOrganization({
+      id: 'org-alpha',
+      name: 'Alpha DAO',
+      slug: 'alpha-dao',
+    })
+    await insertTeam({
+      id: 'team-alpha',
+      name: 'Alpha Team',
+      organizationId: 'org-alpha',
+    })
+    await insertAssetGroup({
+      address: 'collection-alpha',
+      id: 'asset-group-alpha',
+      label: 'Alpha Collection',
+      type: 'collection',
+    })
+    await insertCommunityRole({
+      enabled: true,
+      id: 'community-role-alpha',
+      matchMode: 'all',
+      name: 'Collectors',
+      organizationId: 'org-alpha',
+      slug: 'collectors',
+      teamId: 'team-alpha',
+    })
+    await insertCommunityRoleCondition({
+      assetGroupId: 'asset-group-alpha',
+      communityRoleId: 'community-role-alpha',
+      minimumAmount: '1',
+    })
+    await insertAsset({
+      address: 'mint-alpha',
+      assetGroupId: 'asset-group-alpha',
+      id: 'asset-1',
+      metadataImageUrl: 'https://example.com/mint-alpha.png',
+      metadataJson: {
+        attributes: [
+          {
+            trait_type: 'Background',
+            value: 'Forest',
+          },
+        ],
+        image: 'https://example.com/mint-alpha.png',
+        name: 'Alpha',
+      },
+      metadataJsonUrl: 'https://example.com/mint-alpha.json',
+      metadataName: 'Alpha',
+      metadataSymbol: 'ALPHA',
+      owner: 'owner-alpha',
+      traits: [
+        {
+          groupId: 'hat',
+          groupLabel: 'Hat',
+          value: 'cap',
+          valueLabel: 'Cap',
+        },
+        {
+          groupId: 'background',
+          groupLabel: 'Background',
+          value: 'forest',
+          valueLabel: 'Forest',
+        },
+      ],
+    })
+    await insertAsset({
+      address: 'mint-beta',
+      assetGroupId: 'asset-group-alpha',
+      id: 'asset-2',
+      metadataName: 'Beta',
+      owner: 'owner-beta',
+    })
+
+    const result = await communityRouter.getCollectionAsset.callable(
+      createCallContext({
+        userId: 'viewer-user-id',
+        username: 'viewer',
+      }),
+    )({
+      address: 'collection-alpha',
+      asset: 'mint-alpha',
+      slug: 'alpha-dao',
+    })
+
+    expect(result).toEqual({
+      address: 'mint-alpha',
+      id: 'asset-1',
+      metadataImageUrl: 'https://example.com/mint-alpha.png',
+      metadataJson: {
+        attributes: [
+          {
+            trait_type: 'Background',
+            value: 'Forest',
+          },
+        ],
+        image: 'https://example.com/mint-alpha.png',
+        name: 'Alpha',
+      },
+      metadataJsonUrl: 'https://example.com/mint-alpha.json',
+      metadataName: 'Alpha',
+      metadataSymbol: 'ALPHA',
+      owner: 'owner-alpha',
+      traits: [
+        {
+          groupId: 'background',
+          groupLabel: 'Background',
+          value: 'forest',
+          valueLabel: 'Forest',
+        },
+        {
+          groupId: 'hat',
+          groupLabel: 'Hat',
+          value: 'cap',
+          valueLabel: 'Cap',
+        },
+      ],
+    })
+  })
+
+  test('getCollectionAsset returns not found for an unknown asset address', async () => {
+    await insertOrganization({
+      id: 'org-alpha',
+      name: 'Alpha DAO',
+      slug: 'alpha-dao',
+    })
+    await insertTeam({
+      id: 'team-alpha',
+      name: 'Alpha Team',
+      organizationId: 'org-alpha',
+    })
+    await insertAssetGroup({
+      address: 'collection-alpha',
+      id: 'asset-group-alpha',
+      label: 'Alpha Collection',
+      type: 'collection',
+    })
+    await insertCommunityRole({
+      enabled: true,
+      id: 'community-role-alpha',
+      matchMode: 'all',
+      name: 'Collectors',
+      organizationId: 'org-alpha',
+      slug: 'collectors',
+      teamId: 'team-alpha',
+    })
+    await insertCommunityRoleCondition({
+      assetGroupId: 'asset-group-alpha',
+      communityRoleId: 'community-role-alpha',
+      minimumAmount: '1',
+    })
+
+    await expectORPCError(
+      communityRouter.getCollectionAsset.callable(
+        createCallContext({
+          userId: 'viewer-user-id',
+          username: 'viewer',
+        }),
+      )({
+        address: 'collection-alpha',
+        asset: 'missing-asset',
+        slug: 'alpha-dao',
+      }),
+      {
+        code: 'NOT_FOUND',
+        message: 'Asset not found.',
         status: 404,
       },
     )

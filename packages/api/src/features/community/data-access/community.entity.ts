@@ -10,6 +10,17 @@ export const communityCollectionAssetEntityColumns = {
   owner: asset.owner,
 }
 
+export const communityCollectionAssetDetailEntityColumns = {
+  address: asset.address,
+  id: asset.id,
+  metadataImageUrl: asset.metadataImageUrl,
+  metadataJson: asset.metadataJson,
+  metadataJsonUrl: asset.metadataJsonUrl,
+  metadataName: asset.metadataName,
+  metadataSymbol: asset.metadataSymbol,
+  owner: asset.owner,
+}
+
 export const communityCollectionAssetTraitEntityColumns = {
   assetId: assetTrait.assetId,
   groupId: assetTrait.traitKey,
@@ -58,6 +69,20 @@ export function toCommunityCollectionAssetEntity(input: {
   return input
 }
 
+export function toCommunityCollectionAssetDetailEntity(input: {
+  address: string
+  id: string
+  metadataImageUrl: string | null
+  metadataJson: Record<string, unknown> | null
+  metadataJsonUrl: string | null
+  metadataName: string | null
+  metadataSymbol: string | null
+  owner: string
+  traits: CommunityCollectionAssetTrait[]
+}) {
+  return input
+}
+
 export function toCommunityCollectionAssetTrait(input: CommunityCollectionAssetTrait) {
   return input
 }
@@ -95,6 +120,7 @@ export function toCommunityListCollectionAssetsResult(input: {
 }
 
 export type CommunityCollectionAssetEntity = ReturnType<typeof toCommunityCollectionAssetEntity>
+export type CommunityCollectionAssetDetailEntity = ReturnType<typeof toCommunityCollectionAssetDetailEntity>
 export type CommunityCollectionEntity = ReturnType<typeof toCommunityCollectionEntity>
 export type CommunityDetailEntity = ReturnType<typeof toCommunityDetailEntity>
 export type CommunityEntity = ReturnType<typeof toCommunityEntity>

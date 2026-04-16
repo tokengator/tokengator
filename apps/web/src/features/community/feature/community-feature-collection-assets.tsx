@@ -13,6 +13,7 @@ import { useCommunityCollectionAssetsQuery } from '../data-access/use-community-
 import { CommunityUiCollectionAssetBrowserControls } from '../ui/community-ui-collection-asset-browser-controls'
 import { CommunityUiCollectionAssetGrid } from '../ui/community-ui-collection-asset-grid'
 import { CommunityUiCollectionCombobox } from '../ui/community-ui-collection-combobox'
+import { getCommunityCollectionAssetNavigation } from '../util/community-collection-asset-navigation'
 
 function CommunityCollectionAssetNotFoundCard() {
   return (
@@ -169,6 +170,14 @@ export function CommunityFeatureCollectionAssets({
           ) : null}
           <CommunityUiCollectionAssetGrid
             assets={collectionAssets.data?.assets ?? []}
+            getAssetNavigation={(asset) =>
+              getCommunityCollectionAssetNavigation({
+                address: selectedCollection.address,
+                asset: asset.address,
+                search,
+                slug,
+              })
+            }
             grid={search.grid}
             isPending={collectionAssets.isPending}
           />

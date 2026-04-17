@@ -23,7 +23,15 @@ export function createDiscordBotInviteUrl(
     query.set('guild_id', guildId)
   }
 
-  query.set('permissions', PermissionFlagsBits.ManageRoles.toString())
+  query.set(
+    'permissions',
+    (
+      PermissionFlagsBits.EmbedLinks |
+      PermissionFlagsBits.ManageRoles |
+      PermissionFlagsBits.SendMessages |
+      PermissionFlagsBits.ViewChannel
+    ).toString(),
+  )
   query.set('scope', [OAuth2Scopes.ApplicationsCommands, OAuth2Scopes.Bot].join(' '))
 
   return `https://discord.com/oauth2/authorize?${query.toString()}`

@@ -4,6 +4,7 @@ import type {
   AdminCommunityRoleDiscordGuildRolesResult,
   AdminCommunityRoleListRunsResult,
   AdminCommunityRoleSyncStatusResult,
+  CommunityDiscordAnnouncementCatalog,
   AdminOrganizationDetailEntity,
 } from '@tokengator/sdk'
 
@@ -28,7 +29,7 @@ const organization = {
     guildId: '123456789012345678',
     guildName: 'Acme Guild',
     inviteUrl:
-      'https://discord.com/oauth2/authorize?client_id=discord-client-id&disable_guild_select=true&guild_id=123456789012345678&permissions=268435456&scope=applications.commands+bot',
+      'https://discord.com/oauth2/authorize?client_id=discord-client-id&disable_guild_select=true&guild_id=123456789012345678&permissions=268438528&scope=applications.commands+bot',
     lastCheckedAt: new Date('2026-04-02T12:05:00.000Z'),
     roleSyncEnabled: false,
     status: 'connected' as const,
@@ -73,6 +74,44 @@ const discordRunsResult = {
   kind: 'discord' as const,
   runs: [],
 } satisfies AdminCommunityRoleListRunsResult
+
+const discordAnnouncementCatalogResult = {
+  channels: [
+    {
+      id: '223456789012345678',
+      name: 'admin-role-updates',
+      type: 'text' as const,
+    },
+  ],
+  configs: [
+    {
+      channelId: '223456789012345678',
+      channelName: 'admin-role-updates',
+      checks: [],
+      description: 'Post a message when Discord reconcile grants or revokes roles for a user.',
+      enabled: false,
+      label: 'Role Updates',
+      status: 'ready' as const,
+      type: 'role_updates' as const,
+    },
+  ],
+  connection: {
+    diagnostics: {
+      checks: [],
+      guild: {
+        id: '123456789012345678',
+        name: 'Acme Guild',
+      },
+      permissions: {
+        administrator: false,
+      },
+    },
+    guildId: '123456789012345678',
+    guildName: 'Acme Guild',
+    lastCheckedAt: new Date('2026-04-02T12:10:00.000Z'),
+    status: 'connected' as const,
+  },
+} satisfies CommunityDiscordAnnouncementCatalog
 
 const syncStatusResult = {
   dependencyAssetGroups: [],
@@ -130,6 +169,50 @@ beforeAll(async () => {
       mutate: () => {},
     }),
   }))
+
+  mock.module(
+    '../src/features/admin-community/data-access/use-admin-community-discord-announcement-catalog-query',
+    () => ({
+      useAdminCommunityDiscordAnnouncementCatalogQuery: () => ({
+        data: discordAnnouncementCatalogResult,
+        error: null,
+        isPending: false,
+      }),
+    }),
+  )
+
+  mock.module(
+    '../src/features/admin-community/data-access/use-admin-community-discord-announcement-config-upsert',
+    () => ({
+      useAdminCommunityDiscordAnnouncementConfigUpsert: () => ({
+        isPending: false,
+        mutateAsync: async () => {},
+        variables: undefined,
+      }),
+    }),
+  )
+
+  mock.module(
+    '../src/features/admin-community/data-access/use-admin-community-discord-announcement-channel-test',
+    () => ({
+      useAdminCommunityDiscordAnnouncementChannelTest: () => ({
+        isPending: false,
+        mutate: () => {},
+        variables: undefined,
+      }),
+    }),
+  )
+
+  mock.module(
+    '../src/features/admin-community/data-access/use-admin-community-discord-announcement-enabled-set',
+    () => ({
+      useAdminCommunityDiscordAnnouncementEnabledSet: () => ({
+        isPending: false,
+        mutate: () => {},
+        variables: undefined,
+      }),
+    }),
+  )
 
   mock.module('../src/features/admin-community/data-access/use-admin-community-discord-sync-apply', () => ({
     useAdminCommunityDiscordSyncApply: () => ({
@@ -192,6 +275,11 @@ describe('AdminCommunityFeatureDiscordEntry', () => {
     expect(markup).toContain(
       'Discord role sync is disabled. Use preview to compare outcomes safely before re-enabling apply.',
     )
+    expect(markup).toContain('Discord Announcements')
+    expect(markup).toContain('Role Updates')
+    expect(markup).toContain('Current channel: admin-role-updates')
+    expect(markup).toContain('Test Channel')
+    expect(markup).toContain('Update Channel')
     expect(markup).toContain('Discord role writes are paused while sync is disabled.')
     expect(markup).toContain('paused')
     expect(markup).toContain('disabled')

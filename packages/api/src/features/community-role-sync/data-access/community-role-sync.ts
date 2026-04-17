@@ -50,6 +50,7 @@ import {
 import { getRunLookupChunkSize, splitIntoChunks } from '../../../lib/sqlite'
 import { parseStoredJson, serializeJson } from '../../../lib/stored-json'
 import { getAssetGroupIndexStatusSummaries, type AssetGroupIndexStatusSummary } from '../../asset-group-index'
+import { publishCommunityDiscordAnnouncement } from '../../community-discord-announcement'
 
 type CommunityRoleRecord = {
   conditions: CommunityRoleConditionRecord[]
@@ -2299,8 +2300,41 @@ async function executeCommunityRoleSyncPreview(input: {
   return input.preview
 }
 
+function toCommunityDiscordRoleUpdatesAnnouncementPayload(input: {
+  currentUser: CommunityRoleDiscordSyncPreview['users'][number]
+  outcomes: CommunityRoleDiscordSyncApplyOutcome[]
+}) {
+  if (!input.currentUser.discordAccountId) {
+    return null
+  }
+
+  const changes = input.outcomes
+    .filter(
+      (outcome): outcome is CommunityRoleDiscordSyncApplyOutcome & { attemptedAction: 'grant' | 'revoke' } =>
+        outcome.execution === 'applied' && outcome.attemptedAction !== null,
+    )
+    .map((outcome) => ({
+      action: outcome.attemptedAction,
+      communityRoleName: outcome.communityRoleName,
+      discordRoleName: outcome.discordRoleName,
+    }))
+
+  if (changes.length === 0) {
+    return null
+  }
+
+  return {
+    changes,
+    discordAccountId: input.currentUser.discordAccountId,
+    userName: input.currentUser.name,
+    username: input.currentUser.username,
+  }
+}
+
 async function executeCommunityRoleDiscordSyncPreview(input: {
+  database?: Pick<Database, 'select'>
   leaseController: AutomationLockLeaseController
+  organizationId: string
   progress: CommunityRoleDiscordSyncExecutionProgress
   preview: CommunityRoleDiscordSyncPreview
 }): Promise<CommunityRoleDiscordSyncApply> {
@@ -2399,6 +2433,20 @@ async function executeCommunityRoleDiscordSyncPreview(input: {
       ...currentUser,
       outcomes,
     })
+
+    const announcementPayload = toCommunityDiscordRoleUpdatesAnnouncementPayload({
+      currentUser,
+      outcomes,
+    })
+
+    if (announcementPayload) {
+      await publishCommunityDiscordAnnouncement({
+        database: input.database,
+        organizationId: input.organizationId,
+        payload: announcementPayload,
+        type: 'role_updates',
+      })
+    }
   }
 
   return buildCommunityRoleDiscordSyncApplyFromProgress({
@@ -2739,7 +2787,9 @@ async function runCommunityDiscordSync(input: {
 
     preview = await buildCommunityRoleDiscordSyncPreview(input.organizationId, database)
     result = await executeCommunityRoleDiscordSyncPreview({
+      database,
       leaseController,
+      organizationId: input.organizationId,
       preview,
       progress,
     })

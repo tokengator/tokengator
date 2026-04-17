@@ -2,7 +2,7 @@ import { ORPCError } from '@orpc/server'
 import { and, eq, ne } from 'drizzle-orm'
 import { db } from '@tokengator/db'
 import { organization } from '@tokengator/db/schema/auth'
-import { communityDiscordConnection } from '@tokengator/db/schema/community-role'
+import { communityDiscordAnnouncement, communityDiscordConnection } from '@tokengator/db/schema/community-role'
 import { createDiscordBotInviteUrl } from '@tokengator/discord/create-discord-bot-invite-url'
 import { env } from '@tokengator/env/api'
 
@@ -27,6 +27,8 @@ export type AdminCommunityDiscordConnection = {
 export interface CommunityDiscordConnectionMutationOptions {
   checkGuildConnection?: typeof inspectDiscordGuildConnection
 }
+
+type CommunityDiscordAnnouncementDeleteExecutor = Pick<typeof db, 'delete'>
 
 type StoredCommunityDiscordConnectionRecord = {
   diagnostics: string | null
@@ -188,8 +190,20 @@ async function validateUniqueDiscordGuildConnection(input: { guildId: string; or
   }
 }
 
+async function deleteCommunityDiscordAnnouncementsByOrganizationId(
+  organizationId: string,
+  database: CommunityDiscordAnnouncementDeleteExecutor = db,
+) {
+  await database
+    .delete(communityDiscordAnnouncement)
+    .where(eq(communityDiscordAnnouncement.organizationId, organizationId))
+}
+
 export async function deleteCommunityDiscordConnectionByOrganizationId(organizationId: string) {
-  await db.delete(communityDiscordConnection).where(eq(communityDiscordConnection.organizationId, organizationId))
+  await db.transaction(async (tx) => {
+    await deleteCommunityDiscordAnnouncementsByOrganizationId(organizationId, tx)
+    await tx.delete(communityDiscordConnection).where(eq(communityDiscordConnection.organizationId, organizationId))
+  })
 }
 
 export async function getCommunityDiscordConnectionByOrganizationId(organizationId: string) {
@@ -250,17 +264,23 @@ export async function upsertCommunityDiscordConnection(
   const now = new Date()
 
   if (existingConnection) {
-    await db
-      .update(communityDiscordConnection)
-      .set({
-        diagnostics: null,
-        guildId: input.guildId,
-        guildName: null,
-        lastCheckedAt: null,
-        status: 'needs_attention',
-        updatedAt: now,
-      })
-      .where(eq(communityDiscordConnection.organizationId, input.organizationId))
+    await db.transaction(async (tx) => {
+      if (existingConnection.guildId !== input.guildId) {
+        await deleteCommunityDiscordAnnouncementsByOrganizationId(input.organizationId, tx)
+      }
+
+      await tx
+        .update(communityDiscordConnection)
+        .set({
+          diagnostics: null,
+          guildId: input.guildId,
+          guildName: null,
+          lastCheckedAt: null,
+          status: 'needs_attention',
+          updatedAt: now,
+        })
+        .where(eq(communityDiscordConnection.organizationId, input.organizationId))
+    })
   } else {
     await db.insert(communityDiscordConnection).values({
       createdAt: now,

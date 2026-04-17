@@ -174,6 +174,7 @@ beforeAll(async () => {
 }, 15_000)
 
 beforeEach(async () => {
+  await database.delete(communityRoleSchema.communityDiscordAnnouncement).where(sql`1 = 1`)
   await database.delete(communityRoleSchema.communityDiscordConnection).where(sql`1 = 1`)
   await database.delete(authSchema.organization).where(sql`1 = 1`)
 })
@@ -210,11 +211,15 @@ describe('admin community Discord connection', () => {
           id: '123456789012345678',
           name: 'Acme Guild',
         },
+        permissions: {
+          administrator: false,
+          manageRoles: true,
+        },
       },
       guildId: '123456789012345678',
       guildName: 'Acme Guild',
       inviteUrl:
-        'https://discord.com/oauth2/authorize?client_id=discord-client-id&disable_guild_select=true&guild_id=123456789012345678&permissions=268435456&scope=applications.commands+bot',
+        'https://discord.com/oauth2/authorize?client_id=discord-client-id&disable_guild_select=true&guild_id=123456789012345678&permissions=268454912&scope=applications.commands+bot',
       lastCheckedAt,
       roleSyncEnabled: true,
       status: 'connected',
@@ -397,6 +402,48 @@ describe('admin community Discord connection', () => {
     })
   })
 
+  test('clears announcement configs when the connected guild changes', async () => {
+    const organizationId = crypto.randomUUID()
+
+    await insertOrganization({
+      id: organizationId,
+      name: 'Acme',
+      slug: 'acme',
+    })
+    await upsertCommunityDiscordConnection(
+      {
+        guildId: '123456789012345678',
+        organizationId,
+      },
+      {
+        checkGuildConnection: async () =>
+          createConnectedResult('123456789012345678', new Date('2026-04-02T12:40:00.000Z')),
+      },
+    )
+    await database.insert(communityRoleSchema.communityDiscordAnnouncement).values({
+      announcementType: 'role_updates',
+      channelId: '223456789012345678',
+      channelName: 'admins',
+      createdAt: new Date('2026-04-02T12:41:00.000Z'),
+      enabled: false,
+      organizationId,
+      updatedAt: new Date('2026-04-02T12:41:00.000Z'),
+    })
+
+    await upsertCommunityDiscordConnection(
+      {
+        guildId: '323456789012345678',
+        organizationId,
+      },
+      {
+        checkGuildConnection: async () =>
+          createConnectedResult('323456789012345678', new Date('2026-04-02T12:45:00.000Z')),
+      },
+    )
+
+    expect(await database.select().from(communityRoleSchema.communityDiscordAnnouncement)).toEqual([])
+  })
+
   test('deletes the persisted connection', async () => {
     const organizationId = crypto.randomUUID()
 
@@ -415,9 +462,19 @@ describe('admin community Discord connection', () => {
           createConnectedResult('123456789012345678', new Date('2026-04-02T12:35:00.000Z')),
       },
     )
+    await database.insert(communityRoleSchema.communityDiscordAnnouncement).values({
+      announcementType: 'role_updates',
+      channelId: '223456789012345678',
+      channelName: 'admins',
+      createdAt: new Date('2026-04-02T12:36:00.000Z'),
+      enabled: true,
+      organizationId,
+      updatedAt: new Date('2026-04-02T12:36:00.000Z'),
+    })
 
     await deleteCommunityDiscordConnectionByOrganizationId(organizationId)
 
     expect(await getCommunityDiscordConnectionByOrganizationId(organizationId)).toBeNull()
+    expect(await database.select().from(communityRoleSchema.communityDiscordAnnouncement)).toEqual([])
   })
 })

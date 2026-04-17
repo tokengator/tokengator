@@ -7,6 +7,7 @@ import type {
 
 import { useAdminCommunityGetQuery } from '../data-access/use-admin-community-get-query'
 import { AdminCommunityDiscordSyncUiDetails } from '../ui/admin-community-discord-sync-ui-details'
+import { AdminCommunityFeatureDiscordAnnouncements } from './admin-community-feature-discord-announcements'
 import { AdminCommunityFeatureDiscordConnection } from './admin-community-feature-discord-connection'
 import { AdminCommunityFeatureDiscordHealth } from './admin-community-feature-discord-health'
 import { AdminCommunityFeatureDiscordSync } from './admin-community-feature-discord-sync'
@@ -39,6 +40,7 @@ export function AdminCommunityFeatureDiscordEntry(props: AdminCommunityFeatureDi
       <AdminCommunityFeatureDiscordConnection organization={data} />
       {data.discordConnection ? (
         <>
+          <AdminCommunityFeatureDiscordAnnouncements organizationId={data.id} />
           <AdminCommunityFeatureDiscordHealth organizationId={data.id} />
           <AdminCommunityFeatureDiscordSync
             onResultChange={setDiscordSyncResult}

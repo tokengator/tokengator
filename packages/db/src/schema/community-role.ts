@@ -99,6 +99,35 @@ export const communityManagedMember = sqliteTable(
   ],
 )
 
+export const communityDiscordAnnouncement = sqliteTable(
+  'community_discord_announcement',
+  {
+    announcementType: text('announcement_type').notNull(),
+    channelId: text('channel_id').notNull(),
+    channelName: text('channel_name'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    enabled: integer('enabled', { mode: 'boolean' }).default(true).notNull(),
+    organizationId: text('organization_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [
+    index('community_discord_announcement_channelId_idx').on(table.channelId),
+    index('community_discord_announcement_enabled_idx').on(table.enabled),
+    index('community_discord_announcement_organizationId_idx').on(table.organizationId),
+    uniqueIndex('community_discord_announcement_organizationId_announcementType_idx').on(
+      table.organizationId,
+      table.announcementType,
+    ),
+  ],
+)
+
 export const communityDiscordConnection = sqliteTable(
   'community_discord_connection',
   {
@@ -193,6 +222,13 @@ export const communityMembershipSyncRun = sqliteTable(
     ),
   ],
 )
+
+export const communityDiscordAnnouncementRelations = relations(communityDiscordAnnouncement, ({ one }) => ({
+  organization: one(organization, {
+    fields: [communityDiscordAnnouncement.organizationId],
+    references: [organization.id],
+  }),
+}))
 
 export const communityDiscordConnectionRelations = relations(communityDiscordConnection, ({ one }) => ({
   organization: one(organization, {

@@ -86,11 +86,87 @@ beforeAll(async () => {
 })
 
 beforeEach(async () => {
+  await database.delete(communityRoleSchema.communityDiscordAnnouncement).where(sql`1 = 1`)
   await database.delete(communityRoleSchema.communityDiscordConnection).where(sql`1 = 1`)
   await database.delete(authSchema.organization).where(sql`1 = 1`)
 })
 
 describe('communityDiscordConnection schema', () => {
+  test('stores one announcement config per organization and type', async () => {
+    const organizationId = crypto.randomUUID()
+
+    await insertOrganization({
+      id: organizationId,
+      name: 'Acme',
+      slug: 'acme',
+    })
+    await database.insert(communityRoleSchema.communityDiscordAnnouncement).values({
+      announcementType: 'role_updates',
+      channelId: '223456789012345678',
+      channelName: 'admins',
+      createdAt: new Date('2026-04-02T12:00:00.000Z'),
+      enabled: true,
+      organizationId,
+      updatedAt: new Date('2026-04-02T12:00:00.000Z'),
+    })
+
+    const [record] = await database
+      .select({
+        announcementType: communityRoleSchema.communityDiscordAnnouncement.announcementType,
+        channelId: communityRoleSchema.communityDiscordAnnouncement.channelId,
+        channelName: communityRoleSchema.communityDiscordAnnouncement.channelName,
+        enabled: communityRoleSchema.communityDiscordAnnouncement.enabled,
+      })
+      .from(communityRoleSchema.communityDiscordAnnouncement)
+      .where(eq(communityRoleSchema.communityDiscordAnnouncement.organizationId, organizationId))
+      .limit(1)
+
+    expect(record).toEqual({
+      announcementType: 'role_updates',
+      channelId: '223456789012345678',
+      channelName: 'admins',
+      enabled: true,
+    })
+  })
+
+  test('enforces unique announcement types per organization and cascades on organization delete', async () => {
+    const organizationId = crypto.randomUUID()
+
+    await insertOrganization({
+      id: organizationId,
+      name: 'Acme',
+      slug: 'acme',
+    })
+    await database.insert(communityRoleSchema.communityDiscordAnnouncement).values({
+      announcementType: 'role_updates',
+      channelId: '223456789012345678',
+      channelName: 'admins',
+      createdAt: new Date('2026-04-02T12:00:00.000Z'),
+      enabled: true,
+      organizationId,
+      updatedAt: new Date('2026-04-02T12:00:00.000Z'),
+    })
+
+    await expect(
+      database
+        .insert(communityRoleSchema.communityDiscordAnnouncement)
+        .values({
+          announcementType: 'role_updates',
+          channelId: '323456789012345678',
+          channelName: 'mods',
+          createdAt: new Date('2026-04-02T12:05:00.000Z'),
+          enabled: false,
+          organizationId,
+          updatedAt: new Date('2026-04-02T12:05:00.000Z'),
+        })
+        .execute(),
+    ).rejects.toThrow()
+
+    await database.delete(authSchema.organization).where(eq(authSchema.organization.id, organizationId))
+
+    expect(await database.select().from(communityRoleSchema.communityDiscordAnnouncement)).toEqual([])
+  })
+
   test('stores diagnostic JSON for a saved connection', async () => {
     const organizationId = crypto.randomUUID()
 

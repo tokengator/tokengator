@@ -7,8 +7,22 @@ export function useAdminCommunityDiscordInvalidation() {
   const organization = useAdminCommunityOrganizationInvalidation()
   const queryClient = useQueryClient()
 
+  async function invalidateAnnouncements(organizationId: string) {
+    await queryClient.invalidateQueries({
+      queryKey: orpc.adminOrganization.getDiscordAnnouncementCatalog.key({
+        input: {
+          organizationId,
+        },
+      }),
+    })
+  }
+
   async function invalidateConnection(organizationId: string) {
-    await Promise.all([invalidateGuildRoles(organizationId), organization.invalidateCommunity(organizationId)])
+    await Promise.all([
+      invalidateAnnouncements(organizationId),
+      invalidateGuildRoles(organizationId),
+      organization.invalidateCommunity(organizationId),
+    ])
   }
 
   async function invalidateGuildRoles(organizationId: string) {
@@ -22,6 +36,7 @@ export function useAdminCommunityDiscordInvalidation() {
   }
 
   return {
+    invalidateAnnouncements,
     invalidateConnection,
     invalidateGuildRoles,
   }

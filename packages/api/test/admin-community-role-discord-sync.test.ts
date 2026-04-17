@@ -55,12 +55,18 @@ let inspectionChecks: string[] = []
 let inspectionStatus: 'connected' | 'needs_attention' = 'connected'
 let listCommunityDiscordSyncRuns: ListCommunityDiscordSyncRuns
 let listOrganizationsDueForScheduledCommunityDiscordSync: ListOrganizationsDueForScheduledCommunityDiscordSync
+let messageSendFailures = new Map<string, unknown>()
 let memberLookupFailures = new Map<string, unknown>()
 let mutationFailures = new Map<string, unknown>()
 let mutationObserver:
   | ((input: { action: 'grant' | 'revoke'; roleId: string; userId: string }) => Promise<void> | void)
   | null = null
 let runScheduledCommunityRoleDiscordSync: RunScheduledCommunityRoleDiscordSync
+let sentDiscordMessages: Array<{
+  allowedMentionsParse: string[] | undefined
+  channelId: string
+  content: string
+}> = []
 
 function createAdminCallContext(): any {
   return {
@@ -137,6 +143,40 @@ function createSelectFailureDatabase(message: string) {
   })
 }
 
+function createAnnouncementConfigSelectFailureDatabase(message: string) {
+  return new Proxy(database, {
+    get(target, property, receiver) {
+      if (property === 'select') {
+        return (...args: unknown[]) => {
+          const builder = target.select(...(args as []))
+
+          return new Proxy(builder, {
+            get(builderTarget, builderProperty, builderReceiver) {
+              if (builderProperty === 'from') {
+                return (table: unknown) => {
+                  if (table === communityRoleSchema.communityDiscordAnnouncement) {
+                    throw new Error(message)
+                  }
+
+                  return builderTarget.from(table as never)
+                }
+              }
+
+              const value = Reflect.get(builderTarget, builderProperty, builderReceiver)
+
+              return typeof value === 'function' ? value.bind(builderTarget) : value
+            },
+          })
+        }
+      }
+
+      const value = Reflect.get(target, property, receiver)
+
+      return typeof value === 'function' ? value.bind(target) : value
+    },
+  })
+}
+
 function resetDiscordMockState() {
   guildMembersByDiscordUserId = new Map()
   guildRoles = [
@@ -152,9 +192,11 @@ function resetDiscordMockState() {
   ]
   inspectionChecks = []
   inspectionStatus = 'connected'
+  messageSendFailures = new Map()
   memberLookupFailures = new Map()
   mutationFailures = new Map()
   mutationObserver = null
+  sentDiscordMessages = []
 }
 
 function syncDatabase(databaseUrl: string) {
@@ -193,6 +235,101 @@ function createInsertFailureDatabase(failingTable: unknown) {
       return typeof value === 'function' ? value.bind(target) : value
     },
   })
+}
+
+async function seedDiscordAnnouncementGrantScenario(input?: {
+  announcementEnabled?: boolean
+  organizationId?: string
+  roleSyncEnabled?: boolean
+}) {
+  const organizationId = input?.organizationId ?? 'org-discord-announcement-grant'
+
+  await insertOrganization({
+    id: organizationId,
+    name: 'Discord Announcement Org',
+    slug: 'discord-announcement-org',
+  })
+  await insertCommunityDiscordConnection({
+    guildId: '123456789012345678',
+    organizationId,
+    roleSyncEnabled: input?.roleSyncEnabled,
+  })
+  await insertCommunityDiscordAnnouncement({
+    channelId: 'announcement-channel',
+    channelName: 'admin-role-updates',
+    enabled: input?.announcementEnabled,
+    organizationId,
+  })
+  await insertAssetGroup({
+    address: 'announcement-collection',
+    id: 'asset-group-announcement',
+    label: 'Announcement Collection',
+    type: 'collection',
+  })
+  await insertTeam({
+    id: 'team-announcement',
+    name: 'Announcement Team',
+    organizationId,
+  })
+  await insertCommunityRole({
+    discordRoleId: 'discord-role-announcement',
+    id: 'role-announcement',
+    name: 'Announcement Role',
+    organizationId,
+    slug: 'announcement-role',
+    teamId: 'team-announcement',
+  })
+  await insertCommunityRoleCondition({
+    assetGroupId: 'asset-group-announcement',
+    communityRoleId: 'role-announcement',
+    minimumAmount: '1',
+  })
+  await insertUser({
+    email: 'announcement@example.com',
+    id: 'user-announcement',
+    name: 'Announcement User',
+    username: 'announce',
+  })
+  await insertSolanaWallet({
+    address: 'announcement-wallet',
+    userId: 'user-announcement',
+  })
+  await insertAsset({
+    address: 'announcement-asset',
+    amount: '1',
+    assetGroupId: 'asset-group-announcement',
+    owner: 'announcement-wallet',
+    resolverKind: 'helius-collection-assets',
+  })
+  await insertAccount({
+    accountId: 'discord-announcement-user',
+    userId: 'user-announcement',
+  })
+
+  guildMembersByDiscordUserId = new Map([
+    [
+      'discord-announcement-user',
+      {
+        discordUserId: 'discord-announcement-user',
+        roleIds: [],
+      },
+    ],
+  ])
+  guildRoles = [
+    {
+      assignable: true,
+      checks: [],
+      id: 'discord-role-announcement',
+      isDefault: false,
+      managed: false,
+      name: 'Announcement Role',
+      position: 5,
+    },
+  ]
+
+  return {
+    organizationId,
+  }
 }
 
 async function insertAccount(input: {
@@ -346,6 +483,24 @@ async function insertCommunityDiscordConnection(input: {
   })
 }
 
+async function insertCommunityDiscordAnnouncement(input: {
+  channelId: string
+  channelName: string
+  enabled?: boolean
+  organizationId: string
+  type?: 'role_updates'
+}) {
+  await database.insert(communityRoleSchema.communityDiscordAnnouncement).values({
+    announcementType: input.type ?? 'role_updates',
+    channelId: input.channelId,
+    channelName: input.channelName,
+    createdAt: new Date('2026-04-02T12:00:00.000Z'),
+    enabled: input.enabled ?? true,
+    organizationId: input.organizationId,
+    updatedAt: new Date('2026-04-02T12:00:00.000Z'),
+  })
+}
+
 async function insertCommunityManagedMember(input: { organizationId: string; userId: string }) {
   await database.insert(communityRoleSchema.communityManagedMember).values({
     createdAt: new Date('2026-04-02T12:00:00.000Z'),
@@ -463,6 +618,20 @@ beforeAll(async () => {
   process.env.SOLANA_ENDPOINT_PUBLIC = 'https://api.devnet.solana.com'
 
   mock.module('@tokengator/discord', () => {
+    class MockDiscordChannelMessageError extends Error {
+      code: string
+      discordCode: number | null
+      status: number | null
+
+      constructor(input: { code: string; discordCode: number | null; message: string; status: number | null }) {
+        super(input.message)
+        this.code = input.code
+        this.discordCode = input.discordCode
+        this.name = 'DiscordChannelMessageError'
+        this.status = input.status
+      }
+    }
+
     class MockDiscordGuildMemberLookupError extends Error {
       code: string
       discordCode: number | null
@@ -562,6 +731,7 @@ beforeAll(async () => {
           userId: options.userId,
         })
       },
+      DiscordChannelMessageError: MockDiscordChannelMessageError,
       DiscordGuildMemberLookupError: MockDiscordGuildMemberLookupError,
       DiscordGuildMemberRoleMutationError: MockDiscordGuildMemberRoleMutationError,
       getDiscordGuildMember: async (_ctx: unknown, options: { userId: string }) => {
@@ -584,6 +754,22 @@ beforeAll(async () => {
             }
           : null
       },
+      inspectDiscordGuildAnnouncementChannels: async () => ({
+        channels: [],
+        diagnostics: {
+          checks: [],
+          guild: {
+            id: '123456789012345678',
+            name: 'Acme Guild',
+          },
+          permissions: {
+            administrator: false,
+          },
+        },
+        guildName: 'Acme Guild',
+        lastCheckedAt: new Date('2026-04-02T12:10:00.000Z'),
+        status: 'connected' as const,
+      }),
       inspectDiscordGuildRoles: async () => createInspectionResult(),
       listDiscordGuildMembers: async () =>
         [...guildMembersByDiscordUserId.values()].map((guildMember) => ({
@@ -622,6 +808,35 @@ beforeAll(async () => {
           userId: options.userId,
         })
       },
+      sendDiscordChannelMessage: async (
+        _ctx: unknown,
+        options: {
+          body?: {
+            allowed_mentions?: {
+              parse?: string[]
+            }
+            content?: string
+          }
+          channelId: string
+          content?: string
+        },
+      ) => {
+        const failure = messageSendFailures.get(options.channelId)
+
+        if (failure) {
+          if (failure instanceof Error) {
+            throw failure
+          }
+
+          throw new Error(typeof failure === 'string' ? failure : 'Discord send failed.')
+        }
+
+        sentDiscordMessages.push({
+          allowedMentionsParse: options.body?.allowed_mentions?.parse,
+          channelId: options.channelId,
+          content: options.body?.content ?? options.content ?? '',
+        })
+      },
     }
   })
 
@@ -647,6 +862,7 @@ beforeEach(async () => {
 
   await database.delete(authSchema.account).where(sql`1 = 1`)
   await database.delete(automationSchema.automationLock).where(sql`1 = 1`)
+  await database.delete(communityRoleSchema.communityDiscordAnnouncement).where(sql`1 = 1`)
   await database.delete(communityRoleSchema.communityDiscordConnection).where(sql`1 = 1`)
   await database.delete(communityRoleSchema.communityManagedMember).where(sql`1 = 1`)
   await database.delete(communityRoleSchema.communityRoleCondition).where(sql`1 = 1`)
@@ -869,6 +1085,147 @@ describe('admin community role Discord sync', () => {
         }),
       }),
     )
+  })
+
+  test('does not publish role update announcements during preview', async () => {
+    const { organizationId } = await seedDiscordAnnouncementGrantScenario({
+      organizationId: 'org-discord-announcement-preview',
+    })
+
+    const preview = await adminCommunityRoleRouter.previewDiscordRoleSync.callable(createAdminCallContext())({
+      organizationId,
+    })
+
+    if (!preview) {
+      throw new Error('Expected Discord preview result.')
+    }
+
+    expect(preview.summary.counts.will_grant).toBe(1)
+    expect(sentDiscordMessages).toEqual([])
+  })
+
+  test('publishes one role update message per user after manual Discord apply', async () => {
+    const { organizationId } = await seedDiscordAnnouncementGrantScenario({
+      organizationId: 'org-discord-announcement-apply',
+    })
+
+    const applied = await adminCommunityRoleRouter.applyDiscordRoleSync.callable(createAdminCallContext())({
+      organizationId,
+    })
+
+    expect(applied.summary.appliedGrantCount).toBe(1)
+    expect(guildMembersByDiscordUserId.get('discord-announcement-user')?.roleIds).toEqual(['discord-role-announcement'])
+    expect(sentDiscordMessages).toHaveLength(1)
+    expect(sentDiscordMessages[0]).toMatchObject({
+      allowedMentionsParse: [],
+      channelId: 'announcement-channel',
+    })
+    expect(sentDiscordMessages[0]?.content).toContain('Role updates applied for Announcement User (@announce).')
+    expect(sentDiscordMessages[0]?.content).toContain('Discord account: discord-announcement-user')
+    expect(sentDiscordMessages[0]?.content).toContain('Granted:')
+    expect(sentDiscordMessages[0]?.content).toContain('- Announcement Role')
+  })
+
+  test('does not publish role update messages when the announcement config is disabled', async () => {
+    const { organizationId } = await seedDiscordAnnouncementGrantScenario({
+      announcementEnabled: false,
+      organizationId: 'org-discord-announcement-disabled',
+    })
+
+    const applied = await adminCommunityRoleRouter.applyDiscordRoleSync.callable(createAdminCallContext())({
+      organizationId,
+    })
+
+    expect(applied.summary.appliedGrantCount).toBe(1)
+    expect(sentDiscordMessages).toEqual([])
+  })
+
+  test('continues Discord apply when announcement publishing fails', async () => {
+    const { organizationId } = await seedDiscordAnnouncementGrantScenario({
+      organizationId: 'org-discord-announcement-failure',
+    })
+
+    messageSendFailures.set('announcement-channel', new Error('Discord send failed.'))
+
+    const applied = await adminCommunityRoleRouter.applyDiscordRoleSync.callable(createAdminCallContext())({
+      organizationId,
+    })
+
+    expect(applied.summary.appliedGrantCount).toBe(1)
+    expect(guildMembersByDiscordUserId.get('discord-announcement-user')?.roleIds).toEqual(['discord-role-announcement'])
+    expect(sentDiscordMessages).toEqual([])
+  })
+
+  test('publishes role update announcements during scheduled Discord sync runs', async () => {
+    const { organizationId } = await seedDiscordAnnouncementGrantScenario({
+      organizationId: 'org-discord-announcement-scheduled',
+    })
+    const now = new Date('2026-04-02T12:00:00.000Z')
+
+    await database.insert(assetSchema.assetGroupIndexRun).values({
+      assetGroupId: 'asset-group-announcement',
+      deletedCount: 0,
+      errorMessage: null,
+      errorPayload: null,
+      finishedAt: new Date('2026-04-02T11:59:00.000Z'),
+      id: 'index-run-announcement-scheduled',
+      insertedCount: 1,
+      pagesProcessed: 1,
+      resolverKind: 'helius-collection-assets',
+      startedAt: new Date('2026-04-02T11:58:00.000Z'),
+      status: 'succeeded',
+      totalCount: 1,
+      triggerSource: 'scheduled',
+      updatedCount: 0,
+    })
+
+    await expect(
+      runScheduledCommunityRoleDiscordSync({
+        now: () => now,
+        organizationId,
+      }),
+    ).resolves.toEqual({
+      organizationId,
+      status: 'succeeded',
+    })
+    expect(sentDiscordMessages).toHaveLength(1)
+    expect(sentDiscordMessages[0]?.channelId).toBe('announcement-channel')
+  })
+
+  test('uses the injected database when loading announcement config during scheduled Discord sync runs', async () => {
+    const { organizationId } = await seedDiscordAnnouncementGrantScenario({
+      organizationId: 'org-discord-announcement-injected-database',
+    })
+    const now = new Date('2026-04-02T12:00:00.000Z')
+
+    await database.insert(assetSchema.assetGroupIndexRun).values({
+      assetGroupId: 'asset-group-announcement',
+      deletedCount: 0,
+      errorMessage: null,
+      errorPayload: null,
+      finishedAt: new Date('2026-04-02T11:59:00.000Z'),
+      id: 'index-run-announcement-injected-database',
+      insertedCount: 1,
+      pagesProcessed: 1,
+      resolverKind: 'helius-collection-assets',
+      startedAt: new Date('2026-04-02T11:58:00.000Z'),
+      status: 'succeeded',
+      totalCount: 1,
+      triggerSource: 'scheduled',
+      updatedCount: 0,
+    })
+
+    await expect(
+      runScheduledCommunityRoleDiscordSync({
+        database: createAnnouncementConfigSelectFailureDatabase('Injected announcement lookup failed.') as never,
+        now: () => now,
+        organizationId,
+      }),
+    ).resolves.toEqual({
+      organizationId,
+      status: 'succeeded',
+    })
+    expect(sentDiscordMessages).toEqual([])
   })
 
   test('skips guild member lookups when Discord diagnostics are already blocking', async () => {

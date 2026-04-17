@@ -6,6 +6,8 @@ import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 type AuthSchema = typeof import('@tokengator/db/schema/auth')
+type AdminOrganizationRouter =
+  typeof import('../src/features/admin-organization/feature/admin-organization-router').adminOrganizationRouter
 type CommunityRoleSchema = typeof import('@tokengator/db/schema/community-role')
 type DatabaseClient = (typeof import('@tokengator/db'))['db']
 type DeleteCommunityDiscordConnectionByOrganizationId =
@@ -24,12 +26,39 @@ const TEST_DATABASE_DIR = resolve(tmpdir(), 'tokengator-api-tests')
 const TEST_DATABASE_URL = pathToFileURL(resolve(TEST_DATABASE_DIR, 'community-discord-connection.sqlite')).toString()
 
 let authSchema: AuthSchema
+let adminOrganizationRouter: AdminOrganizationRouter
 let communityRoleSchema: CommunityRoleSchema
 let database: DatabaseClient
 let deleteCommunityDiscordConnectionByOrganizationId: DeleteCommunityDiscordConnectionByOrganizationId
 let getCommunityDiscordConnectionByOrganizationId: GetCommunityDiscordConnectionByOrganizationId
 let refreshCommunityDiscordConnection: RefreshCommunityDiscordConnection
 let upsertCommunityDiscordConnection: UpsertCommunityDiscordConnection
+
+function createAdminCallContext(): any {
+  return {
+    context: {
+      requestHeaders: new Headers(),
+      requestSignal: new AbortController().signal,
+      responseHeaders: new Headers(),
+      session: {
+        session: {
+          createdAt: new Date('2026-04-02T12:00:00.000Z'),
+          expiresAt: new Date('2026-04-09T12:00:00.000Z'),
+          id: 'admin-session-id',
+          token: 'admin-session-token',
+          updatedAt: new Date('2026-04-02T12:00:00.000Z'),
+          userId: 'admin-user-id',
+        },
+        user: {
+          id: 'admin-user-id',
+          name: 'Admin User',
+          role: 'admin',
+          username: 'admin',
+        },
+      },
+    },
+  }
+}
 
 function createConnectedResult(guildId: string, lastCheckedAt: Date): InspectDiscordGuildConnectionResult {
   return {
@@ -133,6 +162,7 @@ beforeAll(async () => {
   syncDatabase(TEST_DATABASE_URL)
 
   ;({ db: database } = await import('@tokengator/db'))
+  ;({ adminOrganizationRouter } = await import('../src/features/admin-organization/feature/admin-organization-router'))
   authSchema = await import('@tokengator/db/schema/auth')
   communityRoleSchema = await import('@tokengator/db/schema/community-role')
   ;({
@@ -186,6 +216,7 @@ describe('admin community Discord connection', () => {
       inviteUrl:
         'https://discord.com/oauth2/authorize?client_id=discord-client-id&disable_guild_select=true&guild_id=123456789012345678&permissions=268435456&scope=applications.commands+bot',
       lastCheckedAt,
+      roleSyncEnabled: true,
       status: 'connected',
     })
   })
@@ -212,6 +243,7 @@ describe('admin community Discord connection', () => {
     const storedConnection = await database
       .select({
         guildId: communityRoleSchema.communityDiscordConnection.guildId,
+        roleSyncEnabled: communityRoleSchema.communityDiscordConnection.roleSyncEnabled,
         status: communityRoleSchema.communityDiscordConnection.status,
       })
       .from(communityRoleSchema.communityDiscordConnection)
@@ -223,6 +255,7 @@ describe('admin community Discord connection', () => {
     expect(storedConnection).toEqual([
       {
         guildId: '123456789012345678',
+        roleSyncEnabled: true,
         status: 'needs_attention',
       },
     ])
@@ -301,7 +334,66 @@ describe('admin community Discord connection', () => {
     expect(checkCalls).toEqual(['123456789012345678', '123456789012345678'])
     expect(refreshedConnection).toMatchObject({
       guildId: '123456789012345678',
+      roleSyncEnabled: true,
       status: 'connected',
+    })
+  })
+
+  test('toggles role sync through the admin mutation and preserves the flag across refresh and guild updates', async () => {
+    const organizationId = crypto.randomUUID()
+
+    await insertOrganization({
+      id: organizationId,
+      name: 'Acme',
+      slug: 'acme',
+    })
+    await upsertCommunityDiscordConnection(
+      {
+        guildId: '123456789012345678',
+        organizationId,
+      },
+      {
+        checkGuildConnection: async () =>
+          createConnectedResult('123456789012345678', new Date('2026-04-02T12:40:00.000Z')),
+      },
+    )
+
+    const updatedOrganization = await adminOrganizationRouter.setDiscordRoleSyncEnabled.callable(
+      createAdminCallContext(),
+    )({
+      enabled: false,
+      organizationId,
+    })
+
+    expect(updatedOrganization.discordConnection).toMatchObject({
+      guildId: '123456789012345678',
+      roleSyncEnabled: false,
+    })
+
+    const refreshedConnection = await refreshCommunityDiscordConnection(organizationId, {
+      checkGuildConnection: async () =>
+        createConnectedResult('123456789012345678', new Date('2026-04-02T12:45:00.000Z')),
+    })
+
+    expect(refreshedConnection).toMatchObject({
+      guildId: '123456789012345678',
+      roleSyncEnabled: false,
+    })
+
+    const updatedConnection = await upsertCommunityDiscordConnection(
+      {
+        guildId: '223456789012345678',
+        organizationId,
+      },
+      {
+        checkGuildConnection: async () =>
+          createConnectedResult('223456789012345678', new Date('2026-04-02T12:50:00.000Z')),
+      },
+    )
+
+    expect(updatedConnection).toMatchObject({
+      guildId: '223456789012345678',
+      roleSyncEnabled: false,
     })
   })
 

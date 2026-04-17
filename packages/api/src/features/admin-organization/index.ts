@@ -16,6 +16,7 @@ export type { AdminOrganizationListOwnerCandidatesInput } from './data-access/ad
 export type { AdminOrganizationMemberRole } from './data-access/admin-organization-member-role'
 export type { AdminOrganizationRefreshDiscordConnectionInput } from './data-access/admin-organization-refresh-discord-connection-input'
 export type { AdminOrganizationRemoveMemberInput } from './data-access/admin-organization-remove-member-input'
+export type { AdminOrganizationSetDiscordRoleSyncEnabledInput } from './data-access/admin-organization-set-discord-role-sync-enabled-input'
 export type { AdminOrganizationUpdateInput } from './data-access/admin-organization-update-input'
 export type { AdminOrganizationUpdateMemberRoleInput } from './data-access/admin-organization-update-member-role-input'
 export type { AdminOrganizationUpsertDiscordConnectionInput } from './data-access/admin-organization-upsert-discord-connection-input'

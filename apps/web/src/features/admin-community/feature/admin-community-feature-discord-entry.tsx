@@ -44,6 +44,7 @@ export function AdminCommunityFeatureDiscordEntry(props: AdminCommunityFeatureDi
             onResultChange={setDiscordSyncResult}
             organizationId={data.id}
             result={discordSyncResult}
+            roleSyncEnabled={data.discordConnection.roleSyncEnabled}
           />
           {discordSyncResult ? <AdminCommunityDiscordSyncUiDetails result={discordSyncResult} /> : null}
         </>

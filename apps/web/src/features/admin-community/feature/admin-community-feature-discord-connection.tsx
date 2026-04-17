@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@toke
 import { useAdminCommunityDiscordConnectionDelete } from '../data-access/use-admin-community-discord-connection-delete'
 import { useAdminCommunityDiscordConnectionRefresh } from '../data-access/use-admin-community-discord-connection-refresh'
 import { useAdminCommunityDiscordConnectionUpsert } from '../data-access/use-admin-community-discord-connection-upsert'
+import { useAdminCommunityDiscordRoleSyncEnabledSet } from '../data-access/use-admin-community-discord-role-sync-enabled-set'
 import { AdminCommunityDiscordConnectionUiDeleteDialog } from '../ui/admin-community-discord-connection-ui-delete-dialog'
 import { AdminCommunityDiscordConnectionUiDetails } from '../ui/admin-community-discord-connection-ui-details'
 import { AdminCommunityDiscordConnectionUiForm } from '../ui/admin-community-discord-connection-ui-form'
@@ -18,6 +19,7 @@ export function AdminCommunityFeatureDiscordConnection({
   const discordConnection = organization.discordConnection
   const deleteDiscordConnection = useAdminCommunityDiscordConnectionDelete(organization.id)
   const refreshDiscordConnection = useAdminCommunityDiscordConnectionRefresh(organization.id)
+  const setDiscordRoleSyncEnabled = useAdminCommunityDiscordRoleSyncEnabledSet(organization.id)
   const upsertDiscordConnection = useAdminCommunityDiscordConnectionUpsert(organization.id)
 
   async function handleDeleteDiscordConnection() {
@@ -42,6 +44,13 @@ export function AdminCommunityFeatureDiscordConnection({
 
   function handleRefreshDiscordConnection() {
     refreshDiscordConnection.mutate({
+      organizationId: organization.id,
+    })
+  }
+
+  function handleRoleSyncEnabledChange(enabled: boolean) {
+    setDiscordRoleSyncEnabled.mutate({
+      enabled,
       organizationId: organization.id,
     })
   }
@@ -80,8 +89,10 @@ export function AdminCommunityFeatureDiscordConnection({
             disconnectAction={disconnectAction}
             discordConnection={discordConnection}
             isRefreshPending={refreshDiscordConnection.isPending}
+            isRoleSyncPending={setDiscordRoleSyncEnabled.isPending}
             onInvite={handleInvite}
             onRefresh={handleRefreshDiscordConnection}
+            onRoleSyncEnabledChange={handleRoleSyncEnabledChange}
           />
         ) : (
           <AdminCommunityDiscordConnectionUiForm

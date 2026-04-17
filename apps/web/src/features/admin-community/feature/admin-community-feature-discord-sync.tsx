@@ -17,11 +17,12 @@ type AdminCommunityDiscordSyncResult =
 interface AdminCommunityFeatureDiscordSyncProps {
   onResultChange: (result: AdminCommunityDiscordSyncResult | null) => void
   organizationId: string
+  roleSyncEnabled: boolean
   result: AdminCommunityDiscordSyncResult | null
 }
 
 export function AdminCommunityFeatureDiscordSync(props: AdminCommunityFeatureDiscordSyncProps) {
-  const { onResultChange, organizationId, result } = props
+  const { onResultChange, organizationId, result, roleSyncEnabled } = props
   const applyDiscordSync = useAdminCommunityDiscordSyncApply(organizationId)
   const previewDiscordSync = useAdminCommunityDiscordSyncPreview()
   const discordSyncActionRequiredCount = result
@@ -58,7 +59,9 @@ export function AdminCommunityFeatureDiscordSync(props: AdminCommunityFeatureDis
       <CardHeader>
         <CardTitle>Discord Role Sync</CardTitle>
         <CardDescription>
-          Preview and apply Discord role grants and revokes for linked users in the connected server.
+          {roleSyncEnabled
+            ? 'Preview and apply Discord role grants and revokes for linked users in the connected server.'
+            : 'Discord role writes are paused for this community. Preview remains available for comparison.'}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
@@ -76,11 +79,20 @@ export function AdminCommunityFeatureDiscordSync(props: AdminCommunityFeatureDis
             )}
             Preview Discord Roles
           </Button>
-          <Button disabled={applyDiscordSync.isPending} onClick={() => void handleApplyDiscordSync()} type="button">
+          <Button
+            disabled={applyDiscordSync.isPending || !roleSyncEnabled}
+            onClick={() => void handleApplyDiscordSync()}
+            type="button"
+          >
             {applyDiscordSync.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
             Apply Discord Reconcile
           </Button>
         </div>
+        {!roleSyncEnabled ? (
+          <p className="text-muted-foreground text-sm">
+            Discord role sync is disabled. Use preview to compare outcomes safely before re-enabling apply.
+          </p>
+        ) : null}
         {result ? (
           <div className="grid gap-3 md:grid-cols-4">
             <UiInfoCard>
@@ -107,7 +119,11 @@ export function AdminCommunityFeatureDiscordSync(props: AdminCommunityFeatureDis
             </UiInfoCard>
           </div>
         ) : (
-          <p className="text-muted-foreground text-sm">Run a preview to inspect the next Discord role reconcile.</p>
+          <p className="text-muted-foreground text-sm">
+            {roleSyncEnabled
+              ? 'Run a preview to inspect the next Discord role reconcile.'
+              : 'Run a preview to inspect differences while Discord role sync is paused.'}
+          </p>
         )}
       </CardContent>
     </Card>

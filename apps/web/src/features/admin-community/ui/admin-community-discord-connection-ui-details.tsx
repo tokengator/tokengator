@@ -2,6 +2,8 @@ import type { ReactNode } from 'react'
 import { Loader2 } from 'lucide-react'
 import type { AdminOrganizationDetailEntity } from '@tokengator/sdk'
 import { Button } from '@tokengator/ui/components/button'
+import { Label } from '@tokengator/ui/components/label'
+import { Switch } from '@tokengator/ui/components/switch'
 import { UiDetailRow } from '@tokengator/ui/components/ui-detail-row'
 import { UiStatus, type UiStatusVariants } from '@tokengator/ui/components/ui-status'
 import { UiTextCopyIcon } from '@tokengator/ui/components/ui-text-copy-icon'
@@ -18,12 +20,23 @@ interface AdminCommunityDiscordConnectionUiDetailsProps {
   disconnectAction: ReactNode
   discordConnection: AdminCommunityDiscordConnection
   isRefreshPending: boolean
+  isRoleSyncPending: boolean
   onInvite: () => void
   onRefresh: () => void
+  onRoleSyncEnabledChange: (enabled: boolean) => void
 }
 
 export function AdminCommunityDiscordConnectionUiDetails(props: AdminCommunityDiscordConnectionUiDetailsProps) {
-  const { diagnostics, disconnectAction, discordConnection, isRefreshPending, onInvite, onRefresh } = props
+  const {
+    diagnostics,
+    disconnectAction,
+    discordConnection,
+    isRefreshPending,
+    isRoleSyncPending,
+    onInvite,
+    onRefresh,
+    onRoleSyncEnabledChange,
+  } = props
 
   return (
     <>
@@ -62,6 +75,20 @@ export function AdminCommunityDiscordConnectionUiDetails(props: AdminCommunityDi
         {discordConnection.diagnostics?.commands.errorMessage ? (
           <UiDetailRow label="Command error:">{discordConnection.diagnostics.commands.errorMessage}</UiDetailRow>
         ) : null}
+      </div>
+      <div className="flex items-start justify-between gap-4 rounded-lg border p-3">
+        <div className="grid gap-1">
+          <Label htmlFor="community-discord-role-sync-enabled">Discord role sync</Label>
+          <p className="text-muted-foreground text-sm">
+            Keep preview available while pausing scheduled reconcile and manual Discord role writes.
+          </p>
+        </div>
+        <Switch
+          checked={discordConnection.roleSyncEnabled}
+          disabled={isRoleSyncPending}
+          id="community-discord-role-sync-enabled"
+          onCheckedChange={onRoleSyncEnabledChange}
+        />
       </div>
       <div className="flex flex-wrap gap-2">
         <Button onClick={onInvite} type="button" variant="outline">

@@ -20,6 +20,7 @@ export type AdminCommunityDiscordConnection = {
   guildName: string | null
   inviteUrl: string
   lastCheckedAt: Date | null
+  roleSyncEnabled: boolean
   status: 'connected' | 'needs_attention'
 }
 
@@ -33,6 +34,7 @@ type StoredCommunityDiscordConnectionRecord = {
   guildName: string | null
   lastCheckedAt: Date | null
   organizationId: string
+  roleSyncEnabled: boolean
   status: 'connected' | 'needs_attention'
 }
 
@@ -88,6 +90,7 @@ async function getStoredCommunityDiscordConnectionByOrganizationId(organizationI
       guildName: communityDiscordConnection.guildName,
       lastCheckedAt: communityDiscordConnection.lastCheckedAt,
       organizationId: communityDiscordConnection.organizationId,
+      roleSyncEnabled: communityDiscordConnection.roleSyncEnabled,
       status: communityDiscordConnection.status,
     })
     .from(communityDiscordConnection)
@@ -101,6 +104,7 @@ async function persistDiscordConnectionCheck(input: {
   guildId: string
   options?: CommunityDiscordConnectionMutationOptions
   organizationId: string
+  roleSyncEnabled: boolean
 }) {
   const checkGuildConnection = input.options?.checkGuildConnection ?? inspectDiscordGuildConnection
   const result = await checkGuildConnection(
@@ -135,6 +139,7 @@ async function persistDiscordConnectionCheck(input: {
     guildName: result.guildName,
     lastCheckedAt: result.lastCheckedAt,
     organizationId: input.organizationId,
+    roleSyncEnabled: input.roleSyncEnabled,
     status: result.status,
   })
 }
@@ -155,6 +160,7 @@ function toAdminCommunityDiscordConnection(
       },
     ),
     lastCheckedAt: record.lastCheckedAt,
+    roleSyncEnabled: record.roleSyncEnabled,
     status: record.status,
   }
 }
@@ -206,6 +212,28 @@ export async function refreshCommunityDiscordConnection(
     guildId: existingConnection.guildId,
     options,
     organizationId,
+    roleSyncEnabled: existingConnection.roleSyncEnabled,
+  })
+}
+
+export async function setCommunityDiscordRoleSyncEnabled(input: { enabled: boolean; organizationId: string }) {
+  const existingConnection = await getStoredCommunityDiscordConnectionByOrganizationId(input.organizationId)
+
+  if (!existingConnection) {
+    return null
+  }
+
+  await db
+    .update(communityDiscordConnection)
+    .set({
+      roleSyncEnabled: input.enabled,
+      updatedAt: new Date(),
+    })
+    .where(eq(communityDiscordConnection.organizationId, input.organizationId))
+
+  return toAdminCommunityDiscordConnection({
+    ...existingConnection,
+    roleSyncEnabled: input.enabled,
   })
 }
 
@@ -241,6 +269,7 @@ export async function upsertCommunityDiscordConnection(
       guildName: null,
       lastCheckedAt: null,
       organizationId: input.organizationId,
+      roleSyncEnabled: true,
       status: 'needs_attention',
       updatedAt: now,
     })
@@ -250,5 +279,6 @@ export async function upsertCommunityDiscordConnection(
     guildId: input.guildId,
     options,
     organizationId: input.organizationId,
+    roleSyncEnabled: existingConnection?.roleSyncEnabled ?? true,
   })
 }

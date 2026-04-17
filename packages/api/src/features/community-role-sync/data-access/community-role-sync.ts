@@ -315,12 +315,21 @@ export type OrganizationSyncDependencyAssetGroup = {
 
 export type CommunityRoleSyncStatus = {
   dependencyAssetGroups: OrganizationSyncDependencyAssetGroup[]
-  discordStatus: CommunitySyncStatusSummary<CommunityDiscordSyncRunRecord>
+  discordStatus: CommunitySyncStatusSummary<CommunityDiscordSyncRunRecord> & {
+    roleSyncEnabled: boolean
+  }
   membershipStatus: CommunitySyncStatusSummary<CommunityMembershipSyncRunRecord>
   organizationId: string
 }
 
-export type ScheduledCommunityDiscordSyncStatus = 'failed' | 'locked' | 'missing' | 'partial' | 'skipped' | 'succeeded'
+export type ScheduledCommunityDiscordSyncStatus =
+  | 'disabled'
+  | 'failed'
+  | 'locked'
+  | 'missing'
+  | 'partial'
+  | 'skipped'
+  | 'succeeded'
 export type ScheduledCommunityMembershipSyncStatus = 'failed' | 'locked' | 'missing' | 'skipped' | 'succeeded'
 
 type LoadedQualificationState = {
@@ -348,6 +357,7 @@ type DiscordRoleMappingState = {
 type StoredCommunityDiscordConnectionRecord = {
   guildId: string
   guildName: string | null
+  roleSyncEnabled: boolean
 }
 
 type CommunityRoleDiscordSyncExecutionProgress = {
@@ -1085,6 +1095,7 @@ async function loadCommunityDiscordConnectionRecord(
     .select({
       guildId: communityDiscordConnection.guildId,
       guildName: communityDiscordConnection.guildName,
+      roleSyncEnabled: communityDiscordConnection.roleSyncEnabled,
     })
     .from(communityDiscordConnection)
     .where(eq(communityDiscordConnection.organizationId, organizationId))
@@ -2586,7 +2597,25 @@ async function runCommunityDiscordSync(input: {
     }
   }
 
-  const roles = await listCommunityRoleRecords(input.organizationId, database)
+  const [connectionRecord, roles] = await Promise.all([
+    loadCommunityDiscordConnectionRecord(input.organizationId, database),
+    listCommunityRoleRecords(input.organizationId, database),
+  ])
+
+  if (!connectionRecord) {
+    return {
+      result: null,
+      status: 'missing' as const,
+    }
+  }
+
+  if (!connectionRecord.roleSyncEnabled) {
+    return {
+      result: null,
+      status: 'disabled' as const,
+    }
+  }
+
   const dependencies = await getOrganizationSyncDependencies({
     database,
     now: input.now,
@@ -2797,6 +2826,14 @@ export async function applyCommunityRoleDiscordSync(organizationId: string) {
     triggerSource: 'manual',
   })
 
+  if (result.status === 'disabled') {
+    throw new Error('Discord role sync is disabled for this community.')
+  }
+
+  if (!result.result) {
+    throw new Error('Community Discord sync could not be applied.')
+  }
+
   return result.result
 }
 
@@ -2821,11 +2858,13 @@ export async function getCommunityRoleSyncStatus(input: {
     roles,
   })
   const [
+    connectionRecord,
     communityDiscordSyncRuns,
     successfulCommunityDiscordSyncRuns,
     communityMembershipSyncRuns,
     successfulCommunityMembershipSyncRuns,
   ] = await Promise.all([
+    loadCommunityDiscordConnectionRecord(input.organizationId, database),
     getCommunityDiscordSyncRunRows({
       database,
       limitPerOrganization: 1,
@@ -2870,7 +2909,10 @@ export async function getCommunityRoleSyncStatus(input: {
 
   return {
     dependencyAssetGroups: dependencies.dependencyAssetGroups,
-    discordStatus,
+    discordStatus: {
+      ...discordStatus,
+      roleSyncEnabled: connectionRecord?.roleSyncEnabled ?? false,
+    },
     membershipStatus,
     organizationId: input.organizationId,
   } satisfies CommunityRoleSyncStatus
@@ -2918,7 +2960,13 @@ export async function listOrganizationsDueForScheduledCommunityDiscordSync(input
     .from(communityRole)
     .innerJoin(communityDiscordConnection, eq(communityDiscordConnection.organizationId, communityRole.organizationId))
     .innerJoin(organization, eq(organization.id, communityRole.organizationId))
-    .where(and(eq(communityRole.enabled, true), isNotNull(communityRole.discordRoleId)))
+    .where(
+      and(
+        eq(communityDiscordConnection.roleSyncEnabled, true),
+        eq(communityRole.enabled, true),
+        isNotNull(communityRole.discordRoleId),
+      ),
+    )
     .groupBy(organization.name, communityRole.organizationId)
     .orderBy(asc(organization.name), asc(communityRole.organizationId))
 
@@ -3023,6 +3071,13 @@ export async function runScheduledCommunityRoleDiscordSync(input: {
       return {
         organizationId: input.organizationId,
         status: 'missing' as const,
+      }
+    }
+
+    if (!connectionRecord.roleSyncEnabled) {
+      return {
+        organizationId: input.organizationId,
+        status: 'disabled' as const,
       }
     }
 

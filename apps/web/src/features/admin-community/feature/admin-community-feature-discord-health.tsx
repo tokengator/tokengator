@@ -55,13 +55,20 @@ export function AdminCommunityFeatureDiscordHealth(props: AdminCommunityFeatureD
   const hasDiscordRunsError = Boolean(communityDiscordRuns.error)
   const hasDiscordSyncStatusError = Boolean(communitySyncStatus.error)
   const discordFreshnessStatus = discordStatus?.freshnessStatus ?? 'unknown'
+  const discordRoleSyncEnabled = discordStatus?.roleSyncEnabled ?? true
   const discordLastRunStatus = discordStatus ? (discordStatus.lastRun?.status ?? 'Never') : 'Unknown'
   const discordLastStartedAt = discordStatus ? formatDateTime(discordStatus.lastRun?.startedAt ?? null) : 'Unknown'
   const discordLastSuccessAt = discordStatus
     ? formatDateTime(discordStatus.lastSuccessfulRun?.finishedAt ?? null)
     : 'Unknown'
   const discordStaleAfter = discordStatus ? `${discordStatus.staleAfterMinutes} minutes` : 'Unknown'
-  const discordState = discordStatus ? (discordStatus.isRunning ? 'running' : 'idle') : 'Unknown'
+  const discordState = discordStatus
+    ? discordStatus.isRunning
+      ? 'running'
+      : discordRoleSyncEnabled
+        ? 'idle'
+        : 'paused'
+    : 'Unknown'
 
   return (
     <Card>
@@ -138,7 +145,9 @@ export function AdminCommunityFeatureDiscordHealth(props: AdminCommunityFeatureD
               <UiInfoCard className="grid gap-2">
                 <div className="flex items-center justify-between gap-3">
                   <UiInfoCardLabel className="text-foreground font-medium">Reconcile Freshness</UiInfoCardLabel>
-                  <UiStatus tone={getFreshnessTone(discordFreshnessStatus)}>{discordFreshnessStatus}</UiStatus>
+                  <UiStatus tone={discordRoleSyncEnabled ? getFreshnessTone(discordFreshnessStatus) : 'notice'}>
+                    {discordRoleSyncEnabled ? discordFreshnessStatus : 'disabled'}
+                  </UiStatus>
                 </div>
                 <div className="flex items-baseline justify-between gap-3">
                   <UiInfoCardLabel>Last success</UiInfoCardLabel>
@@ -153,7 +162,11 @@ export function AdminCommunityFeatureDiscordHealth(props: AdminCommunityFeatureD
                   <UiInfoCardLabel>State</UiInfoCardLabel>
                   <UiInfoCardValue>{discordState}</UiInfoCardValue>
                 </div>
-                <UiInfoCardMeta>Stale after {discordStaleAfter}</UiInfoCardMeta>
+                <UiInfoCardMeta>
+                  {discordRoleSyncEnabled
+                    ? `Stale after ${discordStaleAfter}`
+                    : 'Discord role writes are paused while sync is disabled.'}
+                </UiInfoCardMeta>
               </UiInfoCard>
             </div>
             <div className="grid gap-2 rounded-lg border p-3">

@@ -20,6 +20,12 @@ export async function adminCommunityRoleApplyDiscordRoleSync(organizationId: str
     }
   }
 
+  if (!existingConnection.roleSyncEnabled) {
+    return {
+      status: 'discord-role-sync-disabled' as const,
+    }
+  }
+
   return {
     result: await applyCommunityRoleDiscordSync(organizationId),
     status: 'success' as const,

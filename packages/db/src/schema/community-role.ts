@@ -113,6 +113,7 @@ export const communityDiscordConnection = sqliteTable(
       .notNull()
       .primaryKey()
       .references(() => organization.id, { onDelete: 'cascade' }),
+    roleSyncEnabled: integer('role_sync_enabled', { mode: 'boolean' }).default(true).notNull(),
     status: text('status', { enum: ['connected', 'needs_attention'] }).notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)

@@ -24,6 +24,12 @@ export const adminCommunityRoleFeatureApplyDiscordRoleSync = adminProcedure
         })
       }
 
+      if (result.status === 'discord-role-sync-disabled') {
+        throw new ORPCError('BAD_REQUEST', {
+          message: 'Discord role sync is disabled for this community.',
+        })
+      }
+
       return result.result
     } catch (error) {
       if (error instanceof AutomationLockConflictError) {

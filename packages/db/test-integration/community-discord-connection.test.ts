@@ -128,6 +128,7 @@ describe('communityDiscordConnection schema', () => {
       .select({
         diagnostics: communityRoleSchema.communityDiscordConnection.diagnostics,
         guildId: communityRoleSchema.communityDiscordConnection.guildId,
+        roleSyncEnabled: communityRoleSchema.communityDiscordConnection.roleSyncEnabled,
         status: communityRoleSchema.communityDiscordConnection.status,
       })
       .from(communityRoleSchema.communityDiscordConnection)
@@ -138,7 +139,41 @@ describe('communityDiscordConnection schema', () => {
       diagnostics:
         '{"checks":["bot_token_missing"],"commands":{"errorMessage":null,"registered":false},"guild":{"id":"123456789012345678","name":null},"permissions":{"administrator":false,"manageRoles":false}}',
       guildId: '123456789012345678',
+      roleSyncEnabled: true,
       status: 'needs_attention',
+    })
+  })
+
+  test('stores a disabled role sync flag when explicitly set', async () => {
+    const organizationId = crypto.randomUUID()
+
+    await insertOrganization({
+      id: organizationId,
+      name: 'Acme',
+      slug: 'acme',
+    })
+    await database.insert(communityRoleSchema.communityDiscordConnection).values({
+      createdAt: new Date('2026-04-02T12:00:00.000Z'),
+      diagnostics: null,
+      guildId: '223456789012345678',
+      guildName: 'Acme Guild',
+      lastCheckedAt: null,
+      organizationId,
+      roleSyncEnabled: false,
+      status: 'connected',
+      updatedAt: new Date('2026-04-02T12:00:00.000Z'),
+    })
+
+    const [record] = await database
+      .select({
+        roleSyncEnabled: communityRoleSchema.communityDiscordConnection.roleSyncEnabled,
+      })
+      .from(communityRoleSchema.communityDiscordConnection)
+      .where(eq(communityRoleSchema.communityDiscordConnection.organizationId, organizationId))
+      .limit(1)
+
+    expect(record).toEqual({
+      roleSyncEnabled: false,
     })
   })
 

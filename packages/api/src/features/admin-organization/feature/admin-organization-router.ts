@@ -6,6 +6,7 @@ import { adminOrganizationFeatureList } from './admin-organization-feature-list'
 import { adminOrganizationFeatureListOwnerCandidates } from './admin-organization-feature-list-owner-candidates'
 import { adminOrganizationFeatureRefreshDiscordConnection } from './admin-organization-feature-refresh-discord-connection'
 import { adminOrganizationFeatureRemoveMember } from './admin-organization-feature-remove-member'
+import { adminOrganizationFeatureSetDiscordRoleSyncEnabled } from './admin-organization-feature-set-discord-role-sync-enabled'
 import { adminOrganizationFeatureUpdate } from './admin-organization-feature-update'
 import { adminOrganizationFeatureUpdateMemberRole } from './admin-organization-feature-update-member-role'
 import { adminOrganizationFeatureUpsertDiscordConnection } from './admin-organization-feature-upsert-discord-connection'
@@ -19,6 +20,7 @@ export const adminOrganizationRouter = {
   listOwnerCandidates: adminOrganizationFeatureListOwnerCandidates,
   refreshDiscordConnection: adminOrganizationFeatureRefreshDiscordConnection,
   removeMember: adminOrganizationFeatureRemoveMember,
+  setDiscordRoleSyncEnabled: adminOrganizationFeatureSetDiscordRoleSyncEnabled,
   update: adminOrganizationFeatureUpdate,
   updateMemberRole: adminOrganizationFeatureUpdateMemberRole,
   upsertDiscordConnection: adminOrganizationFeatureUpsertDiscordConnection,

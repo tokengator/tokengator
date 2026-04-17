@@ -328,7 +328,11 @@ async function insertAssetGroup(input: {
   })
 }
 
-async function insertCommunityDiscordConnection(input: { guildId: string; organizationId: string }) {
+async function insertCommunityDiscordConnection(input: {
+  guildId: string
+  organizationId: string
+  roleSyncEnabled?: boolean
+}) {
   await database.insert(communityRoleSchema.communityDiscordConnection).values({
     createdAt: new Date('2026-04-02T12:00:00.000Z'),
     diagnostics: null,
@@ -336,6 +340,7 @@ async function insertCommunityDiscordConnection(input: { guildId: string; organi
     guildName: 'Stored Guild Name',
     lastCheckedAt: new Date('2026-04-02T12:00:00.000Z'),
     organizationId: input.organizationId,
+    roleSyncEnabled: input.roleSyncEnabled ?? true,
     status: 'connected',
     updatedAt: new Date('2026-04-02T12:00:00.000Z'),
   })
@@ -754,6 +759,116 @@ describe('admin community role Discord sync', () => {
         organizationId,
       }),
     ).rejects.toThrow('Connect a Discord server for this community before syncing Discord roles.')
+  })
+
+  test('allows preview but blocks manual apply when Discord role sync is disabled', async () => {
+    const organizationId = 'org-discord-sync-disabled'
+    const groupId = 'asset-group-disabled'
+
+    await insertOrganization({
+      id: organizationId,
+      name: 'Disabled Discord Sync Org',
+      slug: 'disabled-discord-sync-org',
+    })
+    await insertCommunityDiscordConnection({
+      guildId: '123456789012345678',
+      organizationId,
+      roleSyncEnabled: false,
+    })
+    await insertAssetGroup({
+      address: 'collection-disabled',
+      id: groupId,
+      label: 'Collection Disabled',
+      type: 'collection',
+    })
+    await insertTeam({
+      id: 'team-disabled',
+      name: 'Disabled Team',
+      organizationId,
+    })
+    await insertCommunityRole({
+      discordRoleId: 'discord-role-disabled',
+      id: 'role-disabled',
+      name: 'Disabled Role',
+      organizationId,
+      slug: 'disabled-role',
+      teamId: 'team-disabled',
+    })
+    await insertCommunityRoleCondition({
+      assetGroupId: groupId,
+      communityRoleId: 'role-disabled',
+      minimumAmount: '1',
+    })
+    await insertUser({
+      email: 'disabled@example.com',
+      id: 'user-disabled',
+      name: 'Disabled User',
+      username: 'disabled',
+    })
+    await insertSolanaWallet({
+      address: 'disabled-wallet',
+      userId: 'user-disabled',
+    })
+    await insertAsset({
+      address: 'disabled-asset',
+      amount: '1',
+      assetGroupId: groupId,
+      owner: 'disabled-wallet',
+      resolverKind: 'helius-collection-assets',
+    })
+    await insertAccount({
+      accountId: 'discord-disabled',
+      userId: 'user-disabled',
+    })
+
+    guildRoles = [
+      {
+        assignable: true,
+        checks: [],
+        id: 'discord-role-disabled',
+        isDefault: false,
+        managed: false,
+        name: 'Disabled Role',
+        position: 5,
+      },
+    ]
+    guildMembersByDiscordUserId = new Map([
+      [
+        'discord-disabled',
+        {
+          discordUserId: 'discord-disabled',
+          roleIds: [],
+        },
+      ],
+    ])
+
+    const preview = await adminCommunityRoleRouter.previewDiscordRoleSync.callable(createAdminCallContext())({
+      organizationId,
+    })
+
+    if (!preview) {
+      throw new Error('Expected Discord preview result.')
+    }
+
+    expect(preview.summary.counts.will_grant).toBe(1)
+    expect(preview.summary.counts.will_revoke).toBe(0)
+    await expect(
+      adminCommunityRoleRouter.applyDiscordRoleSync.callable(createAdminCallContext())({
+        organizationId,
+      }),
+    ).rejects.toThrow('Discord role sync is disabled for this community.')
+    expect(guildMembersByDiscordUserId.get('discord-disabled')?.roleIds).toEqual([])
+    await expect(
+      getCommunityRoleSyncStatus({
+        organizationId,
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        discordStatus: expect.objectContaining({
+          roleSyncEnabled: false,
+        }),
+      }),
+    )
   })
 
   test('skips guild member lookups when Discord diagnostics are already blocking', async () => {
@@ -2235,13 +2350,14 @@ describe('admin community role Discord sync', () => {
         updatedAt: now,
       }
     })
-    const connections = organizations.map((record) => ({
+    const connections = organizations.map((record, index) => ({
       createdAt: now,
       guildId: `guild-${record.id}`,
       guildName: null,
       id: crypto.randomUUID(),
       lastCheckedAt: null,
       organizationId: record.id,
+      roleSyncEnabled: index !== 100,
       status: 'connected' as const,
       updatedAt: now,
     }))
@@ -2255,8 +2371,52 @@ describe('admin community role Discord sync', () => {
       now: () => new Date('2026-04-02T12:01:00.000Z'),
     })
 
-    expect(dueOrganizationIds).toHaveLength(901)
+    expect(dueOrganizationIds).toHaveLength(900)
     expect(dueOrganizationIds[0]).toBe('org-discord-0000')
+    expect(dueOrganizationIds).not.toContain('org-discord-0100')
     expect(dueOrganizationIds.at(-1)).toBe('org-discord-0900')
+  })
+
+  test('returns disabled and records no run when scheduled Discord sync is invoked directly for a disabled community', async () => {
+    const organizationId = 'org-scheduled-disabled'
+
+    await insertOrganization({
+      id: organizationId,
+      name: 'Scheduled Disabled Org',
+      slug: 'scheduled-disabled-org',
+    })
+    await insertCommunityDiscordConnection({
+      guildId: '123456789012345678',
+      organizationId,
+      roleSyncEnabled: false,
+    })
+    await insertTeam({
+      id: 'team-scheduled-disabled',
+      name: 'Scheduled Disabled Team',
+      organizationId,
+    })
+    await insertCommunityRole({
+      discordRoleId: 'discord-role-scheduled-disabled',
+      id: 'role-scheduled-disabled',
+      name: 'Scheduled Disabled Role',
+      organizationId,
+      slug: 'scheduled-disabled-role',
+      teamId: 'team-scheduled-disabled',
+    })
+
+    await expect(
+      runScheduledCommunityRoleDiscordSync({
+        organizationId,
+      }),
+    ).resolves.toEqual({
+      organizationId,
+      status: 'disabled',
+    })
+    await expect(
+      listCommunityDiscordSyncRuns({
+        limit: 5,
+        organizationId,
+      }),
+    ).resolves.toEqual([])
   })
 })

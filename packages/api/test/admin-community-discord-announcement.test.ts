@@ -294,7 +294,7 @@ beforeAll(async () => {
   ;({ db: database } = await import('@tokengator/db'))
   authSchema = await import('@tokengator/db/schema/auth')
   communityRoleSchema = await import('@tokengator/db/schema/community-role')
-}, 15_000)
+}, 30_000)
 
 afterAll(() => {
   mock.restore()

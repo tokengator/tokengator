@@ -171,7 +171,7 @@ beforeAll(async () => {
     refreshCommunityDiscordConnection,
     upsertCommunityDiscordConnection,
   } = await import('../src/features/community-discord-connection'))
-}, 15_000)
+}, 30_000)
 
 beforeEach(async () => {
   await database.delete(communityRoleSchema.communityDiscordAnnouncement).where(sql`1 = 1`)

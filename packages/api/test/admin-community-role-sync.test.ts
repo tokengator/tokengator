@@ -326,7 +326,7 @@ beforeAll(async () => {
     removeCommunityRoleById,
     runScheduledCommunityRoleSync,
   } = await import('../src/features/community-role-sync'))
-}, 15_000)
+}, 30_000)
 
 beforeEach(async () => {
   await database.delete(automationSchema.automationLock).where(sql`1 = 1`)

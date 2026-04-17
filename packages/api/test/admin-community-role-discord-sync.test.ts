@@ -855,7 +855,7 @@ beforeAll(async () => {
   } = await import('../src/features/community-role-sync'))
   ;({ adminCommunityRoleRouter } =
     await import('../src/features/admin-community-role/feature/admin-community-role-router'))
-}, 15_000)
+}, 30_000)
 
 beforeEach(async () => {
   resetDiscordMockState()

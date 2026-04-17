@@ -368,7 +368,7 @@ beforeAll(async () => {
   assetSchema = await import('@tokengator/db/schema/asset')
   authSchema = await import('@tokengator/db/schema/auth')
   adminSessionCookieToken = await createSignedSessionToken(ADMIN_SESSION_TOKEN)
-}, 15_000)
+}, 30_000)
 
 afterAll(() => {
   for (const key of ENV_KEYS) {

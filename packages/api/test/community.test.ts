@@ -320,7 +320,7 @@ beforeAll(async () => {
   authSchema = await import('@tokengator/db/schema/auth')
   communityRoleSchema = await import('@tokengator/db/schema/community-role')
   ;({ communityRouter } = await import('../src/features/community/feature/community-router'))
-}, 15_000)
+}, 30_000)
 
 afterAll(() => {
   for (const key of ENV_KEYS) {

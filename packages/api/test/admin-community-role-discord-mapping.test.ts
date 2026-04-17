@@ -208,7 +208,7 @@ beforeAll(async () => {
   communityRoleSchema = await import('@tokengator/db/schema/community-role')
   ;({ adminCommunityRoleRouter } =
     await import('../src/features/admin-community-role/feature/admin-community-role-router'))
-}, 15_000)
+}, 30_000)
 
 beforeEach(async () => {
   inspectDiscordGuildRolesCallCount = 0

@@ -110,11 +110,35 @@ beforeAll(async () => {
       isPending: false,
     }),
   }))
-  mock.module('../src/features/community/ui/community-ui-collection-asset-browser-controls', () => ({
-    CommunityUiCollectionAssetBrowserControls: ({ onOwnerCommit }: { onOwnerCommit: (owner: string) => void }) => (
-      <button onClick={() => onOwnerCommit('selected-owner')} type="button">
-        Commit owner
-      </button>
+  mock.module('../src/features/community/ui/community-ui-collection-owner-combobox', () => ({
+    CommunityUiCollectionOwnerCombobox: ({
+      draftValue,
+      id,
+      isOpen: _isOpen,
+      isPending: _isPending,
+      onDraftValueChange,
+      onOpenChange: _onOpenChange,
+      onValueCommit,
+    }: {
+      draftValue: string
+      id: string
+      isOpen: boolean
+      isPending: boolean
+      onDraftValueChange: (value: string) => void
+      onOpenChange: (open: boolean) => void
+      onValueCommit: (value: string) => void
+    }) => (
+      <div>
+        <input
+          aria-label="Owner input"
+          id={id}
+          onChange={(event) => onDraftValueChange((event.target as HTMLInputElement).value)}
+          value={draftValue}
+        />
+        <button onClick={() => onValueCommit('selected-owner')} type="button">
+          Commit owner
+        </button>
+      </div>
     ),
   }))
 

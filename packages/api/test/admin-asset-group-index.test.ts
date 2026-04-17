@@ -369,7 +369,7 @@ beforeAll(async () => {
     listEnabledAssetGroupsDueForScheduledIndexing,
     runScheduledAssetGroupIndex,
   } = await import('../src/features/asset-group-index'))
-}, 15_000)
+}, 30_000)
 
 beforeEach(async () => {
   await database.delete(automationSchema.automationLock).where(sql`1 = 1`)

@@ -4,11 +4,17 @@ import { getAppAuthStateQueryOptions } from '@/features/auth/data-access/get-app
 
 export const Route = createFileRoute('/profile')({
   beforeLoad: async ({ context }) => {
-    const { session } = await context.queryClient.ensureQueryData(getAppAuthStateQueryOptions())
+    const { isOnboardingComplete, session } = await context.queryClient.ensureQueryData(getAppAuthStateQueryOptions())
 
     if (!session) {
       throw redirect({
         to: '/login',
+      })
+    }
+
+    if (!isOnboardingComplete) {
+      throw redirect({
+        to: session.user.role === 'admin' ? '/admin' : '/onboard',
       })
     }
 

@@ -1,9 +1,6 @@
 import { afterAll, beforeAll, describe, expect, mock, test } from 'bun:test'
 
-import { canAccessProfileSettings, getProfileIndexRedirect } from '../src/features/profile/util/profile-route-access'
-import { Route as ProfileUsernameIndexRoute } from '../src/routes/profile/$username/index'
-
-let ProfileRoute: typeof import('../src/routes/profile/route').Route
+let CommunitiesRoute: typeof import('../src/routes/communities/route').Route
 
 interface TestAppAuthState {
   authenticatedHomePath: '/onboard' | '/profile'
@@ -49,98 +46,17 @@ beforeAll(async () => {
     getAppAuthStateQueryOptions: () => ({}),
   }))
 
-  ;({ Route: ProfileRoute } = await import('../src/routes/profile/route'))
+  ;({ Route: CommunitiesRoute } = await import('../src/routes/communities/route'))
 })
 
 afterAll(() => {
   mock.restore()
 })
 
-describe('profile route helpers', () => {
-  test('redirects /profile to the signed-in username route', () => {
-    expect(
-      getProfileIndexRedirect({
-        user: {
-          id: 'user-1',
-          name: 'Alice',
-          username: 'alice',
-        },
-      }),
-    ).toEqual({
-      params: {
-        username: 'alice',
-      },
-      to: '/profile/$username',
-    })
-  })
-
-  test('redirects /profile to onboard when the session has no username', () => {
-    expect(
-      getProfileIndexRedirect({
-        user: {
-          id: 'user-1',
-          name: 'Alice',
-          username: null,
-        },
-      }),
-    ).toEqual({
-      to: '/onboard',
-    })
-  })
-
-  test('allows only the owner to access username settings routes', () => {
-    expect(
-      canAccessProfileSettings({
-        session: {
-          user: {
-            id: 'user-1',
-            name: 'Alice',
-            username: 'alice',
-          },
-        },
-        username: 'alice',
-      }),
-    ).toBe(true)
-    expect(
-      canAccessProfileSettings({
-        session: {
-          user: {
-            id: 'user-2',
-            name: 'Bob',
-            username: 'bob',
-          },
-        },
-        username: 'alice',
-      }),
-    ).toBe(false)
-  })
-
-  test('redirects the username index route to the identities tab', async () => {
+describe('community routes', () => {
+  test('redirects /communities to login without a session', async () => {
     try {
-      await ProfileUsernameIndexRoute.options.beforeLoad?.({
-        params: {
-          username: 'alice',
-        },
-      } as never)
-    } catch (error) {
-      expect(error).toMatchObject({
-        options: {
-          params: {
-            username: 'alice',
-          },
-          to: '/profile/$username/identities',
-        },
-      })
-
-      return
-    }
-
-    throw new Error('Expected the route to redirect.')
-  })
-
-  test('redirects /profile to login without a session', async () => {
-    try {
-      await ProfileRoute.options.beforeLoad?.({
+      await CommunitiesRoute.options.beforeLoad?.({
         context: {
           queryClient: {
             ensureQueryData: async () => createAppAuthState({ session: null }),
@@ -160,7 +76,7 @@ describe('profile route helpers', () => {
     throw new Error('Expected the route to redirect.')
   })
 
-  test('allows onboarded users to access /profile children', async () => {
+  test('allows onboarded users to access /communities children', async () => {
     const appAuthState = createAppAuthState()
     const { session } = appAuthState
 
@@ -169,7 +85,7 @@ describe('profile route helpers', () => {
     }
 
     await expect(
-      ProfileRoute.options.beforeLoad?.({
+      CommunitiesRoute.options.beforeLoad?.({
         context: {
           queryClient: {
             ensureQueryData: async () => appAuthState,
@@ -179,9 +95,9 @@ describe('profile route helpers', () => {
     ).resolves.toEqual({ session })
   })
 
-  test('redirects unonboarded non-admin users from /profile to onboard', async () => {
+  test('redirects unonboarded non-admin users from /communities to onboard', async () => {
     try {
-      await ProfileRoute.options.beforeLoad?.({
+      await CommunitiesRoute.options.beforeLoad?.({
         context: {
           queryClient: {
             ensureQueryData: async () => createAppAuthState({ isOnboardingComplete: false }),
@@ -201,9 +117,9 @@ describe('profile route helpers', () => {
     throw new Error('Expected the route to redirect.')
   })
 
-  test('redirects unonboarded admins from /profile to admin', async () => {
+  test('redirects unonboarded admins from /communities to admin', async () => {
     try {
-      await ProfileRoute.options.beforeLoad?.({
+      await CommunitiesRoute.options.beforeLoad?.({
         context: {
           queryClient: {
             ensureQueryData: async () =>

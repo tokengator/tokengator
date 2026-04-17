@@ -1,6 +1,7 @@
-import { and, asc, eq, exists, inArray, or, sql, type SQL } from 'drizzle-orm'
+import { and, asc, eq, exists, inArray, isNotNull, or, sql, type SQL } from 'drizzle-orm'
 import { db } from '@tokengator/db'
 import { asset, assetTrait } from '@tokengator/db/schema/asset'
+import { solanaWallet, user } from '@tokengator/db/schema/auth'
 
 import { getSqliteChunkSize, splitIntoChunks } from '../../../lib/sqlite'
 
@@ -32,6 +33,18 @@ function normalizeCommunityCollectionSearchTerm(value?: string) {
   const trimmedValue = value?.trim()
 
   return trimmedValue ? trimmedValue : null
+}
+
+function createCommunityCollectionUsernameSearchPattern(value?: string) {
+  const trimmedValue = value?.trim()
+
+  if (!trimmedValue) {
+    return null
+  }
+
+  const escapedValue = trimmedValue.toLowerCase().replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_')
+
+  return `%${escapedValue}%`
 }
 
 function createEmptyCommunityCollectionFacetTotals(
@@ -88,6 +101,7 @@ function getCommunityCollectionAssetFilters(input: {
   facets?: Record<string, string[]>
   metadataQueryPattern: string | null
   ownerSearchTerm: string | null
+  ownerUsernameSearchPattern: string | null
   querySearchTerm: string | null
 }): SQL<unknown>[] {
   const filters: SQL<unknown>[] = [eq(asset.assetGroupId, input.collectionId)]
@@ -117,8 +131,29 @@ function getCommunityCollectionAssetFilters(input: {
     )
   }
 
-  if (input.ownerSearchTerm) {
-    filters.push(sql`instr(trim(${asset.owner}), ${input.ownerSearchTerm}) > 0`)
+  if (input.ownerSearchTerm || input.ownerUsernameSearchPattern) {
+    filters.push(
+      or(
+        input.ownerSearchTerm ? sql`instr(trim(${asset.owner}), ${input.ownerSearchTerm}) > 0` : undefined,
+        input.ownerUsernameSearchPattern
+          ? exists(
+              db
+                .select({
+                  id: solanaWallet.id,
+                })
+                .from(solanaWallet)
+                .innerJoin(user, eq(user.id, solanaWallet.userId))
+                .where(
+                  and(
+                    eq(solanaWallet.address, asset.owner),
+                    isNotNull(user.username),
+                    sql`lower(${user.username}) like ${input.ownerUsernameSearchPattern} escape '\\'`,
+                  ),
+                ),
+            )
+          : undefined,
+      )!,
+    )
   }
 
   if (input.metadataQueryPattern || input.querySearchTerm) {
@@ -141,6 +176,7 @@ async function getCommunityCollectionFacetTotals(input: {
   facets?: Record<string, string[]>
   metadataQueryPattern: string | null
   ownerSearchTerm: string | null
+  ownerUsernameSearchPattern: string | null
   querySearchTerm: string | null
 }): Promise<CommunityCollectionFacetTotals> {
   const nextFacetTotals = createEmptyCommunityCollectionFacetTotals(input.facetTotals)
@@ -163,6 +199,7 @@ async function getCommunityCollectionFacetTotals(input: {
       facets: input.facets,
       metadataQueryPattern: input.metadataQueryPattern,
       ownerSearchTerm: input.ownerSearchTerm,
+      ownerUsernameSearchPattern: input.ownerUsernameSearchPattern,
       querySearchTerm: input.querySearchTerm,
     })
     const [facetGroupCountRow] = await db
@@ -233,6 +270,7 @@ export async function communityListCollectionAssets(input: {
 
   const metadataQueryPattern = createCommunityCollectionMetadataSearchPattern(input.query)
   const ownerSearchTerm = normalizeCommunityCollectionSearchTerm(input.owner)
+  const ownerUsernameSearchPattern = createCommunityCollectionUsernameSearchPattern(input.owner)
   const querySearchTerm = normalizeCommunityCollectionSearchTerm(input.query)
   const visibleLabelExpression = sql<string>`coalesce(nullif(lower(${asset.metadataName}), ''), ${asset.address})`
   const filters = getCommunityCollectionAssetFilters({
@@ -240,6 +278,7 @@ export async function communityListCollectionAssets(input: {
     facets: input.facets,
     metadataQueryPattern,
     ownerSearchTerm,
+    ownerUsernameSearchPattern,
     querySearchTerm,
   })
 
@@ -291,6 +330,7 @@ export async function communityListCollectionAssets(input: {
     facetTotals: collection.facetTotals,
     metadataQueryPattern,
     ownerSearchTerm,
+    ownerUsernameSearchPattern,
     querySearchTerm,
   })
 

@@ -1,4 +1,5 @@
 import { useNavigate } from '@tanstack/react-router'
+import { useDeferredValue, useEffect, useState } from 'react'
 import type {
   CommunityCollectionEntity,
   CommunityGetBySlugResult,
@@ -10,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@toke
 
 import type { CommunityCollectionAssetSearch } from '../util/community-collection-asset-search'
 import { useCommunityCollectionAssetsQuery } from '../data-access/use-community-collection-assets-query'
+import { useCommunityCollectionOwnerCandidatesQuery } from '../data-access/use-community-collection-owner-candidates-query'
 import { CommunityUiCollectionAssetBrowserControls } from '../ui/community-ui-collection-asset-browser-controls'
 import { CommunityUiCollectionAssetGrid } from '../ui/community-ui-collection-asset-grid'
 import { CommunityUiCollectionCombobox } from '../ui/community-ui-collection-combobox'
@@ -92,9 +94,21 @@ export function CommunityFeatureCollectionAssets({
     },
   )
   const navigate = useNavigate()
+  const [isOwnerComboboxOpen, setIsOwnerComboboxOpen] = useState(false)
+  const [ownerDraftSearch, setOwnerDraftSearch] = useState(search.owner ?? '')
+  const deferredOwnerDraftSearch = useDeferredValue(ownerDraftSearch)
+  const normalizedOwnerDraftSearch = deferredOwnerDraftSearch.trim()
+  const ownerCandidates = useCommunityCollectionOwnerCandidatesQuery({
+    enabled: isOwnerComboboxOpen,
+    search: normalizedOwnerDraftSearch || undefined,
+  })
   const facetGroups = getCommunityCollectionFacetGroups(
     collectionAssets.data?.facetTotals ?? selectedCollection.facetTotals,
   )
+
+  useEffect(() => {
+    setOwnerDraftSearch(search.owner ?? '')
+  }, [search.owner])
 
   if (!collectionAssets.data && !collectionAssets.error && !collectionAssets.isPending) {
     return <CommunityCollectionAssetNotFoundCard />
@@ -119,6 +133,8 @@ export function CommunityFeatureCollectionAssets({
             initialFacets={search.facets ?? {}}
             initialOwner={search.owner ?? ''}
             initialQuery={search.query ?? ''}
+            isOwnerCandidatesPending={ownerCandidates.isPending}
+            isOwnerComboboxOpen={isOwnerComboboxOpen}
             onApply={(values) => {
               void navigate({
                 params: {
@@ -149,6 +165,23 @@ export function CommunityFeatureCollectionAssets({
                 to: '/communities/$slug/collections/$address',
               })
             }}
+            onOwnerComboboxOpenChange={setIsOwnerComboboxOpen}
+            onOwnerCommit={(owner) => {
+              void navigate({
+                params: {
+                  address: selectedCollection.address,
+                  slug,
+                },
+                search: {
+                  facets: search.facets,
+                  grid: search.grid,
+                  owner: owner.trim() || undefined,
+                  query: search.query,
+                },
+                to: '/communities/$slug/collections/$address',
+              })
+            }}
+            onOwnerDraftChange={setOwnerDraftSearch}
             onReset={() => {
               void navigate({
                 params: {
@@ -164,6 +197,7 @@ export function CommunityFeatureCollectionAssets({
                 to: '/communities/$slug/collections/$address',
               })
             }}
+            ownerCandidates={ownerCandidates.data ?? []}
           />
           {collectionAssets.error ? (
             <div className="text-destructive text-sm">{collectionAssets.error.message}</div>

@@ -23,6 +23,12 @@ beforeAll(async () => {
       isPending: false,
     }),
   }))
+  mock.module('../src/features/community/data-access/use-community-collection-owner-candidates-query', () => ({
+    useCommunityCollectionOwnerCandidatesQuery: () => ({
+      data: [],
+      isPending: false,
+    }),
+  }))
 
   ;({ CommunityCollectionAssetDialogContent } =
     await import('../src/features/community/feature/community-feature-collection-asset-dialog'))

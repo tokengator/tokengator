@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { XIcon } from 'lucide-react'
+import type { CommunityCollectionOwnerCandidateEntity } from '@tokengator/sdk'
 import { Badge } from '@tokengator/ui/components/badge'
 import { Button } from '@tokengator/ui/components/button'
 import { Input } from '@tokengator/ui/components/input'
@@ -12,6 +13,7 @@ import {
 } from '@tokengator/ui/components/ui-facet-filter'
 
 import type { CommunityCollectionAssetGrid } from '../util/community-collection-asset-search'
+import { CommunityUiCollectionOwnerCombobox } from './community-ui-collection-owner-combobox'
 
 interface CommunityCollectionAssetBrowserControlsProps {
   facetGroups: UiFacetFilterGroup[]
@@ -19,9 +21,15 @@ interface CommunityCollectionAssetBrowserControlsProps {
   initialFacets: UiFacetFilterSelection
   initialOwner: string
   initialQuery: string
+  isOwnerCandidatesPending: boolean
+  isOwnerComboboxOpen: boolean
   onApply: (values: { facets: UiFacetFilterSelection; owner: string; query: string }) => void
   onGridChange: (grid: CommunityCollectionAssetGrid) => void
+  onOwnerComboboxOpenChange: (open: boolean) => void
+  onOwnerCommit: (owner: string) => void
+  onOwnerDraftChange: (owner: string) => void
   onReset: () => void
+  ownerCandidates: CommunityCollectionOwnerCandidateEntity[]
 }
 
 const communityCollectionAssetGridOptions = [4, 8, 12] as const
@@ -89,30 +97,49 @@ function getSelectedCommunityCollectionFacets(args: {
 }
 
 export function CommunityUiCollectionAssetBrowserControls(props: CommunityCollectionAssetBrowserControlsProps) {
-  const { facetGroups, grid, initialFacets, initialOwner, initialQuery, onApply, onGridChange, onReset } = props
+  const {
+    facetGroups,
+    grid,
+    initialFacets,
+    initialOwner,
+    initialQuery,
+    isOwnerCandidatesPending,
+    isOwnerComboboxOpen,
+    onApply,
+    onGridChange,
+    onOwnerComboboxOpenChange,
+    onOwnerCommit,
+    onOwnerDraftChange,
+    onReset,
+    ownerCandidates,
+  } = props
   const normalizedInitialFacets = getNormalizedCommunityCollectionFacetSelection({
     facetGroups,
     selectedValues: initialFacets,
   })
   const initialFacetsKey = getCommunityCollectionFacetSelectionKey(normalizedInitialFacets)
-  const [values, setValues] = useState({
-    facets: normalizedInitialFacets,
-    owner: initialOwner,
-    query: initialQuery,
-  })
+  const [draftOwner, setDraftOwner] = useState(initialOwner)
+  const [draftQuery, setDraftQuery] = useState(initialQuery)
+  const [facetSelection, setFacetSelection] = useState(normalizedInitialFacets)
 
   useEffect(() => {
-    setValues({
-      facets: normalizedInitialFacets,
-      owner: initialOwner,
-      query: initialQuery,
-    })
-  }, [initialFacetsKey, initialOwner, initialQuery])
-  const selectedFacets = getSelectedCommunityCollectionFacets({
+    setFacetSelection(normalizedInitialFacets)
+  }, [initialFacetsKey])
+
+  useEffect(() => {
+    setDraftOwner(initialOwner)
+    onOwnerDraftChange(initialOwner)
+  }, [initialOwner, onOwnerDraftChange])
+
+  useEffect(() => {
+    setDraftQuery(initialQuery)
+  }, [initialQuery])
+
+  const selectedFacetBadges = getSelectedCommunityCollectionFacets({
     facetGroups,
-    selectedValues: values.facets,
+    selectedValues: facetSelection,
   })
-  const hasSelectedFacets = selectedFacets.length > 0
+  const hasSelectedFacetBadges = selectedFacetBadges.length > 0
 
   function handleFacetSelectionChange(facets: UiFacetFilterSelection) {
     const nextValues = {
@@ -120,11 +147,11 @@ export function CommunityUiCollectionAssetBrowserControls(props: CommunityCollec
         facetGroups,
         selectedValues: facets,
       }),
-      owner: values.owner,
-      query: values.query,
+      owner: draftOwner,
+      query: draftQuery,
     }
 
-    setValues(nextValues)
+    setFacetSelection(nextValues.facets)
     onApply(nextValues)
   }
 
@@ -133,7 +160,11 @@ export function CommunityUiCollectionAssetBrowserControls(props: CommunityCollec
       className="grid gap-4 border p-4"
       onSubmit={(event) => {
         event.preventDefault()
-        onApply(values)
+        onApply({
+          facets: facetSelection,
+          owner: draftOwner,
+          query: draftQuery,
+        })
       }}
     >
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(14rem,18rem)_auto]">
@@ -141,28 +172,26 @@ export function CommunityUiCollectionAssetBrowserControls(props: CommunityCollec
           <Label htmlFor="community-collection-query">Search</Label>
           <Input
             id="community-collection-query"
-            onChange={(event) =>
-              setValues((currentValues) => ({
-                ...currentValues,
-                query: event.target.value,
-              }))
-            }
+            onChange={(event) => setDraftQuery(event.target.value)}
             placeholder="Search by asset name or address"
-            value={values.query}
+            value={draftQuery}
           />
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="community-collection-owner">Owner</Label>
-          <Input
+          <CommunityUiCollectionOwnerCombobox
+            candidates={ownerCandidates}
+            committedValue={initialOwner}
+            draftValue={draftOwner}
             id="community-collection-owner"
-            onChange={(event) =>
-              setValues((currentValues) => ({
-                ...currentValues,
-                owner: event.target.value,
-              }))
-            }
-            placeholder="Search by owner address"
-            value={values.owner}
+            isOpen={isOwnerComboboxOpen}
+            isPending={isOwnerCandidatesPending}
+            onDraftValueChange={(owner) => {
+              setDraftOwner(owner)
+              onOwnerDraftChange(owner)
+            }}
+            onOpenChange={onOwnerComboboxOpenChange}
+            onValueCommit={onOwnerCommit}
           />
         </div>
         {facetGroups.length > 0 ? (
@@ -171,7 +200,7 @@ export function CommunityUiCollectionAssetBrowserControls(props: CommunityCollec
             <UiFacetFilter
               groups={facetGroups}
               label={
-                hasSelectedFacets ? (
+                hasSelectedFacetBadges ? (
                   <span className="flex items-center gap-2">
                     <span aria-hidden="true" className="size-2 rounded-full bg-sky-500" />
                     <span>Traits</span>
@@ -182,7 +211,7 @@ export function CommunityUiCollectionAssetBrowserControls(props: CommunityCollec
                 )
               }
               onSelectedValuesChange={handleFacetSelectionChange}
-              selectedValues={values.facets}
+              selectedValues={facetSelection}
               triggerClassName="w-full"
             />
           </div>
@@ -190,11 +219,10 @@ export function CommunityUiCollectionAssetBrowserControls(props: CommunityCollec
         <div className="flex items-end justify-end gap-2">
           <Button
             onClick={() => {
-              setValues({
-                facets: {},
-                owner: '',
-                query: '',
-              })
+              setDraftOwner('')
+              onOwnerDraftChange('')
+              setDraftQuery('')
+              setFacetSelection({})
               onReset()
             }}
             type="button"
@@ -205,19 +233,19 @@ export function CommunityUiCollectionAssetBrowserControls(props: CommunityCollec
           <Button type="submit">Apply</Button>
         </div>
       </div>
-      {selectedFacets.length > 0 ? (
+      {selectedFacetBadges.length > 0 ? (
         <div className="flex flex-wrap gap-2">
-          {selectedFacets.map((facet) => (
+          {selectedFacetBadges.map((facet) => (
             <Badge className="gap-1.5" key={`${facet.groupId}:${facet.value}`} variant="outline">
               <span>{`${facet.groupLabel}: ${facet.valueLabel}`}</span>
               <button
                 aria-label={`Remove ${facet.groupLabel}: ${facet.valueLabel} trait filter`}
                 className="rounded-full p-0.5 transition-colors"
                 onClick={() => {
-                  const nextGroupValues = (values.facets[facet.groupId] ?? []).filter((value) => value !== facet.value)
+                  const nextGroupValues = (facetSelection[facet.groupId] ?? []).filter((value) => value !== facet.value)
 
                   handleFacetSelectionChange({
-                    ...values.facets,
+                    ...facetSelection,
                     [facet.groupId]: nextGroupValues,
                   })
                 }}

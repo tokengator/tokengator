@@ -234,6 +234,17 @@ async function insertOrganization(input: { id: string; logo?: string | null; nam
   })
 }
 
+async function insertSolanaWallet(input: { address: string; id?: string; userId: string }) {
+  await database.insert(authSchema.solanaWallet).values({
+    address: input.address,
+    createdAt: new Date('2026-04-11T00:00:00.000Z'),
+    id: input.id ?? crypto.randomUUID(),
+    isPrimary: false,
+    name: null,
+    userId: input.userId,
+  })
+}
+
 async function insertTeam(input: { id: string; name: string; organizationId: string }) {
   await database.insert(authSchema.team).values({
     createdAt: new Date('2026-04-11T00:00:00.000Z'),
@@ -241,6 +252,26 @@ async function insertTeam(input: { id: string; name: string; organizationId: str
     name: input.name,
     organizationId: input.organizationId,
     updatedAt: new Date('2026-04-11T00:00:00.000Z'),
+  })
+}
+
+async function insertUser(input: { email?: string; id: string; name: string; username?: string | null }) {
+  await database.insert(authSchema.user).values({
+    banExpires: null,
+    banned: false,
+    banReason: null,
+    createdAt: new Date('2026-04-11T00:00:00.000Z'),
+    developerMode: false,
+    displayUsername: null,
+    email: input.email ?? `${input.id}@example.com`,
+    emailVerified: true,
+    id: input.id,
+    image: null,
+    name: input.name,
+    private: false,
+    role: 'user',
+    updatedAt: new Date('2026-04-11T00:00:00.000Z'),
+    username: input.username ?? null,
   })
 }
 
@@ -314,10 +345,12 @@ beforeEach(async () => {
   await database.delete(assetSchema.asset).where(sql`1 = 1`)
   await database.delete(communityRoleSchema.communityRoleCondition).where(sql`1 = 1`)
   await database.delete(communityRoleSchema.communityRole).where(sql`1 = 1`)
+  await database.delete(authSchema.solanaWallet).where(sql`1 = 1`)
   await database.delete(authSchema.teamMember).where(sql`1 = 1`)
   await database.delete(authSchema.team).where(sql`1 = 1`)
   await database.delete(assetSchema.assetGroup).where(sql`1 = 1`)
   await database.delete(authSchema.organization).where(sql`1 = 1`)
+  await database.delete(authSchema.user).where(sql`1 = 1`)
 })
 
 describe('community routes', () => {
@@ -629,7 +662,7 @@ describe('community routes', () => {
     )
   })
 
-  test('listCollectionAssets filters assets by owner and text query while preserving alphabetical order', async () => {
+  test('listCollectionAssets filters assets by owner username, owner address, and text query while preserving alphabetical order', async () => {
     const collectionFacetTotals = {
       background: {
         label: 'Background',
@@ -728,6 +761,16 @@ describe('community routes', () => {
       label: 'Beta Collection',
       type: 'collection',
     })
+    await insertUser({
+      id: 'user-alpha-owner',
+      name: 'Alpha Owner',
+      username: 'alpha-owner',
+    })
+    await insertUser({
+      id: 'user-beta-owner',
+      name: 'Beta Owner',
+      username: 'beta-owner',
+    })
     await insertCommunityRole({
       enabled: true,
       id: 'community-role-alpha',
@@ -741,6 +784,18 @@ describe('community routes', () => {
       assetGroupId: 'asset-group-alpha',
       communityRoleId: 'community-role-alpha',
       minimumAmount: '1',
+    })
+    await insertSolanaWallet({
+      address: 'owner-alpha',
+      userId: 'user-alpha-owner',
+    })
+    await insertSolanaWallet({
+      address: 'owner-beta',
+      userId: 'user-beta-owner',
+    })
+    await insertSolanaWallet({
+      address: 'owner-zed',
+      userId: 'user-alpha-owner',
     })
     await insertAsset({
       address: 'mint-zed',
@@ -902,6 +957,67 @@ describe('community routes', () => {
     expect(
       await callable({
         address: 'collection-alpha',
+        owner: 'alpha-owner',
+        slug: 'alpha-dao',
+      }),
+    ).toEqual({
+      assets: [
+        {
+          address: 'fallback-asset',
+          id: 'asset-2',
+          metadataImageUrl: null,
+          metadataName: null,
+          metadataSymbol: null,
+          owner: 'owner-alpha',
+          traits: [
+            {
+              groupId: 'background',
+              groupLabel: 'Background',
+              value: 'desert',
+              valueLabel: 'Desert',
+            },
+          ],
+        },
+        {
+          address: 'mint-zed',
+          id: 'asset-3',
+          metadataImageUrl: 'https://example.com/mint-zed.png',
+          metadataName: 'Zulu',
+          metadataSymbol: 'ZULU',
+          owner: 'owner-zed',
+          traits: [
+            {
+              groupId: 'background',
+              groupLabel: 'Background',
+              value: 'forest',
+              valueLabel: 'Forest',
+            },
+            {
+              groupId: 'hat',
+              groupLabel: 'Hat',
+              value: 'crown',
+              valueLabel: 'Crown',
+            },
+          ],
+        },
+      ],
+      facetTotals: getExpectedFacetTotals({
+        background: {
+          desert: 1,
+          forest: 1,
+          total: 2,
+        },
+        hat: {
+          cap: 0,
+          crown: 1,
+          total: 1,
+        },
+      }),
+    })
+
+    expect(
+      await callable({
+        address: 'collection-alpha',
         owner: 'beta',
         slug: 'alpha-dao',
       }),
@@ -947,7 +1063,7 @@ describe('community routes', () => {
     expect(
       await callable({
         address: 'collection-alpha',
-        owner: 'OWNER',
+        owner: 'missing-owner',
         slug: 'alpha-dao',
       }),
     ).toEqual({
@@ -1192,6 +1308,104 @@ describe('community routes', () => {
         },
       }),
     })
+  })
+
+  test('listCollectionOwnerCandidates returns username and wallet suggestions in alphabetical order', async () => {
+    await insertUser({
+      id: 'user-alpha-owner',
+      name: 'Alpha Owner',
+      username: 'alpha-owner',
+    })
+    await insertUser({
+      id: 'user-anon',
+      name: 'Anon Owner',
+      username: null,
+    })
+    await insertUser({
+      id: 'user-beta-owner',
+      name: 'Beta Owner',
+      username: 'beta-owner',
+    })
+    await insertSolanaWallet({
+      address: 'owner-alpha',
+      id: 'wallet-alpha',
+      userId: 'user-alpha-owner',
+    })
+    await insertSolanaWallet({
+      address: 'owner-anon',
+      id: 'wallet-anon',
+      userId: 'user-anon',
+    })
+    await insertSolanaWallet({
+      address: 'owner-beta',
+      id: 'wallet-beta',
+      userId: 'user-beta-owner',
+    })
+    await insertSolanaWallet({
+      address: 'owner-zed',
+      id: 'wallet-zed',
+      userId: 'user-alpha-owner',
+    })
+
+    const result = await communityRouter.listCollectionOwnerCandidates.callable(
+      createCallContext({
+        userId: 'viewer-user-id',
+        username: 'viewer',
+      }),
+    )({
+      search: 'owner',
+    })
+
+    expect(result).toEqual([
+      {
+        address: null,
+        id: 'user-alpha-owner',
+        kind: 'user',
+        name: 'Alpha Owner',
+        username: 'alpha-owner',
+        value: 'alpha-owner',
+      },
+      {
+        address: null,
+        id: 'user-beta-owner',
+        kind: 'user',
+        name: 'Beta Owner',
+        username: 'beta-owner',
+        value: 'beta-owner',
+      },
+      {
+        address: 'owner-alpha',
+        id: 'wallet-alpha',
+        kind: 'wallet',
+        name: 'Alpha Owner',
+        username: 'alpha-owner',
+        value: 'owner-alpha',
+      },
+      {
+        address: 'owner-anon',
+        id: 'wallet-anon',
+        kind: 'wallet',
+        name: 'Anon Owner',
+        username: null,
+        value: 'owner-anon',
+      },
+      {
+        address: 'owner-beta',
+        id: 'wallet-beta',
+        kind: 'wallet',
+        name: 'Beta Owner',
+        username: 'beta-owner',
+        value: 'owner-beta',
+      },
+      {
+        address: 'owner-zed',
+        id: 'wallet-zed',
+        kind: 'wallet',
+        name: 'Alpha Owner',
+        username: 'alpha-owner',
+        value: 'owner-zed',
+      },
+    ])
   })
 
   test('listCollectionAssets returns not found for an unknown collection address', async () => {

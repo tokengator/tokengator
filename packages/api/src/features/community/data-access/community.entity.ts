@@ -87,6 +87,17 @@ export function toCommunityCollectionAssetTrait(input: CommunityCollectionAssetT
   return input
 }
 
+export function toCommunityCollectionOwnerCandidateEntity(input: {
+  address: string | null
+  id: string
+  kind: 'user' | 'wallet'
+  name: string
+  username: string | null
+  value: string
+}) {
+  return input
+}
+
 export function toCommunityCollectionEntity(input: {
   address: string
   facetTotals: CommunityCollectionFacetTotals
@@ -122,6 +133,7 @@ export function toCommunityListCollectionAssetsResult(input: {
 export type CommunityCollectionAssetEntity = ReturnType<typeof toCommunityCollectionAssetEntity>
 export type CommunityCollectionAssetDetailEntity = ReturnType<typeof toCommunityCollectionAssetDetailEntity>
 export type CommunityCollectionEntity = ReturnType<typeof toCommunityCollectionEntity>
+export type CommunityCollectionOwnerCandidateEntity = ReturnType<typeof toCommunityCollectionOwnerCandidateEntity>
 export type CommunityDetailEntity = ReturnType<typeof toCommunityDetailEntity>
 export type CommunityEntity = ReturnType<typeof toCommunityEntity>
 export type CommunityGetBySlugResult = CommunityDetailEntity

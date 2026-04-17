@@ -5,6 +5,7 @@ export type {
   CommunityCollectionEntity,
   CommunityCollectionFacetOptionTotals,
   CommunityCollectionFacetTotals,
+  CommunityCollectionOwnerCandidateEntity,
   CommunityDetailEntity,
   CommunityEntity,
   CommunityGetBySlugResult,

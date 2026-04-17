@@ -1,8 +1,64 @@
 import { cleanup, fireEvent, render } from '@testing-library/react'
-import { afterEach, describe, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test'
 // @ts-expect-error jsdom is installed for tests but does not expose declarations in this workspace.
 import { JSDOM } from 'jsdom'
 import { renderToStaticMarkup } from 'react-dom/server'
+
+mock.module('../src/features/community/ui/community-ui-collection-owner-combobox', () => ({
+  CommunityUiCollectionOwnerCombobox: ({
+    draftValue,
+    id,
+    isOpen: _isOpen,
+    isPending: _isPending,
+    onDraftValueChange,
+    onOpenChange: _onOpenChange,
+    onValueCommit,
+  }: {
+    draftValue: string
+    id: string
+    isOpen: boolean
+    isPending: boolean
+    onDraftValueChange: (value: string) => void
+    onOpenChange: (open: boolean) => void
+    onValueCommit: (value: string) => void
+  }) => (
+    <div>
+      <input
+        aria-label="Owner input"
+        id={id}
+        onChange={(event) => onDraftValueChange((event.target as HTMLInputElement).value)}
+        value={draftValue}
+      />
+      <button onClick={() => onDraftValueChange('draft-owner')} type="button">
+        Set draft owner
+      </button>
+      <button onClick={() => onValueCommit('selected-owner')} type="button">
+        Commit owner
+      </button>
+    </div>
+  ),
+}))
+mock.module('@tokengator/ui/components/input', () => ({
+  Input: (props: { id?: string; onChange?: (event: { target: { value: string } }) => void }) => (
+    <div>
+      <input {...props} />
+      {props.id === 'community-collection-query' ? (
+        <button
+          onClick={() => {
+            props.onChange?.({
+              target: {
+                value: 'perk',
+              },
+            })
+          }}
+          type="button"
+        >
+          Set query
+        </button>
+      ) : null}
+    </div>
+  ),
+}))
 
 const domGlobalKeys = [
   'Element',
@@ -95,6 +151,10 @@ afterEach(() => {
   restoreDom()
 })
 
+afterAll(() => {
+  mock.restore()
+})
+
 describe('CommunityUiCollectionAssetBrowserControls', () => {
   test('renders the search, owner, trait, and grid controls', async () => {
     const { CommunityUiCollectionAssetBrowserControls } =
@@ -119,9 +179,15 @@ describe('CommunityUiCollectionAssetBrowserControls', () => {
         initialFacets={{}}
         initialOwner=""
         initialQuery=""
+        isOwnerCandidatesPending={false}
+        isOwnerComboboxOpen={false}
         onApply={() => {}}
         onGridChange={() => {}}
+        onOwnerComboboxOpenChange={() => {}}
+        onOwnerCommit={() => {}}
+        onOwnerDraftChange={() => {}}
         onReset={() => {}}
+        ownerCandidates={[]}
       />,
     )
 
@@ -162,9 +228,15 @@ describe('CommunityUiCollectionAssetBrowserControls', () => {
         }}
         initialOwner=""
         initialQuery=""
+        isOwnerCandidatesPending={false}
+        isOwnerComboboxOpen={false}
         onApply={() => {}}
         onGridChange={() => {}}
+        onOwnerComboboxOpenChange={() => {}}
+        onOwnerCommit={() => {}}
+        onOwnerDraftChange={() => {}}
         onReset={() => {}}
+        ownerCandidates={[]}
       />,
     )
 
@@ -207,9 +279,15 @@ describe('CommunityUiCollectionAssetBrowserControls', () => {
         }}
         initialOwner="owner-1"
         initialQuery="perk"
+        isOwnerCandidatesPending={false}
+        isOwnerComboboxOpen={false}
         onApply={onApply}
         onGridChange={() => {}}
+        onOwnerComboboxOpenChange={() => {}}
+        onOwnerCommit={() => {}}
+        onOwnerDraftChange={() => {}}
         onReset={() => {}}
+        ownerCandidates={[]}
       />,
     )
 
@@ -291,5 +369,124 @@ describe('CommunityUiCollectionAssetBrowserControls', () => {
 
     expect(view.getByRole('button', { name: 'Background' }).getAttribute('aria-expanded')).toBe('false')
     expect(view.container.querySelector('input[type="checkbox"]')).toBeNull()
+  })
+
+  test('keeps typed owner local until apply and resyncs it from route owner changes', async () => {
+    ensureDom()
+
+    const onApply = mock(() => {})
+    const onOwnerDraftChange = mock(() => {})
+    const onOwnerCommit = mock(() => {})
+    const { CommunityUiCollectionAssetBrowserControls } =
+      await import('../src/features/community/ui/community-ui-collection-asset-browser-controls')
+
+    const view = render(
+      <CommunityUiCollectionAssetBrowserControls
+        facetGroups={[]}
+        grid={8}
+        initialFacets={{}}
+        initialOwner="owner-alpha"
+        initialQuery=""
+        isOwnerCandidatesPending={false}
+        isOwnerComboboxOpen={false}
+        onApply={onApply}
+        onGridChange={() => {}}
+        onOwnerComboboxOpenChange={() => {}}
+        onOwnerCommit={onOwnerCommit}
+        onOwnerDraftChange={onOwnerDraftChange}
+        onReset={() => {}}
+        ownerCandidates={[]}
+      />,
+    )
+
+    fireEvent.click(view.getByRole('button', { name: 'Set draft owner' }))
+
+    expect(onOwnerCommit).toHaveBeenCalledTimes(0)
+    expect(onOwnerDraftChange).toHaveBeenCalledWith('draft-owner')
+
+    fireEvent.click(view.getByRole('button', { name: 'Apply' }))
+
+    expect(onApply).toHaveBeenCalledWith({
+      facets: {},
+      owner: 'draft-owner',
+      query: '',
+    })
+
+    view.rerender(
+      <CommunityUiCollectionAssetBrowserControls
+        facetGroups={[]}
+        grid={8}
+        initialFacets={{}}
+        initialOwner="selected-owner"
+        initialQuery=""
+        isOwnerCandidatesPending={false}
+        isOwnerComboboxOpen={false}
+        onApply={onApply}
+        onGridChange={() => {}}
+        onOwnerComboboxOpenChange={() => {}}
+        onOwnerCommit={onOwnerCommit}
+        onOwnerDraftChange={onOwnerDraftChange}
+        onReset={() => {}}
+        ownerCandidates={[]}
+      />,
+    )
+
+    expect((view.getByLabelText('Owner input') as HTMLInputElement).value).toBe('selected-owner')
+    expect(onOwnerDraftChange).toHaveBeenCalledWith('selected-owner')
+  })
+
+  test('preserves a typed query draft when the committed owner route value changes', async () => {
+    ensureDom()
+
+    const onOwnerDraftChange = mock(() => {})
+    const onOwnerCommit = mock(() => {})
+    const { CommunityUiCollectionAssetBrowserControls } =
+      await import('../src/features/community/ui/community-ui-collection-asset-browser-controls')
+
+    const view = render(
+      <CommunityUiCollectionAssetBrowserControls
+        facetGroups={[]}
+        grid={8}
+        initialFacets={{}}
+        initialOwner=""
+        initialQuery=""
+        isOwnerCandidatesPending={false}
+        isOwnerComboboxOpen={false}
+        onApply={() => {}}
+        onGridChange={() => {}}
+        onOwnerComboboxOpenChange={() => {}}
+        onOwnerCommit={onOwnerCommit}
+        onOwnerDraftChange={onOwnerDraftChange}
+        onReset={() => {}}
+        ownerCandidates={[]}
+      />,
+    )
+
+    fireEvent.click(view.getByRole('button', { name: 'Set query' }))
+    fireEvent.click(view.getByRole('button', { name: 'Commit owner' }))
+
+    expect(onOwnerCommit).toHaveBeenCalledWith('selected-owner')
+
+    view.rerender(
+      <CommunityUiCollectionAssetBrowserControls
+        facetGroups={[]}
+        grid={8}
+        initialFacets={{}}
+        initialOwner="selected-owner"
+        initialQuery=""
+        isOwnerCandidatesPending={false}
+        isOwnerComboboxOpen={false}
+        onApply={() => {}}
+        onGridChange={() => {}}
+        onOwnerComboboxOpenChange={() => {}}
+        onOwnerCommit={onOwnerCommit}
+        onOwnerDraftChange={onOwnerDraftChange}
+        onReset={() => {}}
+        ownerCandidates={[]}
+      />,
+    )
+
+    expect((view.getByLabelText('Owner input') as HTMLInputElement).value).toBe('selected-owner')
+    expect((view.getByLabelText('Search') as HTMLInputElement).value).toBe('perk')
   })
 })

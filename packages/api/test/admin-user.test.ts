@@ -49,7 +49,7 @@ function createCallContext(input: { role: 'admin' | 'user'; sessionToken: string
       session: {
         session: {
           createdAt: new Date('2026-04-11T00:00:00.000Z'),
-          expiresAt: new Date('2026-04-18T00:00:00.000Z'),
+          expiresAt: new Date('2036-04-18T00:00:00.000Z'),
           id: `${input.userId}-session`,
           token: input.sessionToken,
           updatedAt: new Date('2026-04-11T00:00:00.000Z'),
@@ -244,7 +244,7 @@ async function insertSession(input: { id: string; token: string; userId: string 
     activeOrganizationId: null,
     activeTeamId: null,
     createdAt: new Date('2026-04-11T00:00:00.000Z'),
-    expiresAt: new Date('2026-04-18T00:00:00.000Z'),
+    expiresAt: new Date('2036-04-18T00:00:00.000Z'),
     id: input.id,
     impersonatedBy: null,
     ipAddress: null,

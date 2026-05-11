@@ -42,7 +42,7 @@
   },
   "devDependencies": {
     "@tanstack/react-query-devtools": "^5.91.1",
-    "@tanstack/react-router-devtools": "^1.141.1",
+    "@tanstack/react-router-devtools": "^1.166.13",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^16.2.0",
     "@tokengator/config": "workspace:*",

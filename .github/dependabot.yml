@@ -1,0 +1,43 @@
+version: 2
+
+updates:
+  - package-ecosystem: bun
+    commit-message:
+      include: scope
+      prefix: chore
+    open-pull-requests-limit: 100
+    cooldown:
+      default-days: 5
+    directory: /
+    groups:
+      solana:
+        patterns:
+          - '@solana/*'
+          - '@solana-program/*'
+      tanstack-query:
+        patterns:
+          - '@tanstack/query-*'
+          - '@tanstack/react-query*'
+      turbo:
+        patterns:
+          - '@turbo/*'
+          - 'turbo'
+    schedule:
+      day: sunday
+      interval: weekly
+      time: '00:00'
+      timezone: UTC
+
+  - package-ecosystem: github-actions
+    commit-message:
+      include: scope
+      prefix: chore
+    open-pull-requests-limit: 100
+    cooldown:
+      default-days: 5
+    directory: /
+    schedule:
+      day: sunday
+      interval: weekly
+      time: '00:00'
+      timezone: UTC

@@ -1,7 +1,7 @@
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@tokengator/ui/components/item'
 
-import type { ReactNode } from 'react'
 import { LockIcon } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { ProfileUiAvatar } from './profile-ui-avatar'
 
 type ProfileUiItemUser = {

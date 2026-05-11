@@ -1,13 +1,13 @@
-import type { ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
+import type { ReactNode } from 'react'
 import type { CommunityGetBySlugResult } from '@tokengator/sdk'
 
 import { Card, CardHeader } from '@tokengator/ui/components/card'
 import { Tabs, TabsList, TabsTrigger } from '@tokengator/ui/components/tabs'
 
-import type { CommunityCollectionAssetSearch } from '../util/community-collection-asset-search'
 import { CommunityUiCollectionCombobox } from '../ui/community-ui-collection-combobox'
 import { getCommunityCollectionAssetMarketplace } from '../util/community-asset-marketplace'
+import type { CommunityCollectionAssetSearch } from '../util/community-collection-asset-search'
 
 export type CommunityCollectionTab = 'assets' | 'insights' | 'leaderboard' | 'marketplace'
 type CommunityCollection = CommunityGetBySlugResult['collections'][number]

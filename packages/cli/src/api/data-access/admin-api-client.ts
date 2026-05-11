@@ -1,3 +1,4 @@
+import { requireStoredAuthCredentials } from '../../auth/data-access/auth-token-store'
 import type { ProfileOptions } from '../../config/data-access/config-store'
 import type {
   AdminAssetGroupCreateData,
@@ -19,7 +20,6 @@ import type {
   AdminUserUpdateData,
   CoreStatusData,
 } from '../generated'
-import { requireStoredAuthCredentials } from '../../auth/data-access/auth-token-store'
 import {
   adminAssetGroupCreate,
   adminAssetGroupDelete,

@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, mock, test } from 'bun:test'
-import { sql } from 'drizzle-orm'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { sql } from 'drizzle-orm'
 
 type AuthSchema = typeof import('@tokengator/db/schema/auth')
 type CommunityRoleSchema = typeof import('@tokengator/db/schema/community-role')

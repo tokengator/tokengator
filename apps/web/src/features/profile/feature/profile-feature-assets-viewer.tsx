@@ -1,6 +1,6 @@
-import type { ProfileListCommunitiesByUsernameResult } from '@tokengator/sdk'
 import { useProfileCommunitiesByUsernameQuery } from '@/features/profile/data-access/use-profile-communities-by-username-query.tsx'
 import { ProfileUiCommunitiesCard } from '@/features/profile/ui/profile-ui-communities-card.tsx'
+import type { ProfileListCommunitiesByUsernameResult } from '@tokengator/sdk'
 
 export function ProfileFeatureAssetsViewer({
   initialCommunities,

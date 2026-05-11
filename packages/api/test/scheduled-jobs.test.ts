@@ -1,5 +1,5 @@
-import { configureSync, resetSync, type LogRecord } from '@logtape/logtape'
 import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
+import { configureSync, resetSync, type LogRecord } from '@logtape/logtape'
 import type { ResolverKind as AssetGroupResolverKind } from '@tokengator/indexer'
 
 type RunScheduledCommunityRoleDiscordSyncResult = Awaited<

@@ -1,11 +1,11 @@
-import { createKeyPairSignerFromBytes, getBase58Decoder, signBytes } from '@solana/kit'
-import { createSIWSMessage, siwsClient } from 'better-auth-solana/client'
-import { createAuthClient } from 'better-auth/client'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { createKeyPairSignerFromBytes, getBase58Decoder, signBytes } from '@solana/kit'
+import { createSIWSMessage, siwsClient } from 'better-auth-solana/client'
+import { createAuthClient } from 'better-auth/client'
 
 import { createOrpcClient, type OrpcClientFetch } from '../src/index'
 

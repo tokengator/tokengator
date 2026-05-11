@@ -1,9 +1,9 @@
-import { createClient } from '@libsql/client'
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { mkdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { createClient } from '@libsql/client'
 
 const DB_PACKAGE_DIR = resolve(import.meta.dir, '..')
 const MIGRATION_TIMEOUT_MS = 30_000

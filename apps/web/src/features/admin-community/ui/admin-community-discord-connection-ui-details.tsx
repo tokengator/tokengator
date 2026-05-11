@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react'
 import { Loader2 } from 'lucide-react'
+import type { ReactNode } from 'react'
 import type { AdminOrganizationDetailEntity } from '@tokengator/sdk'
 import { Button } from '@tokengator/ui/components/button'
 import { Label } from '@tokengator/ui/components/label'

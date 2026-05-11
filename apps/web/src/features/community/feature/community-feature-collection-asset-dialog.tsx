@@ -14,13 +14,13 @@ import { JsonViewer, type JsonValue } from '@tokengator/ui/components/json-viewe
 
 import { ellipsify } from '@wallet-ui/react'
 import { UiTextCopyIcon } from '@tokengator/ui/components/ui-text-copy-icon.tsx'
-import type { CommunityCollectionAssetSearch } from '../util/community-collection-asset-search'
 import { useCommunityCollectionAssetQuery } from '../data-access/use-community-collection-asset-query'
 import {
   getCommunityCollectionAssetNavigation,
   getCommunityCollectionAssetSiblingAddresses,
   getCommunityCollectionNavigation,
 } from '../util/community-collection-asset-navigation'
+import type { CommunityCollectionAssetSearch } from '../util/community-collection-asset-search'
 
 function getCommunityCollectionAssetTitle(asset: CommunityCollectionAssetDetailEntity) {
   return asset.metadataName?.trim() || asset.address

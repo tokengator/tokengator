@@ -3,7 +3,6 @@ import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from '@tanst
 import { lazy, Suspense } from 'react'
 import { Toaster } from '@tokengator/ui/components/sonner'
 
-import type { orpc } from '@/lib/orpc'
 import {
   getAppAuthStateQueryOptions,
   populateAppAuthStateRelatedQueries,
@@ -12,6 +11,7 @@ import { ShellFeatureFrame } from '@/features/shell/feature/shell-feature-frame'
 import { AppProviders } from '@/lib/app-providers'
 import { ensureAppOrigin } from '@/lib/ensure-app-origin'
 import { getAppConfig } from '@/lib/get-app-config'
+import type { orpc } from '@/lib/orpc'
 
 import appCss from '../index.css?url'
 

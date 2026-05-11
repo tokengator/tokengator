@@ -2,8 +2,8 @@ import { eq } from 'drizzle-orm'
 import { db } from '@tokengator/db'
 import { solanaWallet } from '@tokengator/db/schema/auth'
 
-import type { ProfileSolanaWalletSetPrimaryInput } from './profile-solana-wallet-set-primary-input'
 import { profileSolanaWalletRecordGet } from './profile-solana-wallet-record-get'
+import type { ProfileSolanaWalletSetPrimaryInput } from './profile-solana-wallet-set-primary-input'
 import { profileUserIdentitiesReconcileBestEffort } from './profile-user-identities-reconcile-best-effort'
 import { toProfileSolanaWalletEntity } from './profile.entity'
 

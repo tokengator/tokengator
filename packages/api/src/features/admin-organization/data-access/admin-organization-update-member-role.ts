@@ -5,8 +5,8 @@ import { communityManagedMember } from '@tokengator/db/schema/community-role'
 
 import { adminOrganizationHasOwnerRole } from '../util/admin-organization-owner-role'
 
-import type { AdminOrganizationMemberRole } from './admin-organization-member-role'
 import { adminOrganizationMemberRecordGet } from './admin-organization-member-record-get'
+import type { AdminOrganizationMemberRole } from './admin-organization-member-role'
 import { adminOrganizationOwnerCount } from './admin-organization-owner-count'
 
 export async function adminOrganizationUpdateMemberRole(input: {

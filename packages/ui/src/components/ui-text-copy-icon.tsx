@@ -1,5 +1,5 @@
-import type { ComponentProps } from 'react'
 import { Copy, CopyCheck } from 'lucide-react'
+import type { ComponentProps } from 'react'
 import { type HandleCopyProps, useHandleCopyText } from '@tokengator/ui/hooks/use-handle-copy-text'
 import { cn } from '@tokengator/ui/lib/utils'
 

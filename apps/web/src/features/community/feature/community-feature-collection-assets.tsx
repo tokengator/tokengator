@@ -2,15 +2,15 @@ import { useNavigate } from '@tanstack/react-router'
 import { useDeferredValue, useEffect, useState } from 'react'
 import type { CommunityCollectionEntity, CommunityListCollectionAssetsResult } from '@tokengator/sdk'
 
-import type { UiFacetFilterGroup } from '@tokengator/ui/components/ui-facet-filter'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
+import type { UiFacetFilterGroup } from '@tokengator/ui/components/ui-facet-filter'
 
-import type { CommunityCollectionAssetSearch } from '../util/community-collection-asset-search'
 import { useCommunityCollectionAssetsQuery } from '../data-access/use-community-collection-assets-query'
 import { useCommunityCollectionOwnerCandidatesQuery } from '../data-access/use-community-collection-owner-candidates-query'
 import { CommunityUiCollectionAssetBrowserControls } from '../ui/community-ui-collection-asset-browser-controls'
 import { CommunityUiCollectionAssetGrid } from '../ui/community-ui-collection-asset-grid'
 import { getCommunityCollectionAssetNavigation } from '../util/community-collection-asset-navigation'
+import type { CommunityCollectionAssetSearch } from '../util/community-collection-asset-search'
 
 function CommunityCollectionAssetNotFoundCard() {
   return (

@@ -1,5 +1,5 @@
-import type { ComponentProps } from 'react'
 import { afterAll, beforeAll, describe, expect, mock, test } from 'bun:test'
+import type { ComponentProps } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 let CommunityUiAvatar: typeof import('../src/features/community/ui/community-ui-avatar').CommunityUiAvatar

@@ -1,6 +1,6 @@
+import { afterAll, afterEach, beforeAll, describe, expect, mock, test } from 'bun:test'
 import * as TanStackReactRouter from '@tanstack/react-router'
 import { cleanup, fireEvent, render } from '@testing-library/react'
-import { afterAll, afterEach, beforeAll, describe, expect, mock, test } from 'bun:test'
 // @ts-expect-error jsdom is installed for tests but does not expose declarations in this workspace.
 import { JSDOM } from 'jsdom'
 

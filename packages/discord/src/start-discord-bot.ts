@@ -1,9 +1,9 @@
-import { Client, Events, GatewayIntentBits } from 'discord.js'
 import { once } from 'node:events'
+import { Client, Events, GatewayIntentBits } from 'discord.js'
 import { formatLogError, getAppLogger } from '@tokengator/logger'
 
-import type { DiscordContext } from './discord-context'
 import { discordChatInputCommandMap } from './commands'
+import type { DiscordContext } from './discord-context'
 import { getDiscordBotToken } from './discord-env'
 
 const logger = getAppLogger('discord', 'bot')

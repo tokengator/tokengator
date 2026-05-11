@@ -5,11 +5,11 @@ import { communityRole } from '@tokengator/db/schema/community-role'
 
 import { upsertCommunityRoleConditions } from '../../../features/community-role-sync'
 
-import type { AdminCommunityRoleUpdateInput } from './admin-community-role-update-input'
 import { adminCommunityRoleConditionsValidate } from './admin-community-role-conditions-validate'
 import { adminCommunityRoleEntityGet } from './admin-community-role-entity-get'
 import { adminCommunityRoleRecordGet } from './admin-community-role-record-get'
 import { adminCommunityRoleSlugAvailability } from './admin-community-role-slug-availability'
+import type { AdminCommunityRoleUpdateInput } from './admin-community-role-update-input'
 
 export async function adminCommunityRoleUpdate(input: AdminCommunityRoleUpdateInput) {
   const existingCommunityRole = await adminCommunityRoleRecordGet(input.communityRoleId)

@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
+import type { ReactNode } from 'react'
 import { Tabs, TabsList, TabsTrigger } from '@tokengator/ui/components/tabs'
 
 const devTabs = [

@@ -1,5 +1,5 @@
-import type { ReactElement } from 'react'
 import { describe, expect, test } from 'bun:test'
+import type { ReactElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 import { AdminUserAssetsUiTable } from '../src/features/admin-user/ui/admin-user-assets-ui-table'

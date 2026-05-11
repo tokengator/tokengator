@@ -1,5 +1,5 @@
-import type { ReactNode, SubmitEvent } from 'react'
 import { ellipsify } from '@wallet-ui/react'
+import type { ReactNode, SubmitEvent } from 'react'
 import { useEffect, useState } from 'react'
 import { Button } from '@tokengator/ui/components/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'

@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 import { Loader2 } from 'lucide-react'
+import type { ReactNode } from 'react'
 import type { AdminOrganizationDetailEntity } from '@tokengator/sdk'
 
 import { CommunityUiItem } from '@/features/community/ui/community-ui-item'

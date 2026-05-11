@@ -1,5 +1,4 @@
 import { and, asc, eq, inArray, or } from 'drizzle-orm'
-import type { Database } from '@tokengator/db'
 import { reconcileLocalUserState } from '@tokengator/auth'
 import {
   MAX_USERNAME_LENGTH,
@@ -7,6 +6,7 @@ import {
   isValidUsername,
   normalizeUsername,
 } from '@tokengator/auth/lib/username'
+import type { Database } from '@tokengator/db'
 import { db } from '@tokengator/db'
 import { account, identity, solanaWallet, user } from '@tokengator/db/schema/auth'
 import { env } from '@tokengator/env/api'

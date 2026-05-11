@@ -4,8 +4,8 @@ import { solanaWallet } from '@tokengator/db/schema/auth'
 
 import { profileSolanaWalletNameNormalize } from '../util/profile-solana-wallet-name-normalize'
 
-import type { ProfileSolanaWalletUpdateInput } from './profile-solana-wallet-update-input'
 import { profileSolanaWalletRecordGet } from './profile-solana-wallet-record-get'
+import type { ProfileSolanaWalletUpdateInput } from './profile-solana-wallet-update-input'
 import { profileUserIdentitiesReconcileBestEffort } from './profile-user-identities-reconcile-best-effort'
 import { toProfileSolanaWalletEntity } from './profile.entity'
 

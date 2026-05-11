@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react'
 import { afterAll, beforeAll, beforeEach, describe, expect, mock, test } from 'bun:test'
+import type { ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { ProfileListIdentitiesByUsernameResult } from '@tokengator/sdk'
 

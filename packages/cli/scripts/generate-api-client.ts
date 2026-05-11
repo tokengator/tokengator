@@ -1,6 +1,6 @@
-import { createClient } from '@hey-api/openapi-ts'
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
+import { createClient } from '@hey-api/openapi-ts'
 
 const GENERATED_CLIENT_DIR = fileURLToPath(new URL('../src/api/generated', import.meta.url))
 const OPENAPI_DOCUMENT_PATH = fileURLToPath(new URL('../../api/openapi.json', import.meta.url))

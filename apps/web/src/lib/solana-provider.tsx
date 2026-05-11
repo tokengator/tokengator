@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import {
   createSolanaDevnet,
   createSolanaLocalnet,
@@ -7,6 +6,7 @@ import {
   createWalletUiConfig,
   WalletUi,
 } from '@wallet-ui/react'
+import type { ReactNode } from 'react'
 import type { AppConfig } from '@tokengator/sdk'
 
 import { Route as RootRoute } from '@/routes/__root'

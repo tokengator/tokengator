@@ -4,9 +4,9 @@ import { organization } from '@tokengator/db/schema/auth'
 
 import { adminOrganizationNormalizeLogo } from '../util/admin-organization-normalize-logo'
 
-import type { AdminOrganizationUpdateInput } from './admin-organization-update-input'
 import { adminOrganizationGet } from './admin-organization-get'
 import { adminOrganizationRecordGet } from './admin-organization-record-get'
+import type { AdminOrganizationUpdateInput } from './admin-organization-update-input'
 
 function normalizeOptionalText(value?: string) {
   const trimmedValue = value?.trim()

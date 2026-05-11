@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react'
 import { afterAll, beforeAll, describe, expect, mock, test } from 'bun:test'
+import type { ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 let ShellUiSignedInUserMenu: typeof import('../src/features/shell/ui/shell-ui-signed-in-user-menu').ShellUiSignedInUserMenu

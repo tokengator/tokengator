@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test'
 import { writeFileSync } from 'node:fs'
 
-import type { AuthApiFetch } from '../../src/auth/data-access/auth-api-client'
 import { authFeatureLogin } from '../../src/auth/auth-feature-login'
+import type { AuthApiFetch } from '../../src/auth/data-access/auth-api-client'
 import { readConfig } from '../../src/config/data-access/config-store'
 import { cleanupTempConfigHomes, createTempConfigHome, getTempConfigPath } from '../config/config-test-utils'
 

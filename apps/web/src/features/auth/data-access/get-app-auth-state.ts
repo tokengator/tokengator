@@ -1,9 +1,9 @@
 import { queryOptions, type QueryClient } from '@tanstack/react-query'
 
-import type { serverOrpcClient } from '@/lib/orpc-server'
 import { getProfileSettingsQueryKey } from '@/features/profile/data-access/use-profile-get-settings'
 import { getProfileListIdentitiesQueryKey } from '@/features/profile/data-access/use-profile-list-identities'
 import { getProfileListSolanaWalletsQueryKey } from '@/features/profile/data-access/use-profile-list-solana-wallets'
+import type { serverOrpcClient } from '@/lib/orpc-server'
 
 import { getAppAuthState } from './get-app-auth-state-fn'
 

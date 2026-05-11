@@ -1,7 +1,7 @@
-import type { ProfileIdentityEntity } from '@tokengator/sdk'
 import { formatProviderLabel } from '@/features/profile/ui/format-provider-label.tsx'
 import { getIdentityProviderGroups } from '@/features/profile/ui/get-identity-provider-groups.tsx'
 import { ProfileUiIdentityProviderIcon } from '@/features/profile/ui/profile-ui-identity-provider-icon.tsx'
+import type { ProfileIdentityEntity } from '@tokengator/sdk'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import { UiDebugDialog } from '@tokengator/ui/components/ui-debug-dialog.tsx'
 import { UiListCard, UiListCardHeader, UiListCardMeta } from '@tokengator/ui/components/ui-list-card'

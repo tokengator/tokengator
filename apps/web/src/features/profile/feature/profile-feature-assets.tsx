@@ -1,7 +1,7 @@
-import type { ProfileListCommunitiesByUsernameResult } from '@tokengator/sdk'
 import { ProfileFeatureAssetsOwner } from '@/features/profile/feature/profile-feature-assets-owner.tsx'
 import { ProfileFeatureAssetsViewer } from '@/features/profile/feature/profile-feature-assets-viewer.tsx'
 import { ProfileUiPrivate } from '@/features/profile/ui/profile-ui-private.tsx'
+import type { ProfileListCommunitiesByUsernameResult } from '@tokengator/sdk'
 
 export function ProfileFeatureAssets({
   initialCommunities,

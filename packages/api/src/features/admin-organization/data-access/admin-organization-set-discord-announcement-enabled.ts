@@ -1,7 +1,7 @@
 import { setCommunityDiscordAnnouncementEnabled } from '../../../features/community-discord-announcement'
 
-import type { AdminOrganizationSetDiscordAnnouncementEnabledInput } from './admin-organization-set-discord-announcement-enabled-input'
 import { adminOrganizationRecordGet } from './admin-organization-record-get'
+import type { AdminOrganizationSetDiscordAnnouncementEnabledInput } from './admin-organization-set-discord-announcement-enabled-input'
 
 export async function adminOrganizationSetDiscordAnnouncementEnabled(
   input: AdminOrganizationSetDiscordAnnouncementEnabledInput,

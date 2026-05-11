@@ -1,6 +1,5 @@
 import { useWalletUi } from '@wallet-ui/react'
 import type { AppAuthState, AppSession } from '@/features/auth/data-access/get-app-auth-state.ts'
-import type { ProfileIdentityEntity } from '@tokengator/sdk'
 import { AuthFeatureSolanaActions } from '@/features/auth/feature/auth-feature-solana-actions.tsx'
 import { useProfileListSolanaWallets } from '@/features/profile/data-access/use-profile-list-solana-wallets.tsx'
 import { useProfileSolanaWalletDelete } from '@/features/profile/data-access/use-profile-solana-wallet-delete.tsx'
@@ -8,6 +7,7 @@ import { useProfileSolanaWalletSetPrimary } from '@/features/profile/data-access
 import { useProfileSolanaWalletUpdate } from '@/features/profile/data-access/use-profile-solana-wallet-update.tsx'
 import { ProfileUiUserIdentityCard } from '@/features/profile/ui/profile-ui-user-identity-card.tsx'
 import { SolanaProvider } from '@/lib/solana-provider.tsx'
+import type { ProfileIdentityEntity } from '@tokengator/sdk'
 
 import { ProfileFeatureSolanaIdentityRowActions } from './profile-feature-solana-identity-row-actions.tsx'
 

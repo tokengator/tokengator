@@ -85,7 +85,7 @@
     "eslint-plugin-perfectionist": "^5.7.0",
     "lefthook": "^2.0.13",
     "oxfmt": "^0.26.0",
-    "oxlint": "^1.41.0",
+    "oxlint": "^1.63.0",
     "pkg-pr-new": "^0.0.67",
     "turbo": "^2.8.21",
     "typescript": "catalog:"

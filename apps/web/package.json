@@ -14,7 +14,7 @@
     "@libsql/client": "catalog:",
     "@orpc/tanstack-query": "^1.13.13",
     "@solana/kit": "catalog:",
-    "@tailwindcss/vite": "^4.1.18",
+    "@tailwindcss/vite": "^4.2.4",
     "@tanstack/react-form": "^1.28.0",
     "@tanstack/react-query": "^5.80.6",
     "@tanstack/react-router": "^1.168.8",

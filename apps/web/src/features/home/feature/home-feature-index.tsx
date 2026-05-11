@@ -1,5 +1,5 @@
-import type { CSSProperties } from 'react'
 import { Link } from '@tanstack/react-router'
+import type { CSSProperties } from 'react'
 import { Button } from '@tokengator/ui/components/button'
 import { UiBackground } from '@tokengator/ui/components/ui-background'
 

@@ -3,8 +3,8 @@ import { reconcileLocalUserState } from '@tokengator/auth'
 import { db } from '@tokengator/db'
 import { account } from '@tokengator/db/schema/auth'
 
-import type { AdminUserLinkDiscordAccountInput } from './admin-user-link-discord-account-input'
 import { adminUserGet } from './admin-user-get'
+import type { AdminUserLinkDiscordAccountInput } from './admin-user-link-discord-account-input'
 import { adminUserRecordGet } from './admin-user-record-get'
 
 export async function adminUserLinkDiscordAccount(input: AdminUserLinkDiscordAccountInput) {

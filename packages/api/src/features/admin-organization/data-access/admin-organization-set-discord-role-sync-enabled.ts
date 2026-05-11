@@ -1,8 +1,8 @@
 import { setCommunityDiscordRoleSyncEnabled } from '../../../features/community-discord-connection'
 
-import type { AdminOrganizationSetDiscordRoleSyncEnabledInput } from './admin-organization-set-discord-role-sync-enabled-input'
 import { adminOrganizationGet } from './admin-organization-get'
 import { adminOrganizationRecordGet } from './admin-organization-record-get'
+import type { AdminOrganizationSetDiscordRoleSyncEnabledInput } from './admin-organization-set-discord-role-sync-enabled-input'
 
 export async function adminOrganizationSetDiscordRoleSyncEnabled(
   input: AdminOrganizationSetDiscordRoleSyncEnabledInput,

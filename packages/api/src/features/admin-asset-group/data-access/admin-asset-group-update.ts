@@ -2,13 +2,13 @@ import { eq } from 'drizzle-orm'
 import { db } from '@tokengator/db'
 import { assetGroup } from '@tokengator/db/schema/asset'
 
-import type { AdminAssetGroupUpdateInput } from './admin-asset-group-update-input'
-import type { AdminAssetGroupEntity } from './admin-asset-group.entity'
 import {
   getDefaultAdminAssetGroupResolverKind,
   isAdminAssetGroupResolverKindCompatible,
   normalizeAdminAssetGroupResolverKind,
 } from './admin-asset-group-resolver-kind'
+import type { AdminAssetGroupUpdateInput } from './admin-asset-group-update-input'
+import type { AdminAssetGroupEntity } from './admin-asset-group.entity'
 
 function normalizeOptionalDecimals(value: number | undefined) {
   return typeof value === 'number' ? value : 0

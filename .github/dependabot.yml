@@ -18,6 +18,13 @@ updates:
         patterns:
           - '@tanstack/query-*'
           - '@tanstack/react-query*'
+      tanstack-router:
+        patterns:
+          - '@tanstack/react-router*'
+          - '@tanstack/react-start*'
+          - '@tanstack/router-*'
+          - '@tanstack/start-*'
+          - '@tanstack/virtual-file-routes'
       turbo:
         patterns:
           - '@turbo/*'

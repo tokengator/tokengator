@@ -1,9 +1,9 @@
 import { getAppLogger } from '@tokengator/logger'
 
-import type { ResolverContext, ResolverResult } from '../types'
 import { ProviderError } from '../errors'
 import { defineResolver, type ResolverDefinition } from '../resolver'
 import { HELIUS_COLLECTION_ASSETS, HELIUS_TOKEN_ACCOUNTS } from '../resolver-kind'
+import type { ResolverContext, ResolverResult } from '../types'
 
 export interface HeliusAdapter {
   getAssetsByCollection(input: {

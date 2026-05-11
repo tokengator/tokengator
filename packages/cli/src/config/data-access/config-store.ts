@@ -1,6 +1,6 @@
-import envPaths from 'env-paths'
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import envPaths from 'env-paths'
 
 import { ConfigError, validateApiUrl, validateProfileName } from '../util/config-validation'
 

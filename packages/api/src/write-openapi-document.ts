@@ -1,8 +1,8 @@
+import { writeFile } from 'node:fs/promises'
+import { fileURLToPath } from 'node:url'
 import { OpenAPIGenerator } from '@orpc/openapi'
 import { ZodToJsonSchemaConverter } from '@orpc/zod/zod4'
 import { $ } from 'bun'
-import { writeFile } from 'node:fs/promises'
-import { fileURLToPath } from 'node:url'
 
 import { appRouter } from './router'
 

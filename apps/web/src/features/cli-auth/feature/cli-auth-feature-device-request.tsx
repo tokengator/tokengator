@@ -3,9 +3,9 @@ import type { AppSessionUser } from '@/features/auth/data-access/get-app-auth-st
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 
 import type { CliAuthDeviceClient } from '../data-access/cli-auth-device-client'
-import type { CliAuthUserCodeVerification } from '../data-access/verify-cli-auth-user-code-fn'
 import { useCliAuthDeviceApprove } from '../data-access/use-cli-auth-device-approve'
 import { useCliAuthDeviceDeny } from '../data-access/use-cli-auth-device-deny'
+import type { CliAuthUserCodeVerification } from '../data-access/verify-cli-auth-user-code-fn'
 import { CliAuthUiDeviceActions } from '../ui/cli-auth-ui-device-actions'
 import { CliAuthUiDeviceDetails } from '../ui/cli-auth-ui-device-details'
 import { CliAuthUiFinalState } from '../ui/cli-auth-ui-final-state'

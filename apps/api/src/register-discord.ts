@@ -1,5 +1,5 @@
-import dotenv from 'dotenv'
 import { resolve } from 'node:path'
+import dotenv from 'dotenv'
 import { configureAppLogger } from '@tokengator/logger'
 
 dotenv.config({

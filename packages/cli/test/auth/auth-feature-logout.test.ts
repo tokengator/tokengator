@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test'
 import { writeFileSync } from 'node:fs'
 
-import type { AuthApiFetch } from '../../src/auth/data-access/auth-api-client'
 import { authFeatureLogout } from '../../src/auth/auth-feature-logout'
+import type { AuthApiFetch } from '../../src/auth/data-access/auth-api-client'
 import { cleanupTempConfigHomes, createTempConfigHome, getTempConfigPath } from '../config/config-test-utils'
 
 const originalConsoleLog = console.log

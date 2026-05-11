@@ -1,8 +1,8 @@
 import { REST, Routes } from 'discord.js'
 import { formatLogError, getAppLogger } from '@tokengator/logger'
 
-import type { DiscordContext } from './discord-context'
 import { discordChatInputCommands } from './commands'
+import type { DiscordContext } from './discord-context'
 import { getDiscordBotToken, getDiscordClientId, getDiscordGuildId } from './discord-env'
 
 const logger = getAppLogger('discord', 'register-commands')

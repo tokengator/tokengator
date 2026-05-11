@@ -3,8 +3,8 @@ import { reconcileLocalUserState } from '@tokengator/auth'
 import { db } from '@tokengator/db'
 import { solanaWallet } from '@tokengator/db/schema/auth'
 
-import type { AdminUserLinkSolanaWalletInput } from './admin-user-link-solana-wallet-input'
 import { adminUserGet } from './admin-user-get'
+import type { AdminUserLinkSolanaWalletInput } from './admin-user-link-solana-wallet-input'
 import { adminUserRecordGet } from './admin-user-record-get'
 
 function normalizeOptionalString(value: string | null | undefined) {

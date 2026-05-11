@@ -4,8 +4,8 @@ import { communityRole } from '@tokengator/db/schema/community-role'
 
 import { upsertCommunityRoleConditions } from '../../../features/community-role-sync'
 
-import type { AdminCommunityRoleCreateInput } from './admin-community-role-create-input'
 import { adminCommunityRoleConditionsValidate } from './admin-community-role-conditions-validate'
+import type { AdminCommunityRoleCreateInput } from './admin-community-role-create-input'
 import { adminCommunityRoleEntityGet } from './admin-community-role-entity-get'
 import { adminCommunityRoleOrganizationRecordGet } from './admin-community-role-organization-record-get'
 import { adminCommunityRoleSlugAvailability } from './admin-community-role-slug-availability'

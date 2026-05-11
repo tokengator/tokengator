@@ -1,7 +1,7 @@
-import type { ProfileListIdentitiesByUsernameResult } from '@tokengator/sdk'
 import { useProfileIdentitiesByUsernameQuery } from '@/features/profile/data-access/use-profile-identities-by-username-query.tsx'
 import { getIdentityProviderGroups } from '@/features/profile/ui/get-identity-provider-groups.tsx'
 import { ProfileUiUserIdentityCard } from '@/features/profile/ui/profile-ui-user-identity-card.tsx'
+import type { ProfileListIdentitiesByUsernameResult } from '@tokengator/sdk'
 
 export function ProfileFeatureIdentitiesViewer({
   initialIdentities,

@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react'
-import * as TanStackReactRouter from '@tanstack/react-router'
 import { afterAll, beforeAll, beforeEach, describe, expect, mock, test } from 'bun:test'
+import * as TanStackReactRouter from '@tanstack/react-router'
+import type { ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 let DevFeatureBackup: typeof import('../src/features/dev/feature/dev-feature-backup').DevFeatureBackup

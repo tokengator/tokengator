@@ -1,8 +1,8 @@
 import { createHelius, type HeliusRpcOptions } from 'helius-sdk'
 import { getAppLogger } from '@tokengator/logger'
 
-import type { HeliusAdapter } from '../resolvers/helius'
 import { ProviderError, type ProviderErrorCode } from '../errors'
+import type { HeliusAdapter } from '../resolvers/helius'
 
 const logger = getAppLogger('indexer', 'helius-adapter')
 

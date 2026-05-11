@@ -1,5 +1,5 @@
-import { cleanup, render } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, describe, expect, mock, test } from 'bun:test'
+import { cleanup, render } from '@testing-library/react'
 // @ts-expect-error jsdom is installed for tests but does not expose declarations in this workspace.
 import { JSDOM } from 'jsdom'
 import { renderToStaticMarkup } from 'react-dom/server'

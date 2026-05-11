@@ -1,5 +1,5 @@
-import type { SolanaSignInInput, SolanaSignInOutput } from '@wallet-ui/react'
 import { getBase58Decoder } from '@solana/kit'
+import type { SolanaSignInInput, SolanaSignInOutput } from '@wallet-ui/react'
 import { createSIWSInput, type SIWSNonceResponse } from 'better-auth-solana/client'
 
 import { getAuthClientClient } from './auth-client-client'

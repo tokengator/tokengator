@@ -7,10 +7,10 @@ import {
   adminCommunityRoleCreateDiscordMappingStatus,
 } from '../util/admin-community-role-discord-mapping-status'
 
-import type { AdminCommunityRoleSetDiscordRoleMappingInput } from './admin-community-role-set-discord-role-mapping-input'
 import { adminCommunityRoleDiscordGuildRolesGet } from './admin-community-role-discord-guild-roles-get'
 import { adminCommunityRoleEntityGet } from './admin-community-role-entity-get'
 import { adminCommunityRoleRecordGet } from './admin-community-role-record-get'
+import type { AdminCommunityRoleSetDiscordRoleMappingInput } from './admin-community-role-set-discord-role-mapping-input'
 
 export async function adminCommunityRoleSetDiscordRoleMapping(input: AdminCommunityRoleSetDiscordRoleMappingInput) {
   const existingCommunityRole = await adminCommunityRoleRecordGet(input.communityRoleId)

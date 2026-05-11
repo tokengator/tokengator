@@ -1,5 +1,5 @@
-import type { AppConfig } from '@tokengator/sdk'
 import { env } from '@tokengator/env/web-server'
+import type { AppConfig } from '@tokengator/sdk'
 
 export async function getAppConfigServer(): Promise<AppConfig> {
   const response = await fetch(new URL('/api/__/env.json', env.API_URL))

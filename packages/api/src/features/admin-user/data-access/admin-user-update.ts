@@ -3,9 +3,9 @@ import { auth } from '@tokengator/auth'
 import { db } from '@tokengator/db'
 import { session, user } from '@tokengator/db/schema/auth'
 
-import type { AdminUserUpdateInput } from './admin-user-update-input'
 import { adminUserGet } from './admin-user-get'
 import { adminUserRecordGet } from './admin-user-record-get'
+import type { AdminUserUpdateInput } from './admin-user-update-input'
 
 function normalizeOptionalString(value: string | null | undefined) {
   const nextValue = value?.trim()

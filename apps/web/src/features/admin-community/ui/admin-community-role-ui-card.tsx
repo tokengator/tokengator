@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react'
 import { PencilLine, Trash2 } from 'lucide-react'
+import type { ReactNode } from 'react'
 import type { AdminCommunityRoleConditionEntity, AdminCommunityRoleEntity } from '@tokengator/sdk'
 import { Button } from '@tokengator/ui/components/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'

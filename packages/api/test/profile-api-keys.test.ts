@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
-import { eq, sql } from 'drizzle-orm'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { eq, sql } from 'drizzle-orm'
 
 type Auth = (typeof import('@tokengator/auth'))['auth']
 type AuthSchema = typeof import('@tokengator/db/schema/auth')

@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
 import { Loader2 } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { Card, CardDescription, CardHeader, CardTitle } from '@tokengator/ui/components/card'
 import { Tabs, TabsList, TabsTrigger } from '@tokengator/ui/components/tabs'
 

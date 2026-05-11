@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 import { Shield } from 'lucide-react'
+import type { ReactNode } from 'react'
 import type { CommunityGetBySlugResult, CommunityListResult } from '@tokengator/sdk'
 
 import { Button } from '@tokengator/ui/components/button'

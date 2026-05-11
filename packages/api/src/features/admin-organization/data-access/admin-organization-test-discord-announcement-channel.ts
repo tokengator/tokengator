@@ -4,8 +4,8 @@ import { account, identity } from '@tokengator/db/schema/auth'
 
 import { sendCommunityDiscordAnnouncementTestMessage } from '../../../features/community-discord-announcement'
 
-import type { AdminOrganizationTestDiscordAnnouncementChannelInput } from './admin-organization-test-discord-announcement-channel-input'
 import { adminOrganizationRecordGet } from './admin-organization-record-get'
+import type { AdminOrganizationTestDiscordAnnouncementChannelInput } from './admin-organization-test-discord-announcement-channel-input'
 
 async function loadCanonicalDiscordAccountIdByUserId(userId: string) {
   const [identityRecord] = await db

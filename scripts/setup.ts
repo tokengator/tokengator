@@ -1,5 +1,5 @@
-import { file, Glob, write } from 'bun'
 import { randomBytes } from 'node:crypto'
+import { file, Glob, write } from 'bun'
 
 const glob = new Glob('apps/*/.env.example')
 const generateSecretPlaceholder = '__GENERATE_SECRET__'

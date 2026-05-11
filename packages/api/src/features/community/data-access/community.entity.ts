@@ -1,6 +1,6 @@
-import type { ResolverKind } from '@tokengator/indexer'
 import { asset } from '@tokengator/db/schema/asset'
 import { organization } from '@tokengator/db/schema/auth'
+import type { ResolverKind } from '@tokengator/indexer'
 
 import { getAssetGroupImageUrl } from '../../../lib/asset-group-image-url'
 import { parseStoredJson } from '../../../lib/stored-json'

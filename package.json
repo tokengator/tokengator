@@ -82,7 +82,7 @@
     "@changesets/cli": "2.30.0",
     "@tokengator/config": "workspace:*",
     "@types/bun": "catalog:",
-    "eslint-plugin-perfectionist": "^5.7.0",
+    "eslint-plugin-perfectionist": "^5.9.0",
     "lefthook": "^2.0.13",
     "oxfmt": "^0.26.0",
     "oxlint": "^1.41.0",

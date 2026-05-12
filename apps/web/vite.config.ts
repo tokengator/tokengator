@@ -2,14 +2,16 @@ import tailwindcss from '@tailwindcss/vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
-import tsconfigPaths from 'vite-tsconfig-paths'
 import { env } from '@tokengator/env/web-server'
 
 export default defineConfig({
   build: {
     chunkSizeWarningLimit: 600,
   },
-  plugins: [tsconfigPaths(), tailwindcss(), tanstackStart(), viteReact()],
+  plugins: [tailwindcss(), tanstackStart(), viteReact()],
+  resolve: {
+    tsconfigPaths: true,
+  },
   server: {
     allowedHosts: env.VITE_SERVER_ALLOWED_HOSTS,
     host: env.VITE_SERVER_HOST,

@@ -14,7 +14,7 @@
     "test": "bun test ./test"
   },
   "dependencies": {
-    "@t3-oss/env-core": "^0.13.1",
+    "@t3-oss/env-core": "0.13.11",
     "@tokengator/logger": "workspace:*",
     "dotenv": "catalog:",
     "zod": "catalog:"

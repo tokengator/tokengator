@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM oven/bun:1.3.11-slim AS base
+FROM oven/bun:1.3.13-slim AS base
 
 ENV DO_NOT_TRACK=1
 WORKDIR /app

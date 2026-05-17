@@ -10,10 +10,19 @@ updates:
       default-days: 5
     directory: /
     groups:
+      oxc:
+        patterns:
+          - 'oxfmt'
+          - 'oxlint'
       solana:
         patterns:
           - '@solana/*'
           - '@solana-program/*'
+      tailwind:
+        patterns:
+          - '@tailwindcss/*'
+          - 'tailwind-merge'
+          - 'tailwindcss'
       tanstack-query:
         patterns:
           - '@tanstack/query-*'

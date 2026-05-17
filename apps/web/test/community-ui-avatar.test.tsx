@@ -12,12 +12,14 @@ beforeAll(async () => {
     }: ComponentProps<'div'> & {
       size?: 'default' | 'lg' | 'sm'
     }) => (
-      <div data-size={size} data-slot="avatar">
+      <div className="rounded-full" data-size={size} data-slot="avatar">
         {children}
       </div>
     ),
     AvatarFallback: ({ children }: ComponentProps<'span'>) => <span data-slot="avatar-fallback">{children}</span>,
-    AvatarImage: ({ alt, src }: { alt: string; src?: string }) => <img alt={alt} data-slot="avatar-image" src={src} />,
+    AvatarImage: ({ alt, src }: { alt: string; src?: string }) => (
+      <img alt={alt} className="rounded-full" data-slot="avatar-image" src={src} />
+    ),
   }))
 
   ;({ CommunityUiAvatar } = await import('../src/features/community/ui/community-ui-avatar'))

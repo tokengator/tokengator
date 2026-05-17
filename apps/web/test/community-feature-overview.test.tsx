@@ -210,24 +210,6 @@ beforeAll(async () => {
     }),
   }))
 
-  mock.module('../src/features/community/feature/community-feature-asset-marketplace', () => ({
-    CommunityFeatureAssetMarketplace: ({
-      assetGroup,
-      assetMarketplace,
-      marketplace,
-    }: {
-      assetGroup: CommunityGetBySlugResult['roles'][number]['assetGroups'][number]
-      assetMarketplace: CommunityGetBySlugResult['collections'][number]['assetMarketplace'] | null
-      marketplace: CommunityGetBySlugResult['marketplace']
-    }) =>
-      assetGroup.type === 'collection' &&
-      assetGroup.symbolMagicEden &&
-      assetMarketplace?.enabled &&
-      marketplace.magicEden.enabled ? (
-        <button type="button">Buy NFT</button>
-      ) : null,
-  }))
-
   ;({ CommunityFeatureOverview } = await import('../src/features/community/feature/community-feature-overview'))
 })
 

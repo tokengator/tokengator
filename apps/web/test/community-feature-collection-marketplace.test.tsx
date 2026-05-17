@@ -96,7 +96,22 @@ beforeAll(async () => {
   mock.module('@wallet-ui/react', () => ({
     ellipsify: (address: string) => `${address.slice(0, 4)}..${address.slice(-4)}`,
     useSignAndSendTransaction: () => async () => ({ signature: new Uint8Array([1]) }),
+    useSignIn: () => async () => ({}),
     useWalletUi: () => ({ account: null }),
+    useWalletUiCluster: () => ({
+      cluster: {
+        id: 'solana:devnet',
+      },
+      clusters: [],
+      setCluster: () => undefined,
+    }),
+    useWalletUiWallet: () => ({
+      connect: async () => [],
+      disconnect: async () => undefined,
+      isConnecting: false,
+      isDisconnecting: false,
+    }),
+    WalletUiIcon: ({ className }: { className?: string }) => <span className={className} data-slot="wallet-ui-icon" />,
   }))
   mock.module('@/lib/solana-provider', () => ({
     SolanaProvider: ({ children }: { children: ReactNode }) => <>{children}</>,

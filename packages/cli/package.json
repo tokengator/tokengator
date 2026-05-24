@@ -44,7 +44,7 @@
   },
   "devDependencies": {
     "@hey-api/client-fetch": "0.13.1",
-    "@hey-api/openapi-ts": "0.97.1",
+    "@hey-api/openapi-ts": "0.97.2",
     "@tokengator/config": "workspace:*",
     "@types/bun": "catalog:",
     "tsdown": "catalog:",

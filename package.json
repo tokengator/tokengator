@@ -84,8 +84,8 @@
     "@types/bun": "catalog:",
     "eslint-plugin-perfectionist": "5.9.0",
     "lefthook": "2.1.6",
-    "oxfmt": "0.50.0",
-    "oxlint": "1.65.0",
+    "oxfmt": "0.51.0",
+    "oxlint": "1.66.0",
     "pkg-pr-new": "0.0.74",
     "turbo": "2.9.14",
     "typescript": "catalog:"

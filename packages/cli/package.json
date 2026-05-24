@@ -1,6 +1,6 @@
 {
   "name": "tokengator",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Tokengator command line tools.",
   "license": "MIT",
   "repository": {

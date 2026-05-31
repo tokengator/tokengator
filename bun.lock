@@ -17,7 +17,7 @@
         "lefthook": "2.1.6",
         "oxfmt": "0.50.0",
         "oxlint": "1.65.0",
-        "pkg-pr-new": "0.0.74",
+        "pkg-pr-new": "0.0.75",
         "turbo": "2.9.14",
         "typescript": "catalog:",
       },
@@ -1999,7 +1999,7 @@
 
     "pkce-challenge": ["pkce-challenge@5.0.1", "", {}, "sha512-wQ0b/W4Fr01qtpHlqSqspcj3EhBvimsdh0KlHhH8HRZnMsEa0ea2fTULOXOS9ccQr3om+GcGRk4e+isrZWV8qQ=="],
 
-    "pkg-pr-new": ["pkg-pr-new@0.0.74", "", { "bin": { "pkg-pr-new": "bin/cli.js" } }, "sha512-f2gScB4cjpVcMLeCMEhkrkt3KJCx3TgHTqaWZx54dUgvQcYASh+Hj+txMLjCkSN5ofHEGEmzi1gXK3lWZ2imTA=="],
+    "pkg-pr-new": ["pkg-pr-new@0.0.75", "", { "bin": { "pkg-pr-new": "bin/cli.js" } }, "sha512-u9mdErTewKSMsr+ceCt8VcNuNP0ro5AXiPXhUVApuEyqr2Zlvt+DdCFBcm+yGWN8mhOdZJ27meIDbnoZgfzpOw=="],
 
     "pkg-types": ["pkg-types@2.3.1", "", { "dependencies": { "confbox": "^0.2.4", "exsolve": "^1.0.8", "pathe": "^2.0.3" } }, "sha512-y+ichcgc2LrADuhLNAx8DFjVfgz91pRxfZdI3UDhxHvcVEZsenLO+7XaU5vOp0u/7V/wZ+plyuQxtrDlZJ+yeg=="],
 

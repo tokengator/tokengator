@@ -11,6 +11,49 @@ configureAppLogger({ env })
 const logger = getAppLogger('api', 'api-server')
 const app = createApiApp()
 
+interface ResponseLike {
+  arrayBuffer(): Promise<ArrayBuffer>
+  headers: Headers
+  status: number
+  statusText?: string
+}
+
+async function normalizeWebResponse(response: unknown): Promise<Response> {
+  if (response instanceof Response) {
+    return response
+  }
+
+  const responseLike = response as ResponseLike
+  const headers = new Headers(responseLike.headers)
+  const status = responseLike.status
+
+  if (status === 101) {
+    headers.set('x-original-status', String(status))
+    if (responseLike.statusText) {
+      headers.set('x-original-status-text', responseLike.statusText)
+    }
+
+    return new Response(null, {
+      headers,
+      status: 200,
+    })
+  }
+
+  if (status === 204 || status === 205 || status === 304) {
+    return new Response(null, {
+      headers,
+      status,
+      statusText: responseLike.statusText,
+    })
+  }
+
+  return new Response(await responseLike.arrayBuffer(), {
+    headers,
+    status,
+    statusText: responseLike.statusText,
+  })
+}
+
 async function main() {
   if (env.NODE_ENV === 'development') {
     void writeOpenApiDocument().catch((error) => {
@@ -42,7 +85,7 @@ async function main() {
       '/rpc': (req) => app.fetch(req),
       '/rpc/*': (req) => app.fetch(req),
       ...webRoutes,
-      '/*': (req) => webFetch(req),
+      '/*': async (req) => normalizeWebResponse(await webFetch(req)),
     },
   })
 

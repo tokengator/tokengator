@@ -54,7 +54,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@libsql/client": "catalog:",
-        "@orpc/tanstack-query": "1.14.3",
+        "@orpc/tanstack-query": "1.14.4",
         "@solana/kit": "catalog:",
         "@tailwindcss/vite": "4.3.0",
         "@tanstack/query-core": "5.100.11",
@@ -755,7 +755,7 @@
 
     "@orpc/standard-server-peer": ["@orpc/standard-server-peer@1.14.2", "", { "dependencies": { "@orpc/shared": "1.14.2", "@orpc/standard-server": "1.14.2" } }, "sha512-uzbgGaxvlZ0IA2lasaLck+yrbR3bKoqJnsZehEdbSm6eWaKln4COvxQJ2PuPow3gA6tklNnGkTfmRmGIHvS/rg=="],
 
-    "@orpc/tanstack-query": ["@orpc/tanstack-query@1.14.3", "", { "dependencies": { "@orpc/shared": "1.14.3" }, "peerDependencies": { "@orpc/client": "1.14.3", "@tanstack/query-core": ">=5.80.2" } }, "sha512-SRoq4zCRF65vlveFegaaVHaqmlpOxI/tHL/sdKVrELJ3zPq22sS4GZQeABIdevH25wjxWBO0gKrVaazzTtVA6Q=="],
+    "@orpc/tanstack-query": ["@orpc/tanstack-query@1.14.4", "", { "dependencies": { "@orpc/shared": "1.14.4" }, "peerDependencies": { "@orpc/client": "1.14.4", "@tanstack/query-core": ">=5.80.2" } }, "sha512-IQ7YK7mFTkwnFTcyTIUXojaTmLLG6pfZY6z9q+QaKjNyfDZ4kwW/DrR7SsB+WBc+K0oOMfko7AYKD69/Lwo2Zg=="],
 
     "@orpc/zod": ["@orpc/zod@1.14.2", "", { "dependencies": { "@orpc/json-schema": "1.14.2", "@orpc/openapi": "1.14.2", "@orpc/shared": "1.14.2", "escape-string-regexp": "^5.0.0", "wildcard-match": "^5.1.4" }, "peerDependencies": { "@orpc/contract": "1.14.2", "@orpc/server": "1.14.2", "zod": ">=3.25.0" } }, "sha512-47FBoaAz5GfHSdtD/ZNmTjorLD9SiD+I008UH2+DKehC4HMh8V1SbsMWCanUOkh1IFPZ1kzKaOOT+g0OAIOUWA=="],
 
@@ -2381,7 +2381,7 @@
 
     "@noble/curves/@noble/hashes": ["@noble/hashes@1.8.0", "", {}, "sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A=="],
 
-    "@orpc/tanstack-query/@orpc/shared": ["@orpc/shared@1.14.3", "", { "dependencies": { "radash": "^12.1.1", "type-fest": "^5.4.4" }, "peerDependencies": { "@opentelemetry/api": ">=1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-S7qmhZT4vchKEF6F6YduG5ub5lWnvQRVNq1/f5/kJkSnYMG5q6rWLcK7c3wYfDkeap05ZIiWTwksH+fv+yJOrw=="],
+    "@orpc/tanstack-query/@orpc/shared": ["@orpc/shared@1.14.4", "", { "dependencies": { "radash": "^12.1.1", "type-fest": "^5.4.4" }, "peerDependencies": { "@opentelemetry/api": ">=1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-XltdytNlp68cN/WvrfsG7BdUUWV4a7kFN+7HL9LskTqt+q396ITWggJeoyBBMl+u1WHCF7GO2OHx4XQBBYOM8Q=="],
 
     "@prisma/config/c12": ["c12@3.1.0", "", { "dependencies": { "chokidar": "^4.0.3", "confbox": "^0.2.2", "defu": "^6.1.4", "dotenv": "^16.6.1", "exsolve": "^1.0.7", "giget": "^2.0.0", "jiti": "^2.4.2", "ohash": "^2.0.11", "pathe": "^2.0.3", "perfect-debounce": "^1.0.0", "pkg-types": "^2.2.0", "rc9": "^2.1.2" }, "peerDependencies": { "magicast": "^0.3.5" }, "optionalPeers": ["magicast"] }, "sha512-uWoS8OU1MEIsOv8p/5a82c3H31LsWVR5qiyXVfBNOzfffjUWtPnhAb4BYI2uG2HfGmZmFjCtui5XNWaps+iFuw=="],
 

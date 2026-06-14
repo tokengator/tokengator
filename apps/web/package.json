@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@libsql/client": "catalog:",
-    "@orpc/tanstack-query": "1.14.3",
+    "@orpc/tanstack-query": "1.14.5",
     "@solana/kit": "catalog:",
     "@tailwindcss/vite": "4.3.0",
     "@tanstack/query-core": "5.100.11",

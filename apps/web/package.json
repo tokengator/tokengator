@@ -14,7 +14,7 @@
     "@libsql/client": "catalog:",
     "@orpc/tanstack-query": "1.14.3",
     "@solana/kit": "catalog:",
-    "@tailwindcss/vite": "4.3.0",
+    "@tailwindcss/vite": "4.3.2",
     "@tanstack/query-core": "5.100.11",
     "@tanstack/react-form": "1.32.0",
     "@tanstack/react-query": "5.100.11",

@@ -33,7 +33,7 @@
   },
   "dependencies": {
     "@better-auth/api-key": "catalog:",
-    "@clack/prompts": "1.4.0",
+    "@clack/prompts": "1.7.0",
     "@solana/kit": "catalog:",
     "better-auth": "catalog:",
     "better-auth-solana": "catalog:",

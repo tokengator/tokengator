@@ -79,7 +79,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@changesets/cli": "2.31.0",
+    "@changesets/cli": "2.31.1",
     "@tokengator/config": "workspace:*",
     "@types/bun": "catalog:",
     "eslint-plugin-perfectionist": "5.9.0",

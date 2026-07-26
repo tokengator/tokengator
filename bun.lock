@@ -266,7 +266,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@base-ui/react": "1.4.1",
-        "@fontsource-variable/baloo-bhai-2": "5.2.8",
+        "@fontsource-variable/baloo-bhai-2": "5.3.0",
         "class-variance-authority": "0.7.1",
         "clsx": "2.1.1",
         "lucide-react": "catalog:",
@@ -597,7 +597,7 @@
 
     "@floating-ui/utils": ["@floating-ui/utils@0.2.11", "", {}, "sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg=="],
 
-    "@fontsource-variable/baloo-bhai-2": ["@fontsource-variable/baloo-bhai-2@5.2.8", "", {}, "sha512-Ifdr0Q4dra5Uzz3+tnQ1BiIVyCvTKb2aFCfajrRQIQKucsgTJe7D4Rre5fp+gvn8QC2dSJiw/20mjDD3whcibQ=="],
+    "@fontsource-variable/baloo-bhai-2": ["@fontsource-variable/baloo-bhai-2@5.3.0", "", {}, "sha512-9NQxE+1GqenmAYp0YmxSOXh7viUY/IN8ZfPMOxwPctVCSkDKAnMzlyjTMNuXRMFY5rUbCp7kKSYca2zcF0CCaQ=="],
 
     "@hey-api/client-fetch": ["@hey-api/client-fetch@0.13.1", "", { "peerDependencies": { "@hey-api/openapi-ts": "< 2" } }, "sha512-29jBRYNdxVGlx5oewFgOrkulZckpIpBIRHth3uHFn1PrL2ucMy52FvWOY3U3dVx2go1Z3kUmMi6lr07iOpUqqA=="],
 

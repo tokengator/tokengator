@@ -86,7 +86,7 @@
     "lefthook": "2.1.6",
     "oxfmt": "0.50.0",
     "oxlint": "1.65.0",
-    "pkg-pr-new": "0.0.74",
+    "pkg-pr-new": "0.0.80",
     "turbo": "2.9.14",
     "typescript": "catalog:"
   },

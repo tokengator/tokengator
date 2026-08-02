@@ -50,7 +50,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "6.0.2",
-    "jsdom": "29.1.1",
+    "jsdom": "30.0.0",
     "typescript": "catalog:",
     "vite": "8.0.13",
     "web-vitals": "5.2.0"
